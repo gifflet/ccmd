@@ -2,79 +2,97 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
 
-func TestCommandLock_Validate(t *testing.T) {
+func TestCommand_Validate(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
 		name    string
-		cl      CommandLock
+		cmd     Command
 		wantErr bool
 		errMsg  string
 	}{
 		{
-			name: "valid lock",
-			cl: CommandLock{
+			name: "valid command",
+			cmd: Command{
+				Name:        "test-cmd",
 				Version:     "1.0.0",
-				Repository:  "github.com/test/repo",
+				Source:      "github.com/test/repo",
 				InstalledAt: now,
-				LastUpdated: now,
+				UpdatedAt:   now,
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing version",
-			cl: CommandLock{
-				Repository:  "github.com/test/repo",
+			name: "missing name",
+			cmd: Command{
+				Version:     "1.0.0",
+				Source:      "github.com/test/repo",
 				InstalledAt: now,
-				LastUpdated: now,
+				UpdatedAt:   now,
+			},
+			wantErr: true,
+			errMsg:  "name is required",
+		},
+		{
+			name: "missing version",
+			cmd: Command{
+				Name:        "test-cmd",
+				Source:      "github.com/test/repo",
+				InstalledAt: now,
+				UpdatedAt:   now,
 			},
 			wantErr: true,
 			errMsg:  "version is required",
 		},
 		{
-			name: "missing repository",
-			cl: CommandLock{
+			name: "missing source",
+			cmd: Command{
+				Name:        "test-cmd",
 				Version:     "1.0.0",
 				InstalledAt: now,
-				LastUpdated: now,
+				UpdatedAt:   now,
 			},
 			wantErr: true,
-			errMsg:  "repository is required",
+			errMsg:  "source is required",
 		},
 		{
 			name: "missing installedAt",
-			cl: CommandLock{
-				Version:     "1.0.0",
-				Repository:  "github.com/test/repo",
-				LastUpdated: now,
+			cmd: Command{
+				Name:      "test-cmd",
+				Version:   "1.0.0",
+				Source:    "github.com/test/repo",
+				UpdatedAt: now,
 			},
 			wantErr: true,
 			errMsg:  "installedAt is required",
 		},
 		{
-			name: "missing lastUpdated",
-			cl: CommandLock{
+			name: "missing updatedAt",
+			cmd: Command{
+				Name:        "test-cmd",
 				Version:     "1.0.0",
-				Repository:  "github.com/test/repo",
+				Source:      "github.com/test/repo",
 				InstalledAt: now,
 			},
 			wantErr: true,
-			errMsg:  "lastUpdated is required",
+			errMsg:  "updatedAt is required",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.cl.Validate()
+			err := tt.cmd.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Command.Validate() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
-				t.Errorf("Validate() error = %v, want %v", err.Error(), tt.errMsg)
+				t.Errorf("Command.Validate() error = %v, want %v", err.Error(), tt.errMsg)
 			}
 		})
 	}
@@ -82,22 +100,26 @@ func TestCommandLock_Validate(t *testing.T) {
 
 func TestLockFile_Validate(t *testing.T) {
 	now := time.Now()
+	validCmd := &Command{
+		Name:        "test-cmd",
+		Version:     "1.0.0",
+		Source:      "github.com/test/repo",
+		InstalledAt: now,
+		UpdatedAt:   now,
+	}
 
 	tests := []struct {
 		name    string
 		lf      LockFile
 		wantErr bool
+		errMsg  string
 	}{
 		{
 			name: "valid lock file",
 			lf: LockFile{
-				Commands: map[string]CommandLock{
-					"test-command": {
-						Version:     "1.0.0",
-						Repository:  "github.com/test/repo",
-						InstalledAt: now,
-						LastUpdated: now,
-					},
+				Version: "1.0",
+				Commands: map[string]*Command{
+					"test-cmd": validCmd,
 				},
 			},
 			wantErr: false,
@@ -105,28 +127,33 @@ func TestLockFile_Validate(t *testing.T) {
 		{
 			name: "nil commands map",
 			lf: LockFile{
+				Version:  "1.0",
 				Commands: nil,
 			},
 			wantErr: true,
+			errMsg:  "commands map cannot be nil",
 		},
 		{
-			name: "empty commands map",
+			name: "empty commands map is valid",
 			lf: LockFile{
-				Commands: map[string]CommandLock{},
+				Version:  "1.0",
+				Commands: make(map[string]*Command),
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid command lock",
+			name: "invalid command",
 			lf: LockFile{
-				Commands: map[string]CommandLock{
-					"test-command": {
-						Version: "1.0.0",
+				Version: "1.0",
+				Commands: map[string]*Command{
+					"bad-cmd": {
+						Name: "bad-cmd",
 						// Missing required fields
 					},
 				},
 			},
 			wantErr: true,
+			errMsg:  "invalid command bad-cmd",
 		},
 	}
 
@@ -134,139 +161,237 @@ func TestLockFile_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.lf.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("LockFile.Validate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
+				t.Errorf("LockFile.Validate() error = %v, want to contain %v", err.Error(), tt.errMsg)
 			}
 		})
 	}
 }
 
-func TestLockFile_Commands(t *testing.T) {
+func TestLockFile_GetCommand(t *testing.T) {
 	now := time.Now()
-	lf := LockFile{
-		Commands: make(map[string]CommandLock),
-	}
-
-	// Test SetCommand
-	lock := CommandLock{
+	cmd1 := &Command{
+		Name:        "cmd1",
 		Version:     "1.0.0",
-		Repository:  "github.com/test/repo",
+		Source:      "github.com/test/cmd1",
 		InstalledAt: now,
-		LastUpdated: now,
+		UpdatedAt:   now,
 	}
-	lf.SetCommand("test-command", lock)
-
-	// Test GetCommand
-	retrievedLock, exists := lf.GetCommand("test-command")
-	if !exists {
-		t.Error("GetCommand() should return true for existing command")
-	}
-	if retrievedLock.Version != lock.Version {
-		t.Errorf("GetCommand() returned wrong lock: got %v, want %v", retrievedLock, lock)
+	cmd2 := &Command{
+		Name:        "cmd2",
+		Version:     "2.0.0",
+		Source:      "github.com/test/cmd2",
+		InstalledAt: now,
+		UpdatedAt:   now,
 	}
 
-	// Test GetCommand for non-existent command
-	_, exists = lf.GetCommand("non-existent")
-	if exists {
-		t.Error("GetCommand() should return false for non-existent command")
+	lf := &LockFile{
+		Version: "1.0",
+		Commands: map[string]*Command{
+			"cmd1": cmd1,
+			"cmd2": cmd2,
+		},
 	}
 
-	// Test RemoveCommand
-	lf.RemoveCommand("test-command")
-	_, exists = lf.GetCommand("test-command")
-	if exists {
-		t.Error("RemoveCommand() should remove the command")
+	tests := []struct {
+		name      string
+		cmdName   string
+		wantCmd   *Command
+		wantExist bool
+	}{
+		{
+			name:      "existing command",
+			cmdName:   "cmd1",
+			wantCmd:   cmd1,
+			wantExist: true,
+		},
+		{
+			name:      "another existing command",
+			cmdName:   "cmd2",
+			wantCmd:   cmd2,
+			wantExist: true,
+		},
+		{
+			name:      "non-existing command",
+			cmdName:   "cmd3",
+			wantCmd:   nil,
+			wantExist: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotCmd, gotExist := lf.GetCommand(tt.cmdName)
+			if gotExist != tt.wantExist {
+				t.Errorf("LockFile.GetCommand() gotExist = %v, want %v", gotExist, tt.wantExist)
+			}
+			if gotCmd != tt.wantCmd {
+				t.Errorf("LockFile.GetCommand() gotCmd = %v, want %v", gotCmd, tt.wantCmd)
+			}
+		})
 	}
 }
 
-func TestLockFile_SetCommand_NilMap(t *testing.T) {
-	lf := LockFile{}
+func TestLockFile_SetCommand(t *testing.T) {
 	now := time.Now()
-
-	lock := CommandLock{
+	cmd := &Command{
+		Name:        "test-cmd",
 		Version:     "1.0.0",
-		Repository:  "github.com/test/repo",
+		Source:      "github.com/test/repo",
 		InstalledAt: now,
-		LastUpdated: now,
+		UpdatedAt:   now,
 	}
 
-	// Should initialize the map if nil
-	lf.SetCommand("test-command", lock)
-
-	if lf.Commands == nil {
-		t.Error("SetCommand() should initialize nil map")
-	}
-
-	retrievedLock, exists := lf.GetCommand("test-command")
-	if !exists {
-		t.Error("SetCommand() should add command to initialized map")
-	}
-	if retrievedLock.Version != lock.Version {
-		t.Errorf("SetCommand() added wrong lock: got %v, want %v", retrievedLock, lock)
-	}
-}
-
-func TestLockFile_JSON(t *testing.T) {
-	now := time.Now().Truncate(time.Second) // Truncate for JSON round-trip consistency
-
-	lf := LockFile{
-		Commands: map[string]CommandLock{
-			"test-command": {
-				Version:     "1.0.0",
-				Repository:  "github.com/test/repo",
-				InstalledAt: now,
-				LastUpdated: now,
+	tests := []struct {
+		name    string
+		lf      *LockFile
+		cmdName string
+		cmd     *Command
+	}{
+		{
+			name: "set in existing map",
+			lf: &LockFile{
+				Version:  "1.0",
+				Commands: make(map[string]*Command),
 			},
-			"another-command": {
-				Version:     "2.0.0",
-				Repository:  "github.com/test/another",
-				InstalledAt: now.Add(-24 * time.Hour),
-				LastUpdated: now,
+			cmdName: "test-cmd",
+			cmd:     cmd,
+		},
+		{
+			name: "set in nil map",
+			lf: &LockFile{
+				Version: "1.0",
+			},
+			cmdName: "test-cmd",
+			cmd:     cmd,
+		},
+		{
+			name: "update existing command",
+			lf: &LockFile{
+				Version: "1.0",
+				Commands: map[string]*Command{
+					"test-cmd": {
+						Name:    "test-cmd",
+						Version: "0.9.0",
+					},
+				},
+			},
+			cmdName: "test-cmd",
+			cmd:     cmd,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.lf.SetCommand(tt.cmdName, tt.cmd)
+			if tt.lf.Commands == nil {
+				t.Error("LockFile.SetCommand() Commands map is nil")
+				return
+			}
+			if got := tt.lf.Commands[tt.cmdName]; got != tt.cmd {
+				t.Errorf("LockFile.SetCommand() = %v, want %v", got, tt.cmd)
+			}
+		})
+	}
+}
+
+func TestLockFile_RemoveCommand(t *testing.T) {
+	now := time.Now()
+	cmd1 := &Command{
+		Name:        "cmd1",
+		Version:     "1.0.0",
+		Source:      "github.com/test/cmd1",
+		InstalledAt: now,
+		UpdatedAt:   now,
+	}
+	cmd2 := &Command{
+		Name:        "cmd2",
+		Version:     "2.0.0",
+		Source:      "github.com/test/cmd2",
+		InstalledAt: now,
+		UpdatedAt:   now,
+	}
+
+	lf := &LockFile{
+		Version: "1.0",
+		Commands: map[string]*Command{
+			"cmd1": cmd1,
+			"cmd2": cmd2,
+		},
+	}
+
+	// Remove existing command
+	lf.RemoveCommand("cmd1")
+	if _, exists := lf.Commands["cmd1"]; exists {
+		t.Error("LockFile.RemoveCommand() command still exists")
+	}
+	if _, exists := lf.Commands["cmd2"]; !exists {
+		t.Error("LockFile.RemoveCommand() removed wrong command")
+	}
+
+	// Remove non-existing command (should not panic)
+	lf.RemoveCommand("cmd3")
+
+	// Remove from nil map (should not panic)
+	lf2 := &LockFile{}
+	lf2.RemoveCommand("cmd1")
+}
+
+func TestLockFile_MarshalJSON(t *testing.T) {
+	now := time.Now()
+	lf := &LockFile{
+		Version: "1.0",
+		Commands: map[string]*Command{
+			"test-cmd": {
+				Name:         "test-cmd",
+				Version:      "1.0.0",
+				Source:       "github.com/test/repo",
+				InstalledAt:  now,
+				UpdatedAt:    now,
+				Dependencies: []string{"dep1", "dep2"},
+				Metadata: map[string]string{
+					"author": "Test Author",
+				},
 			},
 		},
 	}
 
-	// Test MarshalJSON
-	data, err := lf.MarshalJSON()
+	// Test standard JSON marshaling (no indentation)
+	data, err := json.Marshal(lf)
 	if err != nil {
-		t.Fatalf("MarshalJSON() error = %v", err)
+		t.Fatalf("json.Marshal() error = %v", err)
 	}
 
-	// Check if output is properly indented
-	var indentCheck map[string]interface{}
-	if err := json.Unmarshal(data, &indentCheck); err != nil {
-		t.Fatalf("JSON output is not valid: %v", err)
+	// Should be compact (no newlines)
+	if strings.Contains(string(data), "\n") {
+		t.Errorf("json.Marshal() output should not be indented")
 	}
 
-	// Test UnmarshalJSON
+	// Test indented JSON marshaling (as used in manager.Save())
+	indentedData, err := json.MarshalIndent(lf, "", "  ")
+	if err != nil {
+		t.Fatalf("json.MarshalIndent() error = %v", err)
+	}
+
+	// Check that output is indented
+	if !strings.Contains(string(indentedData), "\n") {
+		t.Errorf("json.MarshalIndent() output is not indented. Output: %s", string(indentedData))
+	}
+
+	// Unmarshal and compare
 	var lf2 LockFile
-	err = lf2.UnmarshalJSON(data)
-	if err != nil {
-		t.Fatalf("UnmarshalJSON() error = %v", err)
+	if err := json.Unmarshal(data, &lf2); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
 
-	// Verify round-trip
+	if lf2.Version != lf.Version {
+		t.Errorf("Version mismatch: got %v, want %v", lf2.Version, lf.Version)
+	}
+
 	if len(lf2.Commands) != len(lf.Commands) {
-		t.Errorf("JSON round-trip failed: different number of commands")
-	}
-
-	for name, lock := range lf.Commands {
-		lock2, exists := lf2.Commands[name]
-		if !exists {
-			t.Errorf("JSON round-trip failed: missing command %s", name)
-			continue
-		}
-
-		// Compare fields (time comparison needs special handling)
-		if lock.Version != lock2.Version || lock.Repository != lock2.Repository {
-			t.Errorf("JSON round-trip failed for %s: got %+v, want %+v", name, lock2, lock)
-		}
-
-		// For time fields, compare Unix timestamps
-		if lock.InstalledAt.Unix() != lock2.InstalledAt.Unix() {
-			t.Errorf("JSON round-trip failed for %s: InstalledAt differs", name)
-		}
-		if lock.LastUpdated.Unix() != lock2.LastUpdated.Unix() {
-			t.Errorf("JSON round-trip failed for %s: LastUpdated differs", name)
-		}
+		t.Errorf("Commands count mismatch: got %v, want %v", len(lf2.Commands), len(lf.Commands))
 	}
 }
