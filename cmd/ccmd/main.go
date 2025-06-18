@@ -36,7 +36,7 @@ Claude Code commands efficiently.`,
 	},
 }
 
-func init() {
+func main() {
 	// Register subcommands
 	rootCmd.AddCommand(info.NewCommand())
 	rootCmd.AddCommand(install.NewCommand())
@@ -44,9 +44,7 @@ func init() {
 	rootCmd.AddCommand(remove.NewCommand())
 	rootCmd.AddCommand(search.NewCommand())
 	rootCmd.AddCommand(update.NewCommand())
-}
 
-func main() {
 	if err := rootCmd.Execute(); err != nil {
 		output.Fatalf("Command failed: %v", err)
 	}

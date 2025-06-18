@@ -59,5 +59,5 @@ func (s *Spinner) Success(message string) {
 // Error stops the spinner and shows an error message
 func (s *Spinner) Error(message string) {
 	s.Stop()
-	PrintError("✗ %s", message)
+	PrintErrorf("✗ %s", message)
 }

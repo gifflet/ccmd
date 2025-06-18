@@ -38,7 +38,7 @@ func runRemove(commandName string, force bool) error {
 	}
 
 	if !exists {
-		output.PrintError("Command '%s' is not installed", commandName)
+		output.PrintErrorf("Command '%s' is not installed", commandName)
 		return fmt.Errorf("command not found")
 	}
 
@@ -50,20 +50,20 @@ func runRemove(commandName string, force bool) error {
 
 	// Confirm removal if not forced
 	if !force {
-		output.PrintInfo("Command details:")
-		output.PrintInfo("  Name: %s", cmdInfo.Name)
-		output.PrintInfo("  Version: %s", cmdInfo.Version)
+		output.PrintInfof("Command details:")
+		output.PrintInfof("  Name: %s", cmdInfo.Name)
+		output.PrintInfof("  Version: %s", cmdInfo.Version)
 		if desc, ok := cmdInfo.Metadata["description"]; ok && desc != "" {
-			output.PrintInfo("  Description: %s", desc)
+			output.PrintInfof("  Description: %s", desc)
 		}
 
-		output.PrintWarning("\nThis will permanently remove the command and all its files.")
-		output.PrintInfo("Are you sure you want to continue? [y/N]: ")
+		output.PrintWarningf("\nThis will permanently remove the command and all its files.")
+		output.PrintInfof("Are you sure you want to continue? [y/N]: ")
 
 		var response string
 		_, _ = fmt.Scanln(&response)
 		if !isConfirmation(response) {
-			output.PrintInfo("Removal canceled")
+			output.PrintInfof("Removal canceled")
 			return nil
 		}
 	}

@@ -206,7 +206,7 @@ func TestRunInfoJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Parse JSON output
-	var info InfoOutput
+	var info Output
 	err = json.Unmarshal([]byte(output), &info)
 	assert.NoError(t, err)
 
@@ -408,7 +408,7 @@ func TestPrintStatus(t *testing.T) {
 }
 
 func TestDisplayCommandInfo(t *testing.T) {
-	info := InfoOutput{
+	info := Output{
 		Name:        "test-display",
 		Version:     "1.2.3",
 		Author:      "Display Author",
@@ -561,9 +561,9 @@ func TestRunInfoWithJSONError(t *testing.T) {
 	assert.Contains(t, err.Error(), "command 'non-existent' is not installed")
 }
 
-func TestInfoOutputMarshaling(t *testing.T) {
-	// Test that InfoOutput properly marshals to JSON
-	info := InfoOutput{
+func TestOutputMarshaling(t *testing.T) {
+	// Test that Output properly marshals to JSON
+	info := Output{
 		Name:        "marshal-test",
 		Version:     "1.0.0",
 		Author:      "Test",
@@ -584,7 +584,7 @@ func TestInfoOutputMarshaling(t *testing.T) {
 	data, err := json.Marshal(info)
 	assert.NoError(t, err)
 
-	var unmarshaled InfoOutput
+	var unmarshaled Output
 	err = json.Unmarshal(data, &unmarshaled)
 	assert.NoError(t, err)
 

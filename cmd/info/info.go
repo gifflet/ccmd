@@ -18,8 +18,8 @@ import (
 	"github.com/gifflet/ccmd/pkg/commands"
 )
 
-// InfoOutput represents the structured output format for JSON
-type InfoOutput struct {
+// Output represents the structured output format for JSON
+type Output struct {
 	Name        string            `json:"name"`
 	Version     string            `json:"version"`
 	Author      string            `json:"author"`
@@ -85,7 +85,7 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 		if jsonFormat {
 			return fmt.Errorf("command '%s' is not installed", commandName)
 		}
-		output.PrintError("Command '%s' is not installed", commandName)
+		output.PrintErrorf("Command '%s' is not installed", commandName)
 		return fmt.Errorf("command not found")
 	}
 
@@ -106,7 +106,7 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 	structureInfo, metadata := checkCommandStructure(commandName, baseDir, filesystem)
 
 	// Prepare output data
-	infoData := InfoOutput{
+	infoData := Output{
 		Name:        cmdInfo.Name,
 		Version:     cmdInfo.Version,
 		Source:      cmdInfo.Source,
@@ -204,7 +204,7 @@ func checkCommandStructure(commandName, baseDir string,
 	return info, metadata
 }
 
-func displayCommandInfo(info InfoOutput, baseDir, commandName string, filesystem fs.FileSystem) {
+func displayCommandInfo(info Output, baseDir, commandName string, filesystem fs.FileSystem) {
 	// Header
 	fmt.Println()
 	fmt.Println(output.Info("=== Command Information ==="))

@@ -93,7 +93,7 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 }
 
 // VerifyCommandStructure checks if a specific command has valid dual structure.
-func VerifyCommandStructure(name, baseDir string, filesystem fs.FileSystem) (bool, string, error) {
+func VerifyCommandStructure(name, baseDir string, filesystem fs.FileSystem) (valid bool, status string, err error) {
 	if filesystem == nil {
 		filesystem = fs.OS{}
 	}

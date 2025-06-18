@@ -101,7 +101,7 @@ func runUpdateWithFS(args []string, updateAll bool, filesystem fs.FileSystem) er
 	result := updateCommand(commandName, baseDir, filesystem)
 
 	if result.Error != nil {
-		output.PrintError("Failed to update %s: %v", commandName, result.Error)
+		output.PrintErrorf("Failed to update %s: %v", commandName, result.Error)
 		return result.Error
 	}
 
@@ -122,12 +122,12 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 	}
 
 	if len(commandList) == 0 {
-		output.PrintInfo("No commands installed")
+		output.PrintInfof("No commands installed")
 		return nil
 	}
 
 	// Show progress
-	output.PrintInfo("Checking %d commands for updates...", len(commandList))
+	output.PrintInfof("Checking %d commands for updates...", len(commandList))
 	fmt.Println()
 
 	// Update each command
@@ -149,17 +149,17 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 
 		switch {
 		case result.Error != nil:
-			output.PrintError("Failed to update %s: %v", cmd.Name, result.Error)
+			output.PrintErrorf("Failed to update %s: %v", cmd.Name, result.Error)
 		case result.Updated:
 			output.PrintSuccessf("Updated %s from %s to %s", cmd.Name, result.CurrentVersion, result.NewVersion)
 		default:
-			output.PrintInfo("%s is already up to date (%s)", cmd.Name, result.CurrentVersion)
+			output.PrintInfof("%s is already up to date (%s)", cmd.Name, result.CurrentVersion)
 		}
 	}
 
 	// Summary
 	fmt.Println()
-	output.PrintInfo("=== Update Summary ===")
+	output.PrintInfof("=== Update Summary ===")
 
 	updatedCount := 0
 	failedCount := 0
@@ -175,11 +175,11 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 		output.PrintSuccessf("%d command(s) updated", updatedCount)
 	}
 	if failedCount > 0 {
-		output.PrintError("%d command(s) failed to update", failedCount)
+		output.PrintErrorf("%d command(s) failed to update", failedCount)
 		return ErrSomeUpdatesFailed
 	}
 	if updatedCount == 0 && failedCount == 0 {
-		output.PrintInfo("All commands are up to date")
+		output.PrintInfof("All commands are up to date")
 	}
 
 	return nil
@@ -366,7 +366,7 @@ func displayResult(result Result) {
 			color.YellowString(result.CurrentVersion),
 			color.GreenString(result.NewVersion))
 	} else {
-		output.PrintInfo("%s is already up to date", result.Name)
+		output.PrintInfof("%s is already up to date", result.Name)
 		fmt.Printf("%s %s\n",
 			color.CyanString("Current version:"),
 			color.GreenString(result.CurrentVersion))

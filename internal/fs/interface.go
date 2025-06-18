@@ -23,7 +23,7 @@ type OS struct{}
 
 // ReadFile reads the named file and returns its contents
 func (OS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name)
+	return safeReadFile(name)
 }
 
 // WriteFile writes data to the named file, creating it if necessary
