@@ -24,8 +24,10 @@ type ConfigCommand struct {
 
 // Validate performs validation on the Config
 func (c *Config) Validate() error {
-	if len(c.Commands) == 0 {
-		return fmt.Errorf("no commands defined")
+	// Empty config is valid - it's a starting point
+	if c.Commands == nil {
+		c.Commands = []ConfigCommand{}
+		return nil
 	}
 
 	for i, cmd := range c.Commands {
@@ -143,8 +145,9 @@ func ParseConfig(r io.Reader) (*Config, error) {
 
 	if err := decoder.Decode(&config); err != nil {
 		if err == io.EOF {
-			// Empty file - treat as no commands defined
-			return nil, fmt.Errorf("invalid configuration: no commands defined")
+			// Empty file - create empty config
+			config.Commands = []ConfigCommand{}
+			return &config, nil
 		}
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
@@ -154,4 +157,32 @@ func ParseConfig(r io.Reader) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// SaveConfig saves a Config to a ccmd.yaml file
+func SaveConfig(config *Config, path string) error {
+	if err := config.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// Config files are readable by all (0644)
+	return writeYAMLFile(path, config, 0o644)
+}
+
+// WriteConfig writes a Config to an io.Writer
+func WriteConfig(config *Config, w io.Writer) error {
+	if err := config.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	encoder := yaml.NewEncoder(w)
+	defer func() {
+		_ = encoder.Close() //nolint:errcheck // Best effort
+	}()
+
+	if err := encoder.Encode(config); err != nil {
+		return fmt.Errorf("failed to encode config: %w", err)
+	}
+
+	return nil
 }

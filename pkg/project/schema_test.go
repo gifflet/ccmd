@@ -40,14 +40,12 @@ func TestParseConfig(t *testing.T) {
 		{
 			name:    "empty config",
 			yaml:    ``,
-			wantErr: true,
-			errMsg:  "no commands defined",
+			wantErr: false,
 		},
 		{
 			name:    "empty commands list",
 			yaml:    `commands: []`,
-			wantErr: true,
-			errMsg:  "no commands defined",
+			wantErr: false,
 		},
 		{
 			name: "missing repo",
