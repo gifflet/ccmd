@@ -6,6 +6,7 @@ import (
 	"github.com/gifflet/ccmd/cmd/install"
 	"github.com/gifflet/ccmd/cmd/list"
 	"github.com/gifflet/ccmd/cmd/remove"
+	"github.com/gifflet/ccmd/cmd/search"
 	"github.com/gifflet/ccmd/internal/output"
 )
 
@@ -25,6 +26,7 @@ func init() {
 	rootCmd.AddCommand(install.NewCommand())
 	rootCmd.AddCommand(list.NewCommand())
 	rootCmd.AddCommand(remove.NewCommand())
+	rootCmd.AddCommand(search.NewCommand())
 }
 
 func main() {

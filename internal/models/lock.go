@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -74,4 +75,9 @@ func (lf *LockFile) SetCommand(name string, cmd *Command) {
 // RemoveCommand removes a command from the lock file
 func (lf *LockFile) RemoveCommand(name string) {
 	delete(lf.Commands, name)
+}
+
+// ToJSON marshals the lock file to JSON bytes
+func (lf *LockFile) ToJSON() ([]byte, error) {
+	return json.MarshalIndent(lf, "", "  ")
 }
