@@ -58,7 +58,8 @@ func (c *Client) Clone(opts CloneOptions) error {
 	args = append(args, opts.URL, opts.Target)
 
 	cmd := exec.Command("git", args...)
-	cmd.Dir = c.workDir
+	// Use current directory for git clone, not the client's workDir
+	cmd.Dir = "."
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -83,12 +84,18 @@ func (c *Client) CheckoutTag(repoPath, tag string) error {
 
 // GetTags returns all tags in the repository
 func (c *Client) GetTags(repoPath string) ([]string, error) {
-	cmd := exec.Command("git", "tag", "-l")
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
+	// Convert to absolute path to avoid issues
+	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return nil, fmt.Errorf("git tag failed: %w", err)
+		return nil, fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	cmd := exec.Command("git", "tag", "-l")
+	cmd.Dir = absPath
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git tag failed in directory '%s': %w\nOutput: %s", absPath, err, string(output))
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -104,18 +111,24 @@ func (c *Client) GetTags(repoPath string) ([]string, error) {
 
 // GetLatestTag returns the latest tag in the repository
 func (c *Client) GetLatestTag(repoPath string) (string, error) {
+	// Convert to absolute path to avoid issues
+	absPath, err := filepath.Abs(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
-	cmd.Dir = repoPath
+	cmd.Dir = absPath
 
 	output, err := cmd.Output()
 	if err != nil {
 		// Try alternative method if describe fails
-		tags, err := c.GetTags(repoPath)
+		tags, err := c.GetTags(absPath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to get tags: %w", err)
 		}
 		if len(tags) == 0 {
-			return "", fmt.Errorf("no tags found")
+			return "", fmt.Errorf("no tags found in repository")
 		}
 		return tags[len(tags)-1], nil
 	}
@@ -125,12 +138,18 @@ func (c *Client) GetLatestTag(repoPath string) (string, error) {
 
 // GetCurrentCommit returns the current commit hash
 func (c *Client) GetCurrentCommit(repoPath string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = repoPath
-
-	output, err := cmd.Output()
+	// Convert to absolute path to avoid issues
+	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse failed: %w", err)
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = absPath
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse failed in directory '%s': %w\nOutput: %s", absPath, err, string(output))
 	}
 
 	return strings.TrimSpace(string(output)), nil
