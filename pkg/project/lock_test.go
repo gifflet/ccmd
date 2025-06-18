@@ -414,3 +414,197 @@ func TestCalculateChecksum(t *testing.T) {
 		t.Error("expected error for non-existent file")
 	}
 }
+
+func TestLockFile_AddCommand_InvalidCommand(t *testing.T) {
+	lf := NewLockFile()
+
+	// Test with invalid command
+	invalidCmd := &Command{
+		Name: "invalid", // Missing required fields
+	}
+
+	err := lf.AddCommand(invalidCmd)
+	if err == nil {
+		t.Error("expected error for invalid command")
+	}
+	if !strings.Contains(err.Error(), "invalid command") {
+		t.Errorf("expected error to contain 'invalid command', got: %v", err)
+	}
+}
+
+func TestLockFile_AddCommand_NilCommandsMap(t *testing.T) {
+	lf := &LockFile{
+		Version:   LockFileVersion,
+		UpdatedAt: time.Now(),
+		Commands:  nil, // Start with nil map
+	}
+
+	cmd := &Command{
+		Name:        "test-cmd",
+		Repository:  "github.com/user/repo",
+		Version:     "v1.0.0",
+		CommitHash:  strings.Repeat("a", 40),
+		InstalledAt: time.Now(),
+		UpdatedAt:   time.Now(),
+		FileSize:    1024,
+		Checksum:    strings.Repeat("b", 64),
+	}
+
+	err := lf.AddCommand(cmd)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// Verify Commands map was initialized
+	if lf.Commands == nil {
+		t.Error("expected Commands map to be initialized")
+	}
+
+	if _, exists := lf.Commands["test-cmd"]; !exists {
+		t.Error("expected command to be added")
+	}
+}
+
+func TestLockFile_Validate_NilCommands(t *testing.T) {
+	lf := &LockFile{
+		Version:   LockFileVersion,
+		UpdatedAt: time.Now(),
+		Commands:  nil, // Test nil Commands map
+	}
+
+	err := lf.Validate()
+	if err != nil {
+		t.Errorf("expected no error for nil Commands map, got: %v", err)
+	}
+
+	// After validation, Commands should be initialized
+	if lf.Commands == nil {
+		t.Error("expected Commands map to be initialized after Validate")
+	}
+}
+
+func TestLockFile_SaveToFile_InvalidLockFile(t *testing.T) {
+	lf := &LockFile{
+		// Missing required version field
+		UpdatedAt: time.Now(),
+		Commands:  make(map[string]*Command),
+	}
+
+	tmpDir := t.TempDir()
+	lockFilePath := filepath.Join(tmpDir, "invalid-lock.yaml")
+
+	err := lf.SaveToFile(lockFilePath)
+	if err == nil {
+		t.Error("expected error for invalid lock file")
+	}
+	if !strings.Contains(err.Error(), "invalid lock file") {
+		t.Errorf("expected error to contain 'invalid lock file', got: %v", err)
+	}
+}
+
+func TestLockFile_SaveToFile_AtomicWriteFailure(t *testing.T) {
+	lf := NewLockFile()
+
+	// Use a directory path instead of file to trigger write error
+	err := lf.SaveToFile("/")
+	if err == nil {
+		t.Error("expected error when saving to invalid path")
+	}
+}
+
+func TestLoadFromFile_InvalidYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	invalidYAMLPath := filepath.Join(tmpDir, "invalid.yaml")
+
+	// Write invalid YAML content
+	invalidContent := []byte("invalid: yaml: content: [")
+	if err := os.WriteFile(invalidYAMLPath, invalidContent, 0o600); err != nil {
+		t.Fatalf("failed to write invalid YAML file: %v", err)
+	}
+
+	_, err := LoadFromFile(invalidYAMLPath)
+	if err == nil {
+		t.Error("expected error for invalid YAML")
+	}
+	if !strings.Contains(err.Error(), "failed to parse lock file") {
+		t.Errorf("expected error to contain 'failed to parse lock file', got: %v", err)
+	}
+}
+
+func TestLoadFromFile_InvalidLockFileContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	invalidLockPath := filepath.Join(tmpDir, "invalid-lock.yaml")
+
+	// Write valid YAML but invalid lock file structure
+	invalidContent := []byte(`version: ""
+commands:
+  test:
+    name: test
+    repository: ""`)
+
+	if err := os.WriteFile(invalidLockPath, invalidContent, 0o600); err != nil {
+		t.Fatalf("failed to write invalid lock file: %v", err)
+	}
+
+	_, err := LoadFromFile(invalidLockPath)
+	if err == nil {
+		t.Error("expected error for invalid lock file content")
+	}
+	if !strings.Contains(err.Error(), "invalid lock file") {
+		t.Errorf("expected error to contain 'invalid lock file', got: %v", err)
+	}
+}
+
+func TestLockFile_Validate_InvalidCommand(t *testing.T) {
+	lf := &LockFile{
+		Version:   LockFileVersion,
+		UpdatedAt: time.Now(),
+		Commands: map[string]*Command{
+			"invalid": {
+				Name: "invalid",
+				// Missing required fields
+			},
+		},
+	}
+
+	err := lf.Validate()
+	if err == nil {
+		t.Error("expected error for invalid command")
+	}
+	if !strings.Contains(err.Error(), "invalid command") {
+		t.Errorf("expected error to contain 'invalid command', got: %v", err)
+	}
+}
+
+func TestLoadFromFile_NonExistentFile(t *testing.T) {
+	_, err := LoadFromFile("/non/existent/file.yaml")
+	if err == nil {
+		t.Error("expected error for non-existent file")
+	}
+	if !strings.Contains(err.Error(), "failed to read lock file") {
+		t.Errorf("expected error to contain 'failed to read lock file', got: %v", err)
+	}
+}
+
+func TestCalculateChecksum_FileCloseError(t *testing.T) {
+	// This test is to ensure the deferred close error handling is covered
+	// The error is intentionally ignored, so we just ensure the function runs
+	tmpFile, err := os.CreateTemp("", "checksum-close-test-*.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	defer os.Remove(tmpPath)
+
+	// Write some content
+	if err := os.WriteFile(tmpPath, []byte("test"), 0o600); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	// Calculate checksum - this will open and close the file
+	_, err = CalculateChecksum(tmpPath)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
