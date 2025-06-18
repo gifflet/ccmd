@@ -32,8 +32,13 @@ all: clean build
 build:
 	@echo "Building $(BINARY_NAME) for current platform..."
 	@mkdir -p $(BUILD_DIR)
+ifeq ($(OS),Windows_NT)
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME).exe $(MAIN_PATH)
+	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME).exe"
+else
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+endif
 
 # Clean build artifacts
 clean:
@@ -123,7 +128,11 @@ uninstall:
 
 # Run the binary
 run: build
+ifeq ($(OS),Windows_NT)
+	$(BUILD_DIR)/$(BINARY_NAME).exe
+else
 	$(BUILD_DIR)/$(BINARY_NAME)
+endif
 
 # Development build with race detector
 dev-build:
