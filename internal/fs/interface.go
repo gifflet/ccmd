@@ -10,6 +10,7 @@ type FileSystem interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
 	Remove(name string) error
+	RemoveAll(path string) error
 	Rename(oldpath, newpath string) error
 	Stat(name string) (fs.FileInfo, error)
 	MkdirAll(path string, perm os.FileMode) error
@@ -31,6 +32,11 @@ func (OS) WriteFile(name string, data []byte, perm os.FileMode) error {
 // Remove removes the named file or directory
 func (OS) Remove(name string) error {
 	return os.Remove(name)
+}
+
+// RemoveAll removes path and any children it contains
+func (OS) RemoveAll(path string) error {
+	return os.RemoveAll(path)
 }
 
 // Rename renames (moves) oldpath to newpath

@@ -1,8 +1,10 @@
 package main
 
 import (
-	"github.com/gifflet/ccmd/internal/output"
 	"github.com/spf13/cobra"
+
+	"github.com/gifflet/ccmd/cmd/remove"
+	"github.com/gifflet/ccmd/internal/output"
 )
 
 var rootCmd = &cobra.Command{
@@ -14,6 +16,11 @@ Claude Code commands efficiently.`,
 		// Default action when no subcommand is provided
 		_ = cmd.Help()
 	},
+}
+
+func init() {
+	// Register subcommands
+	rootCmd.AddCommand(remove.NewCommand())
 }
 
 func main() {
