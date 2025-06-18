@@ -100,7 +100,7 @@ func (m *MemFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	// Create parent directories if necessary
 	dir := filepath.Dir(name)
 	if dir != "." && dir != "/" {
-		if err := m.mkdirAll(dir, 0755); err != nil {
+		if err := m.mkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}
@@ -173,7 +173,7 @@ func (m *MemFS) Rename(oldpath, newpath string) error {
 	// Create parent directories for newpath if necessary
 	dir := filepath.Dir(newpath)
 	if dir != "." && dir != "/" {
-		if err := m.mkdirAll(dir, 0755); err != nil {
+		if err := m.mkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}
@@ -256,7 +256,7 @@ func (m *MemFS) ReadDir(name string) ([]fs.DirEntry, error) {
 				entries = append(entries, &memDirEntry{
 					name:  dirName,
 					isDir: true,
-					mode:  0755,
+					mode:  0o755,
 				})
 			}
 			continue

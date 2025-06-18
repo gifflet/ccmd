@@ -191,7 +191,7 @@ func TestClientOperations(t *testing.T) {
 
 	// Create a test file
 	testFile := filepath.Join(repoDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)
 	}
 
@@ -272,7 +272,7 @@ func TestClientOperations(t *testing.T) {
 	t.Run("Fetch", func(t *testing.T) {
 		// Create another commit in original repo
 		testFile2 := filepath.Join(repoDir, "test2.txt")
-		if err := os.WriteFile(testFile2, []byte("test content 2"), 0644); err != nil {
+		if err := os.WriteFile(testFile2, []byte("test content 2"), 0o644); err != nil {
 			t.Fatalf("failed to create test file 2: %v", err)
 		}
 
@@ -321,7 +321,7 @@ func TestIsValidRepository(t *testing.T) {
 	}
 
 	// Create a non-repository directory
-	if err := os.MkdirAll(nonRepoDir, 0755); err != nil {
+	if err := os.MkdirAll(nonRepoDir, 0o755); err != nil {
 		t.Fatalf("failed to create dir: %v", err)
 	}
 

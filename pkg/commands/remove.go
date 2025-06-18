@@ -57,7 +57,7 @@ func Remove(opts RemoveOptions) error {
 	commandFile := filepath.Join(opts.BaseDir, "commands", opts.Name+".md")
 	if err := opts.FileSystem.Remove(commandFile); err != nil && !os.IsNotExist(err) {
 		// Try to restore the command directory if markdown removal fails
-		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0755); mkdirErr != nil {
+		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
 			// Log error but don't fail the operation
 			_ = mkdirErr
 		}
@@ -67,7 +67,7 @@ func Remove(opts RemoveOptions) error {
 	// Update lock file
 	if err := lockManager.RemoveCommand(opts.Name); err != nil {
 		// Try to restore the command directory and file if lock file update fails
-		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0755); mkdirErr != nil {
+		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
 			// Log error but don't fail the operation
 			_ = mkdirErr
 		}
@@ -76,7 +76,7 @@ func Remove(opts RemoveOptions) error {
 
 	if err := lockManager.Save(); err != nil {
 		// Try to restore the command directory and file if save fails
-		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0755); mkdirErr != nil {
+		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
 			// Log error but don't fail the operation
 			_ = mkdirErr
 		}

@@ -50,13 +50,13 @@ func Install(opts InstallOptions) error {
 	configDir := filepath.Join(homeDir, ".config", "ccmd")
 
 	// Create config directory if it doesn't exist
-	if err := opts.FileSystem.MkdirAll(configDir, 0755); err != nil {
+	if err := opts.FileSystem.MkdirAll(configDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Create commands directory
 	commandsDir := filepath.Join(configDir, "commands")
-	if err := opts.FileSystem.MkdirAll(commandsDir, 0755); err != nil {
+	if err := opts.FileSystem.MkdirAll(commandsDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create commands directory: %w", err)
 	}
 
@@ -76,7 +76,7 @@ func Install(opts InstallOptions) error {
 
 	// Create temporary directory for cloning
 	tempDir := filepath.Join(configDir, "tmp", fmt.Sprintf("install-%s-%d", repoName, time.Now().Unix()))
-	if err := opts.FileSystem.MkdirAll(tempDir, 0755); err != nil {
+	if err := opts.FileSystem.MkdirAll(tempDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer func() {
@@ -161,7 +161,7 @@ func Install(opts InstallOptions) error {
 	}
 
 	// Create command directory
-	if err := opts.FileSystem.MkdirAll(commandDir, 0755); err != nil {
+	if err := opts.FileSystem.MkdirAll(commandDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create command directory: %w", err)
 	}
 
@@ -178,7 +178,7 @@ func Install(opts InstallOptions) error {
 	standalonePath := filepath.Join(commandsDir, fmt.Sprintf("%s.md", commandName))
 	indexPath := filepath.Join(commandDir, "index.md")
 	if indexData, err := opts.FileSystem.ReadFile(indexPath); err == nil {
-		if err := opts.FileSystem.WriteFile(standalonePath, indexData, 0644); err != nil {
+		if err := opts.FileSystem.WriteFile(standalonePath, indexData, 0o644); err != nil {
 			if removeErr := opts.FileSystem.RemoveAll(commandDir); removeErr != nil {
 				// Log error but don't fail the operation
 				_ = removeErr

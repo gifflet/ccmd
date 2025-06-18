@@ -68,11 +68,6 @@ func Fatalf(format string, a ...interface{}) {
 	os.Exit(1)
 }
 
-// PrintErrorf prints a formatted error message without exiting.
-func PrintErrorf(format string, a ...interface{}) {
-	_, _ = fmt.Fprintf(os.Stderr, Error(format), a...)
-}
-
 // Prompt asks the user for input with a colored prompt
 func Prompt(prompt string) string {
 	fmt.Print(Info(prompt + ": "))

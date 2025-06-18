@@ -481,6 +481,6 @@ func writeTestLockFile(t *testing.T, mockFS fs.FileSystem, baseDir string, lockF
 	require.NoError(t, err)
 
 	lockPath := filepath.Join(baseDir, "commands.lock")
-	err = mockFS.WriteFile(lockPath, data, 0644)
+	err = mockFS.WriteFile(lockPath, data, 0o644)
 	require.NoError(t, err)
 }

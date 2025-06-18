@@ -105,7 +105,7 @@ func TestUpdateCommand(t *testing.T) {
 	baseDir := "/home/user/.claude"
 
 	// Create directory structure
-	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands", "test-cmd"), 0755))
+	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands", "test-cmd"), 0o755))
 
 	// Create lock file with a command
 	lockContent := models.LockFile{
@@ -121,7 +121,7 @@ func TestUpdateCommand(t *testing.T) {
 		},
 	}
 	lockData, _ := json.Marshal(lockContent)
-	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0o644))
 
 	// Create command structure
 	commandDir := filepath.Join(baseDir, "commands", "test-cmd")
@@ -131,10 +131,10 @@ description: Test command
 author: Test Author
 repository: https://github.com/user/test-cmd
 entry: test.sh
-`), 0644))
+`), 0o644))
 
-	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte("# Test Command"), 0644))
-	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", "test-cmd.md"), []byte("# Test Command"), 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte("# Test Command"), 0o644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", "test-cmd.md"), []byte("# Test Command"), 0o644))
 
 	t.Run("command not installed", func(t *testing.T) {
 		result := updateCommand("nonexistent", baseDir, memfs)
@@ -161,7 +161,7 @@ func TestUpdateAllCommands(t *testing.T) {
 	baseDir := "/home/user/.claude"
 
 	// Create directory structure
-	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0755))
+	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	t.Run("no commands installed", func(t *testing.T) {
 		// Create empty lock file
@@ -170,7 +170,7 @@ func TestUpdateAllCommands(t *testing.T) {
 			Commands: map[string]*models.Command{},
 		}
 		lockData, _ := json.Marshal(lockContent)
-		require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0644))
+		require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0o644))
 
 		err := updateAllCommands(baseDir, memfs)
 		assert.NoError(t, err)
@@ -198,18 +198,18 @@ func TestUpdateAllCommands(t *testing.T) {
 			},
 		}
 		lockData, _ := json.Marshal(lockContent)
-		require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0644))
+		require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0o644))
 
 		// Create command structures
 		for _, cmdName := range []string{"cmd1", "cmd2"} {
 			commandDir := filepath.Join(baseDir, "commands", cmdName)
-			require.NoError(t, memfs.MkdirAll(commandDir, 0755))
+			require.NoError(t, memfs.MkdirAll(commandDir, 0o755))
 			require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte(fmt.Sprintf(`
 name: %s
 description: Test command
-`, cmdName)), 0644))
-			require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte("# Test"), 0644))
-			require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", cmdName+".md"), []byte("# Test"), 0644))
+`, cmdName)), 0o644))
+			require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte("# Test"), 0o644))
+			require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", cmdName+".md"), []byte("# Test"), 0o644))
 		}
 
 		// This would fail due to git operations, but we test the flow
@@ -272,7 +272,7 @@ func TestPerformUpdate(t *testing.T) {
 	baseDir := "/home/user/.claude"
 
 	// Create directory structure
-	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands", "test-cmd"), 0755))
+	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands", "test-cmd"), 0o755))
 
 	// Create lock file
 	lockContent := models.LockFile{
@@ -288,7 +288,7 @@ func TestPerformUpdate(t *testing.T) {
 		},
 	}
 	lockData, _ := json.Marshal(lockContent)
-	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0o644))
 
 	cmdInfo := &models.Command{
 		Name:        "test-cmd",

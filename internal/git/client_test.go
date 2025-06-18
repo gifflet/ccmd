@@ -81,7 +81,7 @@ func TestIsGitRepository(t *testing.T) {
 
 	// Create .git directory
 	gitDir := filepath.Join(tempDir, ".git")
-	if err := os.Mkdir(gitDir, 0755); err != nil {
+	if err := os.Mkdir(gitDir, 0o755); err != nil {
 		t.Fatalf("failed to create .git dir: %v", err)
 	}
 

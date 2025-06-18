@@ -34,7 +34,7 @@ func TestFileOperations(t *testing.T) {
 	}
 
 	// Create test file
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 

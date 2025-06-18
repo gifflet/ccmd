@@ -21,7 +21,7 @@ func GetClaudeCommandsDir() (string, error) {
 	claudeDir := filepath.Join(homeDir, ".claude", "commands")
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create .claude/commands directory: %w", err)
 	}
 
@@ -49,7 +49,7 @@ func WriteYAMLFile(path string, v interface{}) error {
 		return fmt.Errorf("failed to marshal YAML: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", path, err)
 	}
 
@@ -77,7 +77,7 @@ func WriteJSONFile(path string, v interface{}) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", path, err)
 	}
 
@@ -101,7 +101,7 @@ func DirExists(path string) bool {
 
 // CreateDir creates a directory with all necessary parents
 func CreateDir(path string) error {
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", path, err)
 	}
 	return nil
