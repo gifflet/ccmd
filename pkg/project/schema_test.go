@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -328,9 +329,75 @@ func TestValidateVersion(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
-	// Test loading non-existent file
-	_, err := LoadConfig("/non/existent/file.yaml")
-	if err == nil {
-		t.Error("LoadConfig() should fail for non-existent file")
+	t.Run("non-existent file", func(t *testing.T) {
+		_, err := LoadConfig("/non/existent/file.yaml")
+		if err == nil {
+			t.Error("LoadConfig() should fail for non-existent file")
+		}
+	})
+
+	t.Run("valid file", func(t *testing.T) {
+		// Create temporary test file
+		tmpfile, err := os.CreateTemp("", "test_ccmd_*.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpfile.Name())
+
+		content := `commands:
+  - repo: test/repo
+    version: v1.0.0`
+		if _, err := tmpfile.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+		if err := tmpfile.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		config, err := LoadConfig(tmpfile.Name())
+		if err != nil {
+			t.Errorf("LoadConfig() error = %v, want nil", err)
+		}
+		if config == nil {
+			t.Error("LoadConfig() returned nil config")
+		}
+		if len(config.Commands) != 1 {
+			t.Errorf("LoadConfig() got %d commands, want 1", len(config.Commands))
+		}
+	})
+}
+
+func TestParseConfigWithInvalidYAML(t *testing.T) {
+	tests := []struct {
+		name    string
+		yaml    string
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "invalid YAML syntax",
+			yaml:    `commands: [invalid yaml`,
+			wantErr: true,
+			errMsg:  "failed to parse YAML",
+		},
+		{
+			name:    "wrong type for commands",
+			yaml:    `commands: "not a list"`,
+			wantErr: true,
+			errMsg:  "failed to parse YAML",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseConfig(strings.NewReader(tt.yaml))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr && !strings.Contains(err.Error(), tt.errMsg) {
+				t.Errorf("ParseConfig() error = %v, want error containing %v", err, tt.errMsg)
+			}
+		})
 	}
 }
