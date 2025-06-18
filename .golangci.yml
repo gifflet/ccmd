@@ -1,0 +1,153 @@
+# golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - vendor
+    - testdata
+  skip-files:
+    - ".*_test.go"
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - gosimple
+    - staticcheck
+    - ineffassign
+    - unused
+    - errcheck
+    - gosec
+    - unconvert
+    - dupl
+    - misspell
+    - lll
+    - nakedret
+    - prealloc
+    - exportloopref
+    - gocritic
+    - gochecknoinits
+    - gocyclo
+    - godot
+    - godox
+    - goerr113
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - nestif
+    - noctx
+    - nolintlint
+    - revive
+    - stylecheck
+    - testpackage
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+
+  disable:
+    - exhaustive
+    - gochecknoglobals
+    - gocognit
+    - goconst
+    - funlen
+    - wsl
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    
+  govet:
+    check-shadowing: true
+    enable-all: true
+    
+  gofmt:
+    simplify: true
+    
+  goimports:
+    local-prefixes: github.com/gifflet/ccmd
+    
+  gocyclo:
+    min-complexity: 15
+    
+  dupl:
+    threshold: 100
+    
+  misspell:
+    locale: US
+    
+  lll:
+    line-length: 120
+    tab-width: 4
+    
+  nakedret:
+    max-func-lines: 30
+    
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: true
+    
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - whyNoLint
+      
+  godox:
+    keywords:
+      - TODO
+      - FIXME
+      - BUG
+      
+  gomnd:
+    checks:
+      - argument
+      - case
+      - condition
+      - operation
+      - return
+      - assign
+    ignored-numbers:
+      - '0'
+      - '1'
+      - '2'
+      - '10'
+      - '100'
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - gomnd
+        - goerr113
+        
+    - path: cmd/
+      linters:
+        - forbidigo
+        
+    - text: "Subprocess launch(ed with variable|ing should be audited)"
+      linters:
+        - gosec
+        
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
+        
+  max-issues-per-linter: 50
+  max-same-issues: 10
+  new: false
+  fix: false
