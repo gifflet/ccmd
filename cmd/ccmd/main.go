@@ -1,9 +1,8 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
-
 	"github.com/gifflet/ccmd/internal/output"
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
