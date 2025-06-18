@@ -13,10 +13,10 @@ func TestErrorHandlingIntegration(t *testing.T) {
 	// Create a buffer to capture log output
 	var logBuf bytes.Buffer
 	log := logger.New(&logBuf, logger.DebugLevel)
-	
+
 	// Create error handler with custom logger
 	handler := errors.NewHandler(log)
-	
+
 	// Test different error types
 	tests := []struct {
 		name        string
@@ -50,18 +50,18 @@ func TestErrorHandlingIntegration(t *testing.T) {
 			expectLevel: "[ERROR]",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear buffer
 			logBuf.Reset()
-			
+
 			// Handle error
 			handled := handler.Handle(tt.err)
 			if !handled {
 				t.Error("expected error to be handled")
 			}
-			
+
 			// Check log output
 			logOutput := logBuf.String()
 			if !contains(logOutput, tt.expectLog) {
@@ -77,16 +77,16 @@ func TestErrorHandlingIntegration(t *testing.T) {
 func TestLoggingWithContext(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(&buf, logger.InfoLevel)
-	
+
 	// Create a command-specific logger
 	cmdLog := log.WithField("command", "install")
-	
+
 	// Log with additional context
 	cmdLog.WithFields(logger.Fields{
 		"repository": "github.com/user/repo",
 		"version":    "v1.0.0",
 	}).Info("installing command")
-	
+
 	output := buf.String()
 	if !contains(output, "command=install") {
 		t.Error("expected command field in output")
@@ -102,11 +102,11 @@ func TestLoggingWithContext(t *testing.T) {
 func TestErrorIntegrationWithOutput(t *testing.T) {
 	// Initialize error handler with output functions
 	output.InitializeErrorHandler()
-	
+
 	// Create and handle an error
 	err := errors.New(errors.CodeCommandNotFound, "command 'foo' not found").
 		WithDetail("command", "foo")
-	
+
 	// This would normally print to stderr, but we can't easily capture that in tests
 	// The important part is that it doesn't panic and integrates properly
 	errors.Handle(err)
