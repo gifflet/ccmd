@@ -41,12 +41,12 @@ func TestRunInfo(t *testing.T) {
 
 	// Create base directory structure
 	baseDir := filepath.Join(tempDir, ".claude")
-	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0755))
+	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	// Create a test command
 	commandName := "test-command"
 	commandDir := filepath.Join(baseDir, "commands", commandName)
-	require.NoError(t, memfs.MkdirAll(commandDir, 0755))
+	require.NoError(t, memfs.MkdirAll(commandDir, 0o755))
 
 	// Create ccmd.yaml
 	metadata := models.CommandMetadata{
@@ -63,7 +63,7 @@ func TestRunInfo(t *testing.T) {
 
 	yamlData, err := metadata.MarshalYAML()
 	require.NoError(t, err)
-	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), yamlData, 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), yamlData, 0o644))
 
 	// Create index.md
 	indexContent := `# Test Command
@@ -82,10 +82,10 @@ test-command --help
 - Feature 2
 - Feature 3
 `
-	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte(indexContent), 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte(indexContent), 0o644))
 
 	// Create standalone .md file
-	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("Test content"), 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("Test content"), 0o644))
 
 	// Create lock file
 	lockManager := lock.NewManagerWithFS(baseDir, memfs)
@@ -149,12 +149,12 @@ func TestRunInfoJSON(t *testing.T) {
 
 	// Create base directory structure
 	baseDir := filepath.Join(tempDir, ".claude")
-	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0755))
+	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	// Create a test command
 	commandName := "json-test"
 	commandDir := filepath.Join(baseDir, "commands", commandName)
-	require.NoError(t, memfs.MkdirAll(commandDir, 0755))
+	require.NoError(t, memfs.MkdirAll(commandDir, 0o755))
 
 	// Create ccmd.yaml
 	metadata := models.CommandMetadata{
@@ -167,10 +167,10 @@ func TestRunInfoJSON(t *testing.T) {
 
 	yamlData, err := metadata.MarshalYAML()
 	require.NoError(t, err)
-	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), yamlData, 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), yamlData, 0o644))
 
 	// Create standalone .md file
-	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("JSON test"), 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("JSON test"), 0o644))
 
 	// Create lock file
 	lockManager := lock.NewManagerWithFS(baseDir, memfs)
@@ -206,7 +206,7 @@ func TestRunInfoJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Parse JSON output
-	var info InfoOutput
+	var info Output
 	err = json.Unmarshal([]byte(output), &info)
 	assert.NoError(t, err)
 
@@ -232,7 +232,7 @@ func TestRunInfoCommandNotFound(t *testing.T) {
 	// Create empty lock file
 	baseDir := filepath.Join(tempDir, ".claude")
 	memfs := fs.NewMemFS()
-	require.NoError(t, memfs.MkdirAll(baseDir, 0755))
+	require.NoError(t, memfs.MkdirAll(baseDir, 0o755))
 
 	lockManager := lock.NewManagerWithFS(baseDir, memfs)
 	require.NoError(t, lockManager.Load())
@@ -257,10 +257,10 @@ func TestCheckCommandStructure(t *testing.T) {
 			name: "Complete structure",
 			setupFunc: func(memfs fs.FileSystem, baseDir string) {
 				commandDir := filepath.Join(baseDir, "commands", "test")
-				_ = memfs.MkdirAll(commandDir, 0755)
-				_ = memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte("name: test\nversion: 1.0.0\ndescription: Test\nauthor: Test\nrepository: test"), 0644)
-				_ = memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte("# Test"), 0644)
-				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0644)
+				_ = memfs.MkdirAll(commandDir, 0o755)
+				_ = memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte("name: test\nversion: 1.0.0\ndescription: Test\nauthor: Test\nrepository: test"), 0o644)
+				_ = memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte("# Test"), 0o644)
+				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0o644)
 			},
 			expectedInfo: StructureInfo{
 				DirectoryExists: true,
@@ -275,8 +275,8 @@ func TestCheckCommandStructure(t *testing.T) {
 		{
 			name: "Missing directory",
 			setupFunc: func(memfs fs.FileSystem, baseDir string) {
-				_ = memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0755)
-				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0644)
+				_ = memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755)
+				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0o644)
 			},
 			expectedInfo: StructureInfo{
 				DirectoryExists: false,
@@ -292,8 +292,8 @@ func TestCheckCommandStructure(t *testing.T) {
 			name: "Missing markdown file",
 			setupFunc: func(memfs fs.FileSystem, baseDir string) {
 				commandDir := filepath.Join(baseDir, "commands", "test")
-				_ = memfs.MkdirAll(commandDir, 0755)
-				_ = memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte("name: test\nversion: 1.0.0\ndescription: Test\nauthor: Test\nrepository: test"), 0644)
+				_ = memfs.MkdirAll(commandDir, 0o755)
+				_ = memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte("name: test\nversion: 1.0.0\ndescription: Test\nauthor: Test\nrepository: test"), 0o644)
 			},
 			expectedInfo: StructureInfo{
 				DirectoryExists: true,
@@ -309,8 +309,8 @@ func TestCheckCommandStructure(t *testing.T) {
 			name: "Missing ccmd.yaml",
 			setupFunc: func(memfs fs.FileSystem, baseDir string) {
 				commandDir := filepath.Join(baseDir, "commands", "test")
-				_ = memfs.MkdirAll(commandDir, 0755)
-				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0644)
+				_ = memfs.MkdirAll(commandDir, 0o755)
+				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0o644)
 			},
 			expectedInfo: StructureInfo{
 				DirectoryExists: true,
@@ -326,9 +326,9 @@ func TestCheckCommandStructure(t *testing.T) {
 			name: "Malformed ccmd.yaml",
 			setupFunc: func(memfs fs.FileSystem, baseDir string) {
 				commandDir := filepath.Join(baseDir, "commands", "test")
-				_ = memfs.MkdirAll(commandDir, 0755)
-				_ = memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte("invalid: yaml: content:"), 0644)
-				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0644)
+				_ = memfs.MkdirAll(commandDir, 0o755)
+				_ = memfs.WriteFile(filepath.Join(commandDir, "ccmd.yaml"), []byte("invalid: yaml: content:"), 0o644)
+				_ = memfs.WriteFile(filepath.Join(baseDir, "commands", "test.md"), []byte("Test"), 0o644)
 			},
 			expectedInfo: StructureInfo{
 				DirectoryExists: true,
@@ -408,7 +408,7 @@ func TestPrintStatus(t *testing.T) {
 }
 
 func TestDisplayCommandInfo(t *testing.T) {
-	info := InfoOutput{
+	info := Output{
 		Name:        "test-display",
 		Version:     "1.2.3",
 		Author:      "Display Author",
@@ -435,12 +435,12 @@ func TestDisplayCommandInfo(t *testing.T) {
 	tempDir := t.TempDir()
 	memfs := fs.NewMemFS()
 	commandDir := filepath.Join(tempDir, "commands", "test-display")
-	_ = memfs.MkdirAll(commandDir, 0755)
+	_ = memfs.MkdirAll(commandDir, 0o755)
 
 	indexContent := `# Test Display Command
 
 This is for testing the display function.`
-	_ = memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte(indexContent), 0644)
+	_ = memfs.WriteFile(filepath.Join(commandDir, "index.md"), []byte(indexContent), 0o644)
 
 	// Capture output
 	oldStdout := os.Stdout
@@ -490,13 +490,13 @@ func TestInfoWithIncompleteStructure(t *testing.T) {
 
 	// Create base directory structure
 	baseDir := filepath.Join(tempDir, ".claude")
-	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0755))
+	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	// Create a test command with incomplete structure
 	commandName := "incomplete"
 
 	// Only create the markdown file, not the directory
-	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("Incomplete"), 0644))
+	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("Incomplete"), 0o644))
 
 	// Create lock file
 	lockManager := lock.NewManagerWithFS(baseDir, memfs)
@@ -547,7 +547,7 @@ func TestRunInfoWithJSONError(t *testing.T) {
 	// Create empty lock file
 	baseDir := filepath.Join(tempDir, ".claude")
 	memfs := fs.NewMemFS()
-	require.NoError(t, memfs.MkdirAll(baseDir, 0755))
+	require.NoError(t, memfs.MkdirAll(baseDir, 0o755))
 
 	lockManager := lock.NewManagerWithFS(baseDir, memfs)
 	require.NoError(t, lockManager.Load())
@@ -561,9 +561,9 @@ func TestRunInfoWithJSONError(t *testing.T) {
 	assert.Contains(t, err.Error(), "command 'non-existent' is not installed")
 }
 
-func TestInfoOutputMarshaling(t *testing.T) {
-	// Test that InfoOutput properly marshals to JSON
-	info := InfoOutput{
+func TestOutputMarshaling(t *testing.T) {
+	// Test that Output properly marshals to JSON
+	info := Output{
 		Name:        "marshal-test",
 		Version:     "1.0.0",
 		Author:      "Test",
@@ -584,7 +584,7 @@ func TestInfoOutputMarshaling(t *testing.T) {
 	data, err := json.Marshal(info)
 	assert.NoError(t, err)
 
-	var unmarshaled InfoOutput
+	var unmarshaled Output
 	err = json.Unmarshal(data, &unmarshaled)
 	assert.NoError(t, err)
 

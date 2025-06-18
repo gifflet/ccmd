@@ -1,3 +1,4 @@
+// Package output provides colored output utilities for command-line interface.
 package output
 
 import (
@@ -16,36 +17,35 @@ var (
 	Bold    = color.New(color.Bold).SprintFunc()
 )
 
-// Print functions for different message types
-func PrintSuccess(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, Success(format)+"\n", a...)
+// PrintSuccessf prints a formatted success message.
+func PrintSuccessf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, Success(format)+"\n", a...)
 }
 
-func PrintError(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, Error(format)+"\n", a...)
-}
-
-func PrintWarning(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, Warning(format)+"\n", a...)
-}
-
-func PrintInfo(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, Info(format)+"\n", a...)
-}
-
-func Print(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, format+"\n", a...)
-}
-
-// Fatal prints an error message and exits with code 1
-func Fatal(format string, a ...interface{}) {
-	PrintError(format, a...)
-	os.Exit(1)
-}
-
-// PrintErrorf prints a formatted error message without exiting
+// PrintErrorf prints a formatted error message.
 func PrintErrorf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, Error(format), a...)
+	_, _ = fmt.Fprintf(os.Stderr, Error(format)+"\n", a...)
+}
+
+// PrintWarningf prints a formatted warning message.
+func PrintWarningf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, Warning(format)+"\n", a...)
+}
+
+// PrintInfof prints a formatted info message.
+func PrintInfof(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, Info(format)+"\n", a...)
+}
+
+// Printf prints a formatted message.
+func Printf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, format+"\n", a...)
+}
+
+// Fatalf prints an error message and exits with code 1.
+func Fatalf(format string, a ...interface{}) {
+	PrintErrorf(format, a...)
+	os.Exit(1)
 }
 
 // Prompt asks the user for input with a colored prompt
@@ -56,9 +56,9 @@ func Prompt(prompt string) string {
 	return input
 }
 
-// Debug prints a debug message if debug mode is enabled
-func Debug(format string, a ...interface{}) {
+// Debugf prints a debug message if debug mode is enabled.
+func Debugf(format string, a ...interface{}) {
 	if os.Getenv("CCMD_DEBUG") == "1" {
-		fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", a...)
+		_, _ = fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", a...)
 	}
 }

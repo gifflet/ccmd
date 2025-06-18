@@ -64,11 +64,11 @@ func TestList(t *testing.T) {
 
 				// Create valid structure
 				commandDir := filepath.Join(baseDir, "commands", "test-cmd")
-				err = memFS.MkdirAll(commandDir, 0755)
+				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 
 				markdownFile := filepath.Join(baseDir, "commands", "test-cmd.md")
-				err = memFS.WriteFile(markdownFile, []byte("# Test Command"), 0644)
+				err = memFS.WriteFile(markdownFile, []byte("# Test Command"), 0o644)
 				require.NoError(t, err)
 			},
 			expectedCount: 1,
@@ -102,7 +102,7 @@ func TestList(t *testing.T) {
 
 				// Only create markdown file
 				markdownFile := filepath.Join(baseDir, "commands", "no-dir.md")
-				err = memFS.WriteFile(markdownFile, []byte("# No Dir Command"), 0644)
+				err = memFS.WriteFile(markdownFile, []byte("# No Dir Command"), 0o644)
 				require.NoError(t, err)
 			},
 			expectedCount: 1,
@@ -136,7 +136,7 @@ func TestList(t *testing.T) {
 
 				// Only create directory
 				commandDir := filepath.Join(baseDir, "commands", "no-md")
-				err = memFS.MkdirAll(commandDir, 0755)
+				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 			},
 			expectedCount: 1,
@@ -235,13 +235,13 @@ func TestList(t *testing.T) {
 
 					if c.createDir {
 						commandDir := filepath.Join(baseDir, "commands", c.cmd.Name)
-						err = memFS.MkdirAll(commandDir, 0755)
+						err = memFS.MkdirAll(commandDir, 0o755)
 						require.NoError(t, err)
 					}
 
 					if c.createMD {
 						markdownFile := filepath.Join(baseDir, "commands", c.cmd.Name+".md")
-						err = memFS.WriteFile(markdownFile, []byte("# "+c.cmd.Name), 0644)
+						err = memFS.WriteFile(markdownFile, []byte("# "+c.cmd.Name), 0o644)
 						require.NoError(t, err)
 					}
 				}
@@ -273,7 +273,7 @@ func TestList(t *testing.T) {
 			baseDir := "/test/.claude"
 
 			// Create base directory
-			err := memFS.MkdirAll(baseDir, 0755)
+			err := memFS.MkdirAll(baseDir, 0o755)
 			require.NoError(t, err)
 
 			// Run setup
@@ -356,11 +356,11 @@ func TestVerifyCommandStructure(t *testing.T) {
 
 				// Create both directory and markdown file
 				commandDir := filepath.Join(baseDir, "commands", "valid-cmd")
-				err = memFS.MkdirAll(commandDir, 0755)
+				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 
 				markdownFile := filepath.Join(baseDir, "commands", "valid-cmd.md")
-				err = memFS.WriteFile(markdownFile, []byte("# Valid Command"), 0644)
+				err = memFS.WriteFile(markdownFile, []byte("# Valid Command"), 0o644)
 				require.NoError(t, err)
 			},
 			wantValid:   true,
@@ -390,7 +390,7 @@ func TestVerifyCommandStructure(t *testing.T) {
 
 				// Only create markdown file
 				markdownFile := filepath.Join(baseDir, "commands", "no-dir.md")
-				err = memFS.WriteFile(markdownFile, []byte("# No Dir"), 0644)
+				err = memFS.WriteFile(markdownFile, []byte("# No Dir"), 0o644)
 				require.NoError(t, err)
 			},
 			wantValid:   false,
@@ -420,7 +420,7 @@ func TestVerifyCommandStructure(t *testing.T) {
 
 				// Only create directory
 				commandDir := filepath.Join(baseDir, "commands", "no-md")
-				err = memFS.MkdirAll(commandDir, 0755)
+				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 			},
 			wantValid:   false,
@@ -472,7 +472,7 @@ func TestVerifyCommandStructure(t *testing.T) {
 			baseDir := "/test/.claude"
 
 			// Create base directory
-			err := memFS.MkdirAll(baseDir, 0755)
+			err := memFS.MkdirAll(baseDir, 0o755)
 			require.NoError(t, err)
 
 			// Run setup

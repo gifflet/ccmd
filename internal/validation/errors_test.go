@@ -18,7 +18,7 @@ func TestNewValidationError(t *testing.T) {
 }
 
 func TestValidationError_Error(t *testing.T) {
-	err := &ValidationError{
+	err := &Error{
 		Type:    "missing-file",
 		Details: "ccmd.yaml not found",
 	}

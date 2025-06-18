@@ -100,7 +100,7 @@ func (m *MemFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	// Create parent directories if necessary
 	dir := filepath.Dir(name)
 	if dir != "." && dir != "/" {
-		if err := m.mkdirAll(dir, 0755); err != nil {
+		if err := m.mkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}
@@ -173,7 +173,7 @@ func (m *MemFS) Rename(oldpath, newpath string) error {
 	// Create parent directories for newpath if necessary
 	dir := filepath.Dir(newpath)
 	if dir != "." && dir != "/" {
-		if err := m.mkdirAll(dir, 0755); err != nil {
+		if err := m.mkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}
@@ -256,7 +256,7 @@ func (m *MemFS) ReadDir(name string) ([]fs.DirEntry, error) {
 				entries = append(entries, &memDirEntry{
 					name:  dirName,
 					isDir: true,
-					mode:  0755,
+					mode:  0o755,
 				})
 			}
 			continue
@@ -343,7 +343,11 @@ func (m *MemFS) List(pattern string) []string {
 
 	var files []string
 	for path := range m.files {
-		if matched, _ := filepath.Match(pattern, path); matched {
+		matched, err := filepath.Match(pattern, path)
+		if err != nil {
+			continue // Skip invalid patterns
+		}
+		if matched {
 			files = append(files, path)
 		}
 	}
@@ -363,7 +367,7 @@ func (m *MemFS) String() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var paths []string
+	paths := make([]string, 0, len(m.files))
 	for path := range m.files {
 		paths = append(paths, path)
 	}

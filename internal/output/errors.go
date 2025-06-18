@@ -45,15 +45,15 @@ func PrintUserError(err error) {
 	}
 
 	if ue, ok := err.(*UserError); ok {
-		PrintError(ue.Message)
+		PrintErrorf(ue.Message)
 		if ue.Details != "" {
-			PrintError("Details: %s", ue.Details)
+			PrintErrorf("Details: %s", ue.Details)
 		}
 		if ue.Err != nil {
-			Debug("Underlying error: %v", ue.Err)
+			Debugf("Underlying error: %v", ue.Err)
 		}
 	} else {
-		PrintError("Error: %v", err)
+		PrintErrorf("Error: %v", err)
 	}
 }
 

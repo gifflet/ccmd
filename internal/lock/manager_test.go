@@ -43,7 +43,7 @@ func TestManager_Load(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				return memFS.WriteFile("commands.lock", data, 0644)
+				return memFS.WriteFile("commands.lock", data, 0o644)
 			},
 			wantErr:      false,
 			wantCommands: 1,
@@ -57,7 +57,7 @@ func TestManager_Load(t *testing.T) {
 		{
 			name: "error on invalid JSON",
 			setupFS: func(memFS *fs.MemFS) error {
-				return memFS.WriteFile("commands.lock", []byte("invalid json"), 0644)
+				return memFS.WriteFile("commands.lock", []byte("invalid json"), 0o644)
 			},
 			wantErr: true,
 		},

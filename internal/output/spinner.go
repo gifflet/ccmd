@@ -1,3 +1,4 @@
+// Package output provides colored output utilities for command-line interface.
 package output
 
 import (
@@ -52,11 +53,11 @@ func (s *Spinner) Stop() {
 // Success stops the spinner and shows a success message
 func (s *Spinner) Success(message string) {
 	s.Stop()
-	PrintSuccess("✓ %s", message)
+	PrintSuccessf("✓ %s", message)
 }
 
 // Error stops the spinner and shows an error message
 func (s *Spinner) Error(message string) {
 	s.Stop()
-	PrintError("✗ %s", message)
+	PrintErrorf("✗ %s", message)
 }

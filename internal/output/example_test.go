@@ -7,13 +7,13 @@ import (
 	"github.com/gifflet/ccmd/internal/output"
 )
 
-func ExamplePrint() {
+func ExamplePrintf() {
 	// Basic output examples
-	output.Print("Regular message")
-	output.PrintInfo("Information message")
-	output.PrintSuccess("Operation completed successfully")
-	output.PrintWarning("This is a warning")
-	output.PrintError("Something went wrong")
+	output.Printf("Regular message")
+	output.PrintInfof("Information message")
+	output.PrintSuccessf("Operation completed successfully")
+	output.PrintWarningf("This is a warning")
+	output.PrintErrorf("Something went wrong")
 }
 
 func ExampleUserError() {

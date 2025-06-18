@@ -45,13 +45,13 @@ func TestRemove(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 
 				// Create command directory
-				_ = fs.MkdirAll(filepath.Join(baseDir, "commands", "test-cmd"), 0755)
+				_ = fs.MkdirAll(filepath.Join(baseDir, "commands", "test-cmd"), 0o755)
 				// Create command markdown file
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands", "test-cmd.md"), []byte("# Test Command"), 0644)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands", "test-cmd.md"), []byte("# Test Command"), 0o644)
 			},
 		},
 		{
@@ -75,12 +75,12 @@ func TestRemove(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 
 				// Create only command markdown file (no directory)
-				_ = fs.MkdirAll(filepath.Join(baseDir, "commands"), 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands", "md-only-cmd.md"), []byte("# MD Only Command"), 0644)
+				_ = fs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands", "md-only-cmd.md"), []byte("# MD Only Command"), 0o644)
 			},
 		},
 		{
@@ -104,11 +104,11 @@ func TestRemove(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 
 				// Create only command directory (no markdown file)
-				_ = fs.MkdirAll(filepath.Join(baseDir, "commands", "dir-only-cmd"), 0755)
+				_ = fs.MkdirAll(filepath.Join(baseDir, "commands", "dir-only-cmd"), 0o755)
 			},
 		},
 		{
@@ -124,8 +124,8 @@ func TestRemove(t *testing.T) {
 					Commands: map[string]*models.Command{},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedError: "command 'non-existent' not found",
 		},
@@ -230,8 +230,8 @@ func TestListCommands(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedCmds: []string{"cmd1", "cmd2", "cmd3"},
 		},
@@ -243,8 +243,8 @@ func TestListCommands(t *testing.T) {
 					Commands: map[string]*models.Command{},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedCmds: []string{},
 		},
@@ -307,8 +307,8 @@ func TestCommandExists(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedExists: true,
 		},
@@ -321,8 +321,8 @@ func TestCommandExists(t *testing.T) {
 					Commands: map[string]*models.Command{},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedExists: false,
 		},
@@ -392,8 +392,8 @@ func TestGetCommandInfo(t *testing.T) {
 					},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedInfo: &models.Command{
 				Name:        "test-cmd",
@@ -416,8 +416,8 @@ func TestGetCommandInfo(t *testing.T) {
 					Commands: map[string]*models.Command{},
 				}
 				data, _ := json.Marshal(lockFile)
-				_ = fs.MkdirAll(baseDir, 0755)
-				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0644)
+				_ = fs.MkdirAll(baseDir, 0o755)
+				_ = fs.WriteFile(filepath.Join(baseDir, "commands.lock"), data, 0o644)
 			},
 			expectedError: "command \"non-existent\" not found",
 		},

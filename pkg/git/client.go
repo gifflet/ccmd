@@ -201,9 +201,11 @@ func normalizeURL(repoURL string) (string, error) {
 	}
 
 	// Add .git suffix if missing for common Git hosts
-	if strings.Contains(repoURL, "github.com") || strings.Contains(repoURL, "gitlab.com") || strings.Contains(repoURL, "bitbucket.org") {
+	if strings.Contains(repoURL, "github.com") ||
+		strings.Contains(repoURL, "gitlab.com") ||
+		strings.Contains(repoURL, "bitbucket.org") {
 		if !strings.HasSuffix(repoURL, ".git") && !strings.Contains(repoURL, ".git/") {
-			repoURL = repoURL + ".git"
+			repoURL += ".git"
 		}
 	}
 
@@ -213,7 +215,9 @@ func normalizeURL(repoURL string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid URL format: %w", err)
 		}
-	} else if !strings.HasPrefix(repoURL, "git@") && !strings.HasPrefix(repoURL, "ssh://") && !strings.HasPrefix(repoURL, "file://") {
+	} else if !strings.HasPrefix(repoURL, "git@") &&
+		!strings.HasPrefix(repoURL, "ssh://") &&
+		!strings.HasPrefix(repoURL, "file://") {
 		// If it's not a recognized scheme and not a local path, it's invalid
 		if !filepath.IsAbs(repoURL) {
 			return "", errors.New("unsupported URL scheme")

@@ -19,7 +19,7 @@ func TestCommandValidator_Validate(t *testing.T) {
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create valid ccmd.yaml
 				ccmdContent := `name: mycommand
@@ -28,10 +28,10 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
 				// Create index.md
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# MyCommand\n"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# MyCommand\n"), 0o644)
 
 				return cmdDir
 			},
@@ -50,10 +50,10 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Only create index.md
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# MyCommand\n"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# MyCommand\n"), 0o644)
 
 				return cmdDir
 			},
@@ -65,10 +65,10 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create invalid YAML
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte("invalid: yaml: content:"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte("invalid: yaml: content:"), 0o644)
 
 				return cmdDir
 			},
@@ -80,13 +80,13 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create ccmd.yaml with missing fields
 				ccmdContent := `name: mycommand
 version: 1.0.0
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
 				return cmdDir
 			},
@@ -98,7 +98,7 @@ version: 1.0.0
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create valid ccmd.yaml
 				ccmdContent := `name: mycommand
@@ -107,7 +107,7 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
 				return cmdDir
 			},
@@ -119,7 +119,7 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create valid ccmd.yaml
 				ccmdContent := `name: mycommand
@@ -128,10 +128,10 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
 				// Create empty index.md
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte(""), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte(""), 0o644)
 
 				return cmdDir
 			},
@@ -143,7 +143,7 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create ccmd.yaml with different name
 				ccmdContent := `name: differentname
@@ -152,8 +152,8 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
 
 				return cmdDir
 			},
@@ -165,7 +165,7 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create ccmd.yaml with invalid version
 				ccmdContent := `name: mycommand
@@ -174,8 +174,8 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
 
 				return cmdDir
 			},
@@ -187,7 +187,7 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand@1.0.0")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create ccmd.yaml matching versioned dir
 				ccmdContent := `name: mycommand
@@ -196,8 +196,8 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
 
 				return cmdDir
 			},
@@ -208,7 +208,7 @@ repository: https://github.com/test/mycommand
 			setup: func(t *testing.T) string {
 				dir := t.TempDir()
 				cmdDir := filepath.Join(dir, "mycommand@1.0.0")
-				_ = os.Mkdir(cmdDir, 0755)
+				_ = os.Mkdir(cmdDir, 0o755)
 
 				// Create ccmd.yaml with different version
 				ccmdContent := `name: mycommand
@@ -217,8 +217,8 @@ description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
 `
-				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
-				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
+				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
 
 				return cmdDir
 			},
@@ -298,7 +298,7 @@ func TestValidateDirectory(t *testing.T) {
 	// Setup valid command
 	dir := t.TempDir()
 	cmdDir := filepath.Join(dir, "testcmd")
-	_ = os.Mkdir(cmdDir, 0755)
+	_ = os.Mkdir(cmdDir, 0o755)
 
 	ccmdContent := `name: testcmd
 version: 1.0.0
@@ -306,8 +306,8 @@ description: Test command
 author: Test
 repository: https://github.com/test/cmd
 `
-	_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
-	_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Test\n"), 0644)
+	_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
+	_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Test\n"), 0o644)
 
 	// Test
 	err := ValidateDirectory(cmdDir)
@@ -320,7 +320,7 @@ func TestValidateInstalled(t *testing.T) {
 	// Setup commands directory
 	commandsDir := t.TempDir()
 	cmdDir := filepath.Join(commandsDir, "installed-cmd")
-	_ = os.Mkdir(cmdDir, 0755)
+	_ = os.Mkdir(cmdDir, 0o755)
 
 	ccmdContent := `name: installed-cmd
 version: 1.0.0
@@ -328,8 +328,8 @@ description: Installed command
 author: Test
 repository: https://github.com/test/cmd
 `
-	_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0644)
-	_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Installed\n"), 0644)
+	_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
+	_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Installed\n"), 0o644)
 
 	// Test
 	err := ValidateInstalled(commandsDir, "installed-cmd")

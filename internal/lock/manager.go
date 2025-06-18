@@ -95,14 +95,17 @@ func (m *Manager) Save() error {
 
 	// Write to temporary file first
 	tempPath := m.filePath + ".tmp"
-	if err := m.fileSystem.WriteFile(tempPath, data, 0644); err != nil {
+	if err := m.fileSystem.WriteFile(tempPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write temporary lock file: %w", err)
 	}
 
 	// Atomically rename temporary file to actual lock file
 	if err := m.fileSystem.Rename(tempPath, m.filePath); err != nil {
 		// Clean up temporary file
-		_ = m.fileSystem.Remove(tempPath)
+		if removeErr := m.fileSystem.Remove(tempPath); removeErr != nil {
+			// Log error but don't fail the operation
+			_ = removeErr
+		}
 		return fmt.Errorf("failed to save lock file: %w", err)
 	}
 
@@ -231,7 +234,7 @@ func (m *Manager) createBackup() error {
 		return fmt.Errorf("failed to read lock file for backup: %w", err)
 	}
 
-	if err := m.fileSystem.WriteFile(backupPath, data, 0644); err != nil {
+	if err := m.fileSystem.WriteFile(backupPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 

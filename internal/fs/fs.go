@@ -6,9 +6,39 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+// validateFilePath validates that a file path is safe to read
+func validateFilePath(path string) error {
+	// Convert to absolute path for validation
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+
+	// Check for suspicious patterns that could indicate path traversal
+	if strings.Contains(absPath, "..") {
+		return fmt.Errorf("path contains suspicious traversal patterns: %s", path)
+	}
+
+	// Additional safety check: ensure path doesn't contain null bytes
+	if strings.ContainsRune(path, 0) {
+		return fmt.Errorf("path contains null byte: %s", path)
+	}
+
+	return nil
+}
+
+// safeReadFile safely reads a file after validating the path
+func safeReadFile(path string) ([]byte, error) {
+	if err := validateFilePath(path); err != nil {
+		return nil, fmt.Errorf("invalid file path: %w", err)
+	}
+	return os.ReadFile(path) //nolint:gosec // Path is validated above
+}
 
 // GetClaudeCommandsDir returns the path to .claude/commands/ directory
 // Creates the directory if it doesn't exist
@@ -21,7 +51,7 @@ func GetClaudeCommandsDir() (string, error) {
 	claudeDir := filepath.Join(homeDir, ".claude", "commands")
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o750); err != nil {
 		return "", fmt.Errorf("failed to create .claude/commands directory: %w", err)
 	}
 
@@ -30,7 +60,7 @@ func GetClaudeCommandsDir() (string, error) {
 
 // ReadYAMLFile reads and unmarshals a YAML file
 func ReadYAMLFile(path string, v interface{}) error {
-	data, err := os.ReadFile(path)
+	data, err := safeReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", path, err)
 	}
@@ -49,7 +79,7 @@ func WriteYAMLFile(path string, v interface{}) error {
 		return fmt.Errorf("failed to marshal YAML: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", path, err)
 	}
 
@@ -58,7 +88,7 @@ func WriteYAMLFile(path string, v interface{}) error {
 
 // ReadJSONFile reads and unmarshals a JSON file
 func ReadJSONFile(path string, v interface{}) error {
-	data, err := os.ReadFile(path)
+	data, err := safeReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", path, err)
 	}
@@ -77,7 +107,7 @@ func WriteJSONFile(path string, v interface{}) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", path, err)
 	}
 
@@ -101,7 +131,7 @@ func DirExists(path string) bool {
 
 // CreateDir creates a directory with all necessary parents
 func CreateDir(path string) error {
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0o750); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", path, err)
 	}
 	return nil

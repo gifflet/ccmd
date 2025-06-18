@@ -42,8 +42,8 @@ func runList(verbose bool) error {
 	}
 
 	if len(details) == 0 {
-		output.PrintInfo("No commands installed yet.")
-		output.PrintInfo("Use 'ccmd install' to install commands.")
+		output.PrintInfof("No commands installed yet.")
+		output.PrintInfof("Use 'ccmd install' to install commands.")
 		return nil
 	}
 
@@ -70,31 +70,41 @@ func runList(verbose bool) error {
 
 	// Show warning if there are structure issues
 	if hasStructureIssues {
-		output.PrintWarning("\nSome commands have broken dual structure (missing directory or .md file).")
-		output.PrintWarning("Run with --verbose flag to see details.")
+		output.PrintWarningf("\nSome commands have broken dual structure (missing directory or .md file).")
+		output.PrintWarningf("Run with --verbose flag to see details.")
 	}
 
 	return nil
 }
 
 func printSimpleList(commands []*commands.CommandDetail) {
-	output.PrintInfo(fmt.Sprintf("Found %d installed command(s):\n", len(commands)))
+	output.PrintInfof("Found %d installed command(s):\n", len(commands))
 
 	// Create a tabwriter for aligned output
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
+	defer func() {
+		if err := w.Flush(); err != nil {
+			output.PrintErrorf("Failed to flush output: %v", err)
+		}
+	}()
 
 	// Print header
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+	if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 		output.Bold("NAME"),
 		output.Bold("VERSION"),
 		output.Bold("SOURCE"),
-		output.Bold("UPDATED"))
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		output.Bold("UPDATED")); err != nil {
+		output.PrintErrorf("Failed to write header: %v", err)
+		return
+	}
+	if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 		strings.Repeat("-", 20),
 		strings.Repeat("-", 10),
 		strings.Repeat("-", 30),
-		strings.Repeat("-", 20))
+		strings.Repeat("-", 20)); err != nil {
+		output.PrintErrorf("Failed to write separator: %v", err)
+		return
+	}
 
 	// Print commands
 	for _, detail := range commands {
@@ -103,17 +113,20 @@ func printSimpleList(commands []*commands.CommandDetail) {
 			status = output.Warning(" ⚠")
 		}
 
-		fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
+		if _, err := fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
 			detail.Name,
 			status,
 			detail.Version,
 			truncateSource(detail.Source, 30),
-			formatTime(detail.UpdatedAt))
+			formatTime(detail.UpdatedAt)); err != nil {
+			output.PrintErrorf("Failed to write command %s: %v", detail.Name, err)
+			return
+		}
 	}
 }
 
 func printVerboseList(commands []*commands.CommandDetail) {
-	output.PrintInfo(fmt.Sprintf("Found %d installed command(s):\n", len(commands)))
+	output.PrintInfof("Found %d installed command(s):\n", len(commands))
 
 	for i, detail := range commands {
 		if i > 0 {

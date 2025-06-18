@@ -102,13 +102,13 @@ func TestCopyDirectory(t *testing.T) {
 
 	// Create source directory structure
 	srcDir := "/src"
-	_ = mockFS.MkdirAll(filepath.Join(srcDir, "subdir"), 0755)
-	_ = mockFS.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644)
-	_ = mockFS.WriteFile(filepath.Join(srcDir, "subdir", "file2.txt"), []byte("content2"), 0644)
+	_ = mockFS.MkdirAll(filepath.Join(srcDir, "subdir"), 0o755)
+	_ = mockFS.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0o644)
+	_ = mockFS.WriteFile(filepath.Join(srcDir, "subdir", "file2.txt"), []byte("content2"), 0o644)
 
 	// Create .git directory that should be skipped
-	_ = mockFS.MkdirAll(filepath.Join(srcDir, ".git"), 0755)
-	_ = mockFS.WriteFile(filepath.Join(srcDir, ".git", "config"), []byte("git config"), 0644)
+	_ = mockFS.MkdirAll(filepath.Join(srcDir, ".git"), 0o755)
+	_ = mockFS.WriteFile(filepath.Join(srcDir, ".git", "config"), []byte("git config"), 0o644)
 
 	// Copy directory
 	dstDir := "/dst"

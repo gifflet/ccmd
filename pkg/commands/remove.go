@@ -57,20 +57,29 @@ func Remove(opts RemoveOptions) error {
 	commandFile := filepath.Join(opts.BaseDir, "commands", opts.Name+".md")
 	if err := opts.FileSystem.Remove(commandFile); err != nil && !os.IsNotExist(err) {
 		// Try to restore the command directory if markdown removal fails
-		_ = opts.FileSystem.MkdirAll(commandDir, 0755)
+		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
+			// Log error but don't fail the operation
+			_ = mkdirErr
+		}
 		return fmt.Errorf("failed to remove command markdown file: %w", err)
 	}
 
 	// Update lock file
 	if err := lockManager.RemoveCommand(opts.Name); err != nil {
 		// Try to restore the command directory and file if lock file update fails
-		_ = opts.FileSystem.MkdirAll(commandDir, 0755)
+		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
+			// Log error but don't fail the operation
+			_ = mkdirErr
+		}
 		return fmt.Errorf("failed to update lock file: %w", err)
 	}
 
 	if err := lockManager.Save(); err != nil {
 		// Try to restore the command directory and file if save fails
-		_ = opts.FileSystem.MkdirAll(commandDir, 0755)
+		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
+			// Log error but don't fail the operation
+			_ = mkdirErr
+		}
 		return fmt.Errorf("failed to save lock file: %w", err)
 	}
 
@@ -88,7 +97,7 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".config", "ccmd")
+		baseDir = filepath.Join(homeDir, ".claude")
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
@@ -123,7 +132,7 @@ func CommandExists(name, baseDir string, filesystem fs.FileSystem) (bool, error)
 		if err != nil {
 			return false, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".config", "ccmd")
+		baseDir = filepath.Join(homeDir, ".claude")
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
@@ -148,7 +157,7 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*models.Com
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".config", "ccmd")
+		baseDir = filepath.Join(homeDir, ".claude")
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)

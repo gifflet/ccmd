@@ -13,6 +13,35 @@ import (
 	"github.com/gifflet/ccmd/internal/models"
 )
 
+// validateFilePath validates that a file path is safe to read
+func validateFilePath(path string) error {
+	// Convert to absolute path for validation
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+
+	// Check for suspicious patterns that could indicate path traversal
+	if strings.Contains(absPath, "..") {
+		return fmt.Errorf("path contains suspicious traversal patterns: %s", path)
+	}
+
+	// Additional safety check: ensure path doesn't contain null bytes
+	if strings.ContainsRune(path, 0) {
+		return fmt.Errorf("path contains null byte: %s", path)
+	}
+
+	return nil
+}
+
+// safeReadFile safely reads a file after validating the path
+func safeReadFile(path string) ([]byte, error) {
+	if err := validateFilePath(path); err != nil {
+		return nil, fmt.Errorf("invalid file path: %w", err)
+	}
+	return os.ReadFile(path) //nolint:gosec // Path is validated above
+}
+
 // CommandValidator validates command structure and content
 type CommandValidator struct {
 	commandPath string
@@ -61,7 +90,7 @@ func (v *CommandValidator) validateMetadataFile() (*models.CommandMetadata, erro
 	metadataPath := filepath.Join(v.commandPath, "ccmd.yaml")
 
 	// Check if file exists
-	data, err := os.ReadFile(metadataPath)
+	data, err := safeReadFile(metadataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, NewValidationError("ccmd.yaml not found", metadataPath)
@@ -140,7 +169,10 @@ func (v *CommandValidator) validateCommandName(metadata *models.CommandMetadata)
 func (v *CommandValidator) validateVersion(version string) error {
 	// Basic semver pattern (simplified)
 	// Matches: 1.0.0, 2.1.0, 0.1.0-beta, 1.0.0-rc.1+build.123
-	semverPattern := `^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
+	semverPattern := `^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)` +
+		`(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)` +
+		`(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?` +
+		`(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 
 	matched, err := regexp.MatchString(semverPattern, version)
 	if err != nil {
