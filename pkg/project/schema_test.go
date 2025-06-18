@@ -192,7 +192,7 @@ func TestCommand_ParseOwnerRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := &Command{Repo: tt.repo}
+			cmd := &ConfigCommand{Repo: tt.repo}
 			owner, repo, err := cmd.ParseOwnerRepo()
 
 			if (err != nil) != tt.wantErr {
@@ -212,7 +212,7 @@ func TestCommand_ParseOwnerRepo(t *testing.T) {
 	}
 }
 
-func TestCommand_IsSemanticVersion(t *testing.T) {
+func TestConfigCommand_IsSemanticVersion(t *testing.T) {
 	tests := []struct {
 		name    string
 		version string
@@ -262,7 +262,7 @@ func TestCommand_IsSemanticVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := &Command{Version: tt.version}
+			cmd := &ConfigCommand{Version: tt.version}
 			if got := cmd.IsSemanticVersion(); got != tt.want {
 				t.Errorf("IsSemanticVersion() = %v, want %v", got, tt.want)
 			}

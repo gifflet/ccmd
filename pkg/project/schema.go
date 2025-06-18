@@ -13,11 +13,11 @@ import (
 
 // Config represents the ccmd.yaml configuration file structure
 type Config struct {
-	Commands []Command `yaml:"commands"`
+	Commands []ConfigCommand `yaml:"commands"`
 }
 
-// Command represents a single command declaration in ccmd.yaml
-type Command struct {
+// ConfigCommand represents a single command declaration in ccmd.yaml
+type ConfigCommand struct {
 	Repo    string `yaml:"repo"`
 	Version string `yaml:"version,omitempty"`
 }
@@ -37,8 +37,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Validate performs validation on a Command
-func (c *Command) Validate() error {
+// Validate performs validation on a ConfigCommand
+func (c *ConfigCommand) Validate() error {
 	if c.Repo == "" {
 		return fmt.Errorf("repo is required")
 	}
@@ -57,7 +57,7 @@ func (c *Command) Validate() error {
 }
 
 // ParseOwnerRepo extracts owner and repo name from the repo field
-func (c *Command) ParseOwnerRepo() (owner, repo string, err error) {
+func (c *ConfigCommand) ParseOwnerRepo() (owner, repo string, err error) {
 	parts := strings.Split(c.Repo, "/")
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("invalid repo format: expected owner/repo")
@@ -66,7 +66,7 @@ func (c *Command) ParseOwnerRepo() (owner, repo string, err error) {
 }
 
 // IsSemanticVersion checks if the version is a semantic version
-func (c *Command) IsSemanticVersion() bool {
+func (c *ConfigCommand) IsSemanticVersion() bool {
 	if c.Version == "" || c.Version == "latest" {
 		return false
 	}
