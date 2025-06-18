@@ -3,7 +3,6 @@ package info
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -95,12 +94,8 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 		return fmt.Errorf("failed to get command info: %w", err)
 	}
 
-	// Get base directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-	baseDir := filepath.Join(homeDir, ".claude")
+	// Get base directory (project-local)
+	baseDir := ".claude"
 
 	// Check structure and get metadata
 	structureInfo, metadata := checkCommandStructure(commandName, baseDir, filesystem)

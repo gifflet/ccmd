@@ -85,12 +85,8 @@ func runUpdateWithFS(args []string, updateAll bool, filesystem fs.FileSystem) er
 		return ErrCannotSpecifyWithAll
 	}
 
-	// Get config directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
-	}
-	baseDir := filepath.Join(homeDir, ".claude")
+	// Get config directory (project-local)
+	baseDir := ".claude"
 
 	if updateAll {
 		return updateAllCommands(baseDir, filesystem)

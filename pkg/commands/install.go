@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -42,12 +41,8 @@ func Install(opts InstallOptions) error {
 		opts.FileSystem = fs.NewOSFileSystem()
 	}
 
-	// Get config directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
-	}
-	configDir := filepath.Join(homeDir, ".config", "ccmd")
+	// Get config directory (project-local)
+	configDir := ".claude"
 
 	// Create config directory if it doesn't exist
 	if err := opts.FileSystem.MkdirAll(configDir, 0o755); err != nil {

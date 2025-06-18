@@ -28,11 +28,7 @@ func Remove(opts RemoveOptions) error {
 	}
 
 	if opts.BaseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get home directory: %w", err)
-		}
-		opts.BaseDir = filepath.Join(homeDir, ".claude")
+		opts.BaseDir = ".claude"
 	}
 
 	lockManager := lock.NewManagerWithFS(opts.BaseDir, opts.FileSystem)
@@ -93,11 +89,7 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 	}
 
 	if baseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = ".claude"
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
@@ -128,11 +120,7 @@ func CommandExists(name, baseDir string, filesystem fs.FileSystem) (bool, error)
 	}
 
 	if baseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return false, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = ".claude"
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
@@ -153,11 +141,7 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*models.Com
 	}
 
 	if baseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = ".claude"
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)

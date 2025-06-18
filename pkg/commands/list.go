@@ -32,11 +32,7 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 	}
 
 	if opts.BaseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		opts.BaseDir = filepath.Join(homeDir, ".claude")
+		opts.BaseDir = ".claude"
 	}
 
 	// Load lock file
@@ -99,11 +95,7 @@ func VerifyCommandStructure(name, baseDir string, filesystem fs.FileSystem) (val
 	}
 
 	if baseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return false, "", fmt.Errorf("failed to get home directory: %w", err)
-		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = ".claude"
 	}
 
 	// Check if command exists in lock file

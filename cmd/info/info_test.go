@@ -30,17 +30,11 @@ func TestNewCommand(t *testing.T) {
 }
 
 func TestRunInfo(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	oldHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", oldHome)
-	os.Setenv("HOME", tempDir)
-
 	// Setup test filesystem
 	memfs := fs.NewMemFS()
 
-	// Create base directory structure
-	baseDir := filepath.Join(tempDir, ".claude")
+	// Create base directory structure (project-local)
+	baseDir := ".claude"
 	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	// Create a test command
@@ -138,17 +132,11 @@ test-command --help
 }
 
 func TestRunInfoJSON(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	oldHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", oldHome)
-	os.Setenv("HOME", tempDir)
-
 	// Setup test filesystem
 	memfs := fs.NewMemFS()
 
-	// Create base directory structure
-	baseDir := filepath.Join(tempDir, ".claude")
+	// Create base directory structure (project-local)
+	baseDir := ".claude"
 	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	// Create a test command
@@ -432,9 +420,8 @@ func TestDisplayCommandInfo(t *testing.T) {
 	}
 
 	// Create a test filesystem with index.md
-	tempDir := t.TempDir()
 	memfs := fs.NewMemFS()
-	commandDir := filepath.Join(tempDir, "commands", "test-display")
+	commandDir := filepath.Join(".claude", "commands", "test-display")
 	_ = memfs.MkdirAll(commandDir, 0o755)
 
 	indexContent := `# Test Display Command
@@ -448,7 +435,7 @@ This is for testing the display function.`
 	os.Stdout = w
 
 	// Display the info
-	displayCommandInfo(info, tempDir, "test-display", memfs)
+	displayCommandInfo(info, ".claude", "test-display", memfs)
 
 	// Restore stdout
 	w.Close()
@@ -479,17 +466,11 @@ This is for testing the display function.`
 }
 
 func TestInfoWithIncompleteStructure(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	oldHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", oldHome)
-	os.Setenv("HOME", tempDir)
-
 	// Setup test filesystem
 	memfs := fs.NewMemFS()
 
-	// Create base directory structure
-	baseDir := filepath.Join(tempDir, ".claude")
+	// Create base directory structure (project-local)
+	baseDir := ".claude"
 	require.NoError(t, memfs.MkdirAll(filepath.Join(baseDir, "commands"), 0o755))
 
 	// Create a test command with incomplete structure
