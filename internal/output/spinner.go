@@ -45,8 +45,10 @@ func (s *Spinner) Start() {
 
 // Stop stops the spinner and clears the line
 func (s *Spinner) Stop() {
-	s.active = false
-	s.done <- true
+	if s.active {
+		s.done <- true
+		s.active = false
+	}
 	fmt.Print("\r\033[K") // Clear the line
 }
 
