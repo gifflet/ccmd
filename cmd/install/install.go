@@ -1,13 +1,14 @@
 package install
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
+	"github.com/gifflet/ccmd/pkg/errors"
+	"github.com/gifflet/ccmd/pkg/logger"
 )
 
 // NewCommand creates a new install command.
@@ -38,9 +39,9 @@ Examples:
   # Force reinstall
   ccmd install github.com/user/repo --force`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: errors.WrapCommand("install", func(cmd *cobra.Command, args []string) error {
 			return runInstall(args[0], version, name, force)
-		},
+		}),
 	}
 
 	cmd.Flags().StringVarP(&version, "version", "v", "", "Version/tag to install")
@@ -51,6 +52,13 @@ Examples:
 }
 
 func runInstall(repository, version, name string, force bool) error {
+	log := logger.WithField("command", "install")
+	log.WithFields(logger.Fields{
+		"repository": repository,
+		"version":    version,
+		"name":       name,
+		"force":      force,
+	}).Debug("starting install")
 	// Parse repository spec if version is included
 	repo, specVersion := commands.ParseRepositorySpec(repository)
 	if specVersion != "" && version == "" {
@@ -83,7 +91,8 @@ func runInstall(repository, version, name string, force bool) error {
 
 	if err := commands.Install(installOpts); err != nil {
 		spinner.Stop()
-		return fmt.Errorf("installation failed: %w", err)
+		log.WithError(err).Error("installation failed")
+		return err
 	}
 
 	spinner.Stop()
