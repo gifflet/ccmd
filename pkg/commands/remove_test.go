@@ -451,4 +451,3 @@ func TestGetCommandInfo(t *testing.T) {
 		})
 	}
 }
-
