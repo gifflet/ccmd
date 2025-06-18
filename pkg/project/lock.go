@@ -182,24 +182,6 @@ func (lf *LockFile) SaveToFile(filepath string) error {
 		return fmt.Errorf("invalid lock file: %w", err)
 	}
 
-	data, err := yaml.Marshal(lf)
-	if err != nil {
-		return fmt.Errorf("failed to marshal lock file: %w", err)
-	}
-
-	// Write atomically using a temporary file
-	tempFile := filepath + ".tmp"
-	if err := os.WriteFile(tempFile, data, 0o600); err != nil {
-		return fmt.Errorf("failed to write temporary file: %w", err)
-	}
-
-	if err := os.Rename(tempFile, filepath); err != nil {
-		if removeErr := os.Remove(tempFile); removeErr != nil {
-			// Log error but don't fail the operation
-			_ = removeErr
-		}
-		return fmt.Errorf("failed to save lock file: %w", err)
-	}
-
-	return nil
+	// Lock files should be owner-readable only (0600)
+	return writeYAMLFile(filepath, lf, 0o600)
 }
