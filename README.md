@@ -1,185 +1,324 @@
 # ccmd - Claude Command Manager
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8.svg)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gifflet/ccmd)](https://goreportcard.com/report/github.com/gifflet/ccmd)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A simple command-line utility for managing custom commands in Claude Code, inspired by npm's package management approach.
+A simple and powerful command-line tool for managing custom commands in Claude Code. Install, update, and share commands from Git repositories with the ease of a package manager.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+- [Creating Commands](#creating-commands)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Overview
 
-ccmd (Claude Command Manager) allows you to install, update, and manage custom commands from Git repositories, making it easy to extend Claude Code's functionality with community-created tools.
+ccmd (Claude Command Manager) brings package management capabilities to Claude Code, allowing you to:
+- Easily install commands from Git repositories
+- Keep commands updated with simple commands
+- Share your own commands with the community
+- Manage project-specific command configurations
 
 ## Features
 
-- 📦 **Install** commands from Git repository
-- 🔄 **Update** commands to their latest versions
-- 🗑️ **Remove** commands when no longer needed
-- 📋 **List** all installed commands
-- 🔍 **Search** for commands in the registry
-- ⚡ **Simple** and fast, following the KISS principle
+- 📦 **Easy Installation** - Install commands from any Git repository with a single command
+- 🔄 **Version Management** - Pin specific versions or update to the latest
+- 🔍 **Command Discovery** - Search for commands in the community registry
+- 🔒 **Lock File Support** - Reproducible installs across team members
+- 🚀 **Fast & Lightweight** - Minimal dependencies, maximum performance
+- 📝 **Project Scoped** - Commands are installed per project, not globally
+- 🛡️ **Safe Updates** - Update with confidence using lock files
 
 ## Installation
 
-### Using Go
-
-```bash
-go install github.com/gifflet/ccmd@latest
-```
-
-### From Source
-
-```bash
-git clone https://github.com/gifflet/ccmd.git
-cd ccmd
-go build -o ccmd cmd/ccmd/main.go
-sudo mv ccmd /usr/local/bin/
-```
-
-### Using Homebrew (macOS)
+### Using Homebrew (macOS/Linux)
 
 ```bash
 brew tap gifflet/ccmd
 brew install ccmd
 ```
 
+### Using Go
+
+```bash
+go install github.com/gifflet/ccmd/cmd/ccmd@latest
+```
+
+### Download Binary
+
+Download the latest binary for your platform from the [releases page](https://github.com/gifflet/ccmd/releases).
+
+```bash
+# Example for macOS (Apple Silicon)
+curl -L https://github.com/gifflet/ccmd/releases/latest/download/ccmd-darwin-arm64.tar.gz | tar xz
+sudo mv ccmd /usr/local/bin/
+```
+
+### Build from Source
+
+```bash
+git clone https://github.com/gifflet/ccmd.git
+cd ccmd
+make build
+sudo make install
+```
+
 ## Quick Start
 
-### Install a command
+### 1. Initialize ccmd in your project
 
 ```bash
-# Install from a Git repository
-ccmd install github.com/user/command-repo
-
-# Install with a specific version/tag
-ccmd install github.com/user/command-repo@v1.2.0
-
-# Install from any git source
-ccmd install https://gitlab.com/user/repo
-ccmd install git@github.com:user/repo.git
+cd your-project
+ccmd init
 ```
 
-### Update commands
+This creates a `.claude` directory in your project for storing commands.
+
+### 2. Install a command
 
 ```bash
-# Update a specific command
-ccmd update command-name
+# Install from GitHub
+ccmd install github.com/user/my-command
 
-# Update all commands
-ccmd update --all
+# Install specific version
+ccmd install github.com/user/my-command@v1.0.0
+
+# Install with custom name
+ccmd install github.com/user/my-command --name mc
 ```
 
-### Remove a command
-
-```bash
-ccmd remove command-name
-```
-
-### List installed commands
+### 3. List installed commands
 
 ```bash
 ccmd list
 ```
 
-### Search for commands
+### 4. Update commands
 
 ```bash
-ccmd search keyword
+# Update specific command
+ccmd update my-command
+
+# Update all commands
+ccmd update --all
 ```
 
-## Command Structure
+### 5. Remove a command
 
-Commands are markdown files that provide instructions for Claude Code. Each command repository should follow this structure:
-
-```
-command-repo/
-├── ccmd.yaml          # Command metadata
-├── index.md           # The actual command (markdown file)
-├── README.md          # Command documentation
-└── LICENSE            # License file
+```bash
+ccmd remove my-command
 ```
 
-### ccmd.yaml Example
+## Commands
+
+### `ccmd init`
+Initialize ccmd in the current project. Creates the `.claude` directory structure.
+
+```bash
+ccmd init
+```
+
+### `ccmd install`
+Install a command from a Git repository.
+
+```bash
+# Basic usage
+ccmd install <repository>
+
+# With version
+ccmd install <repository>@<version>
+
+# Options
+ccmd install github.com/user/cmd --name custom-name
+ccmd install github.com/user/cmd --force  # Reinstall
+```
+
+### `ccmd list`
+List all installed commands.
+
+```bash
+# Basic list
+ccmd list
+
+# Detailed output
+ccmd list --long
+
+# JSON output
+ccmd list --json
+```
+
+### `ccmd update`
+Update installed commands to their latest versions.
+
+```bash
+# Update specific command
+ccmd update <command-name>
+
+# Update all commands
+ccmd update --all
+
+# Update to specific version
+ccmd update <command-name>@v2.0.0
+```
+
+### `ccmd remove`
+Remove an installed command.
+
+```bash
+ccmd remove <command-name>
+
+# Remove multiple
+ccmd remove cmd1 cmd2 cmd3
+```
+
+### `ccmd search`
+Search for commands in the registry.
+
+```bash
+# Search by keyword
+ccmd search automation
+
+# Search with filters
+ccmd search --tags testing,ci
+ccmd search --author gifflet
+```
+
+### `ccmd info`
+Display detailed information about a command.
+
+```bash
+# Show info for installed command
+ccmd info <command-name>
+
+# Show info from repository
+ccmd info github.com/user/command
+```
+
+### `ccmd run`
+Run an installed command (useful for testing).
+
+```bash
+ccmd run <command-name> [args...]
+```
+
+## Creating Commands
+
+Creating a command for ccmd is simple. Your repository needs:
+
+1. **ccmd.yaml** - Command metadata
+2. **index.md** - Command instructions for Claude
+3. **README.md** - Documentation for users
+
+### Example Command Structure
+
+```
+my-awesome-command/
+├── ccmd.yaml          # Command metadata (required)
+├── index.md           # Command for Claude (required)
+├── README.md          # User documentation
+├── examples/          # Usage examples
+│   └── example.md
+└── LICENSE           # License file
+```
+
+### ccmd.yaml Format
 
 ```yaml
-name: my-command
+name: my-awesome-command
 version: 1.0.0
-description: A useful command for Claude Code
+description: Automates awesome tasks in Claude Code
 author: Your Name
-repository: https://github.com/user/command-repo
+email: your.email@example.com
+repository: https://github.com/username/my-awesome-command
+license: MIT
 entry: index.md  # Optional, defaults to index.md
 tags:
   - automation
+  - productivity
   - testing
-  - development
+dependencies:  # Optional
+  - other-command@^1.0.0
 ```
 
 ### index.md Example
 
 ```markdown
-# My Command
+# My Awesome Command
 
-This command helps you automate X task in Claude Code.
+You are an AI assistant helping with task automation. When the user invokes this command, you should:
 
-## Usage
+## Instructions
 
-1. First, do this...
-2. Then, do that...
-3. Finally, complete with...
+1. Analyze the current project structure
+2. Generate appropriate configuration files
+3. Set up the automation pipeline
+4. Provide clear feedback to the user
+
+## Parameters
+
+- `--type`: Type of automation (test, build, deploy)
+- `--config`: Path to configuration file
 
 ## Examples
 
-Example of using this command...
+When user says "setup automation", you should...
 ```
+
+See our [Command Creation Guide](docs/command-structure.md) for detailed instructions.
 
 ## Configuration
 
-ccmd installs commands locally to your project:
+ccmd stores all data in your project's `.claude` directory:
 
 ```
-my-project/
+your-project/
 ├── .claude/
-│   ├── commands/       # Installed command files
-│   └── commands.lock   # Lock file tracking installed commands
-└── src/
+│   ├── commands/          # Installed command files
+│   ├── commands.lock      # Lock file for reproducible installs
+│   └── config.yaml        # Project configuration (optional)
+├── src/
+└── ...
 ```
 
-No global configuration is needed - ccmd works entirely at the project level.
+### Project Configuration (Optional)
 
-## Creating Commands
+Create `.claude/config.yaml` for project-specific settings:
 
-To create a command compatible with ccmd:
+```yaml
+# Registry to use for searches
+registry: https://registry.ccmd.dev
 
-1. Create a new Git repository
-2. Add a `ccmd.yaml` file with metadata
-3. Write your command instructions in `index.md` (or custom name)
-4. Add documentation in `README.md`
-5. Push to GitHub/GitLab/etc
-6. Share with the community!
+# Default author for installs
+preferred_authors:
+  - gifflet
+  - trusted-org
 
-See our [Command Creation Guide](docs/CREATING_COMMANDS.md) for detailed instructions.
-
-## Architecture
-
-ccmd follows a simple architecture:
-
-```
-ccmd (CLI)
-  ├── Git Client (fetch from repositories)
-  ├── Command Manager (install/update/remove markdown files)
-  └── Project Storage (.claude/)
-    ├── commands/        # Installed command files
-    └── commands.lock    # Lock file for tracking
+# Auto-update check
+auto_update: true
+update_check_interval: 24h
 ```
 
-## Contributing
+## Development
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+### Prerequisites
 
-### Development Setup
+- Go 1.23 or higher
+- Git
+- Make (optional but recommended)
+
+### Setup
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/gifflet/ccmd.git
 cd ccmd
 
@@ -187,33 +326,76 @@ cd ccmd
 go mod download
 
 # Run tests
-go test ./...
+make test
 
 # Build
-go build -o ccmd cmd/ccmd/main.go
+make build
+
+# Run locally
+./bin/ccmd --help
 ```
+
+### Running Tests
+
+```bash
+# All tests
+make test
+
+# With coverage
+make test-coverage
+
+# Specific package
+go test ./pkg/commands/...
+```
+
+### Code Style
+
+We use standard Go formatting and linting:
+
+```bash
+# Format code
+make fmt
+
+# Run linter
+make lint
+
+# Run all checks
+make check
+```
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+
+- Code of Conduct
+- Development workflow
+- Submitting pull requests
+- Reporting issues
 
 ## Roadmap
 
-- [x] Basic install/update/remove functionality
+- [x] Core command management (install, update, remove)
 - [x] Git repository support
-- [ ] Command registry/discovery
+- [x] Version management
+- [x] Lock file support
+- [ ] Official command registry
 - [ ] Command dependencies
-- [ ] Command verification/signing
-- [ ] Auto-update functionality
-- [ ] Command templates
+- [ ] Command signing and verification
+- [ ] Plugin system for extending ccmd
+- [ ] Global command installation option
 
 ## Community
 
+- **Documentation**: [docs/](docs/)
+- **Examples**: [examples/](examples/)
 - **Issues**: [GitHub Issues](https://github.com/gifflet/ccmd/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/gifflet/ccmd/discussions)
+- **Discord**: [Join our Discord](https://discord.gg/ccmd)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built for the [Claude Code](https://claude.ai/code) community
+ccmd is released under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
+
+Made with ❤️ for the Claude Code community
