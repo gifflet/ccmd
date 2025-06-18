@@ -15,6 +15,7 @@ import (
 type MemFS struct {
 	mu    sync.RWMutex
 	files map[string]*memFile
+	env   map[string]string
 }
 
 // memFile represents a file in memory
@@ -41,10 +42,31 @@ func (fi *memFileInfo) ModTime() time.Time { return fi.modTime }
 func (fi *memFileInfo) IsDir() bool        { return fi.isDir }
 func (fi *memFileInfo) Sys() interface{}   { return nil }
 
+// memDirEntry implements fs.DirEntry
+type memDirEntry struct {
+	name  string
+	isDir bool
+	mode  os.FileMode
+}
+
+func (de *memDirEntry) Name() string      { return de.name }
+func (de *memDirEntry) IsDir() bool       { return de.isDir }
+func (de *memDirEntry) Type() os.FileMode { return de.mode.Type() }
+func (de *memDirEntry) Info() (fs.FileInfo, error) {
+	return &memFileInfo{
+		name:    de.name,
+		size:    0,
+		mode:    de.mode,
+		modTime: time.Now(),
+		isDir:   de.isDir,
+	}, nil
+}
+
 // NewMemFS creates a new in-memory file system
 func NewMemFS() *MemFS {
 	return &MemFS{
 		files: make(map[string]*memFile),
+		env:   make(map[string]string),
 	}
 }
 
@@ -192,6 +214,94 @@ func (m *MemFS) MkdirAll(path string, perm os.FileMode) error {
 	defer m.mu.Unlock()
 
 	return m.mkdirAll(path, perm)
+}
+
+// ReadDir reads the directory named by dirname and returns a list of directory entries
+func (m *MemFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	name = filepath.Clean(name)
+
+	// Check if directory exists
+	if name != "." && name != "/" {
+		file, exists := m.files[name]
+		if !exists || !file.isDir {
+			return nil, os.ErrNotExist
+		}
+	}
+
+	entries := make([]fs.DirEntry, 0)
+	seen := make(map[string]bool)
+
+	for path, file := range m.files {
+		// Skip if not in this directory
+		if !strings.HasPrefix(path, name) {
+			continue
+		}
+
+		// Get relative path
+		rel, err := filepath.Rel(name, path)
+		if err != nil {
+			continue
+		}
+
+		// Skip if in subdirectory
+		if strings.Contains(rel, string(filepath.Separator)) {
+			// But add the subdirectory itself
+			parts := strings.Split(rel, string(filepath.Separator))
+			dirName := parts[0]
+			if !seen[dirName] {
+				seen[dirName] = true
+				entries = append(entries, &memDirEntry{
+					name:  dirName,
+					isDir: true,
+					mode:  0755,
+				})
+			}
+			continue
+		}
+
+		// Skip self
+		if rel == "." {
+			continue
+		}
+
+		entries = append(entries, &memDirEntry{
+			name:  filepath.Base(path),
+			isDir: file.isDir,
+			mode:  file.mode,
+		})
+	}
+
+	return entries, nil
+}
+
+// Exists checks if a path exists
+func (m *MemFS) Exists(path string) (bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	path = filepath.Clean(path)
+	_, exists := m.files[path]
+	return exists, nil
+}
+
+// Setenv sets an environment variable for testing
+func (m *MemFS) Setenv(key, value string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.env[key] = value
+	return nil
+}
+
+// Getenv gets an environment variable for testing
+func (m *MemFS) Getenv(key string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.env[key]
 }
 
 // mkdirAll is the internal implementation that assumes the lock is held

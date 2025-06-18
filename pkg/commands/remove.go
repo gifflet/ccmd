@@ -88,7 +88,7 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = filepath.Join(homeDir, ".config", "ccmd")
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
@@ -123,7 +123,7 @@ func CommandExists(name, baseDir string, filesystem fs.FileSystem) (bool, error)
 		if err != nil {
 			return false, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = filepath.Join(homeDir, ".config", "ccmd")
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
@@ -148,7 +148,7 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*models.Com
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		baseDir = filepath.Join(homeDir, ".claude")
+		baseDir = filepath.Join(homeDir, ".config", "ccmd")
 	}
 
 	lockManager := lock.NewManagerWithFS(baseDir, filesystem)

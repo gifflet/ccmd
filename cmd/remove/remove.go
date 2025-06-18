@@ -91,4 +91,3 @@ func isConfirmation(response string) bool {
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
 }
-

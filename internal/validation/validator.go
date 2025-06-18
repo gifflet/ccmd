@@ -9,6 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/models"
 )
 
@@ -167,4 +168,67 @@ func ValidateInstalled(commandsDir, commandName string) error {
 	commandPath := filepath.Join(commandsDir, commandName)
 	validator := NewCommandValidator(commandPath)
 	return validator.Validate()
+}
+
+// Validator provides validation methods for commands
+type Validator struct {
+	fs fs.FileSystem
+}
+
+// NewValidator creates a new validator with the given file system
+func NewValidator(fileSystem fs.FileSystem) *Validator {
+	return &Validator{
+		fs: fileSystem,
+	}
+}
+
+// ValidateCommandStructure validates a command directory structure using the file system
+func (v *Validator) ValidateCommandStructure(commandPath string) error {
+	// Check if path exists
+	exists, err := v.fs.Exists(commandPath)
+	if err != nil {
+		return NewValidationError("failed to check command directory", err.Error())
+	}
+	if !exists {
+		return NewValidationError("command directory not found", commandPath)
+	}
+
+	// Validate ccmd.yaml
+	metadataPath := filepath.Join(commandPath, "ccmd.yaml")
+	data, err := v.fs.ReadFile(metadataPath)
+	if err != nil {
+		return NewValidationError("ccmd.yaml not found", metadataPath)
+	}
+
+	// Parse YAML
+	var metadata models.CommandMetadata
+	if err := yaml.Unmarshal(data, &metadata); err != nil {
+		return NewValidationError("invalid ccmd.yaml format", err.Error())
+	}
+
+	// Validate metadata content
+	if err := metadata.Validate(); err != nil {
+		return NewValidationError("invalid metadata", err.Error())
+	}
+
+	// Validate index.md
+	indexPath := filepath.Join(commandPath, "index.md")
+	exists, err = v.fs.Exists(indexPath)
+	if err != nil {
+		return NewValidationError("failed to check index.md", err.Error())
+	}
+	if !exists {
+		return NewValidationError("index.md not found", indexPath)
+	}
+
+	// Check if index.md is not empty
+	data, err = v.fs.ReadFile(indexPath)
+	if err != nil {
+		return NewValidationError("failed to read index.md", err.Error())
+	}
+	if len(data) == 0 {
+		return NewValidationError("index.md is empty", indexPath)
+	}
+
+	return nil
 }

@@ -14,6 +14,8 @@ type FileSystem interface {
 	Rename(oldpath, newpath string) error
 	Stat(name string) (fs.FileInfo, error)
 	MkdirAll(path string, perm os.FileMode) error
+	ReadDir(name string) ([]fs.DirEntry, error)
+	Exists(path string) (bool, error)
 }
 
 // OS implements FileSystem using the real file system
@@ -52,4 +54,21 @@ func (OS) Stat(name string) (fs.FileInfo, error) {
 // MkdirAll creates a directory named path, along with any necessary parents
 func (OS) MkdirAll(path string, perm os.FileMode) error {
 	return os.MkdirAll(path, perm)
+}
+
+// ReadDir reads the directory named by dirname and returns a list of directory entries
+func (OS) ReadDir(name string) ([]fs.DirEntry, error) {
+	return os.ReadDir(name)
+}
+
+// Exists checks if a path exists
+func (OS) Exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

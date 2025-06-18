@@ -136,3 +136,13 @@ func GetWorkingDir() (string, error) {
 	}
 	return wd, nil
 }
+
+// NewOSFileSystem returns a new OS file system implementation
+func NewOSFileSystem() FileSystem {
+	return OS{}
+}
+
+// NewMemoryFileSystem returns a new in-memory file system implementation
+func NewMemoryFileSystem() FileSystem {
+	return NewMemFS()
+}
