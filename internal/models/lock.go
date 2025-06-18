@@ -1,3 +1,4 @@
+// Package models defines data structures used throughout ccmd.
 package models
 
 import (

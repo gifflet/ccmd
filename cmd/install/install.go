@@ -110,7 +110,9 @@ func normalizeRepositoryURL(url string) string {
 	// If URL doesn't have a protocol, add https://
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "git@") {
 		// Check if it looks like a GitHub/GitLab/etc URL
-		if strings.Contains(url, "github.com") || strings.Contains(url, "gitlab.com") || strings.Contains(url, "bitbucket.org") {
+		if strings.Contains(url, "github.com") ||
+			strings.Contains(url, "gitlab.com") ||
+			strings.Contains(url, "bitbucket.org") {
 			url = "https://" + url
 		}
 	}

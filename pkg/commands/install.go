@@ -80,7 +80,10 @@ func Install(opts InstallOptions) error {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer func() {
-		_ = opts.FileSystem.RemoveAll(tempDir)
+		if removeErr := opts.FileSystem.RemoveAll(tempDir); removeErr != nil {
+			// Log error but don't fail the operation
+			_ = removeErr
+		}
 	}()
 
 	// Clone repository
@@ -136,7 +139,10 @@ func Install(opts InstallOptions) error {
 
 	// Check if command already exists
 	commandDir := filepath.Join(commandsDir, commandName)
-	exists, _ := opts.FileSystem.Exists(commandDir)
+	exists, existsErr := opts.FileSystem.Exists(commandDir)
+	if existsErr != nil {
+		return fmt.Errorf("failed to check if command exists: %w", existsErr)
+	}
 	if exists && !opts.Force {
 		return fmt.Errorf("command '%s' already exists (use --force to reinstall)", commandName)
 	}
@@ -161,7 +167,10 @@ func Install(opts InstallOptions) error {
 
 	// Copy files to command directory
 	if err := copyDirectory(opts.FileSystem, tempDir, commandDir); err != nil {
-		_ = opts.FileSystem.RemoveAll(commandDir) // Clean up on error
+		if removeErr := opts.FileSystem.RemoveAll(commandDir); removeErr != nil {
+			// Log error but don't fail the operation
+			_ = removeErr
+		}
 		return fmt.Errorf("failed to install command: %w", err)
 	}
 
@@ -170,7 +179,10 @@ func Install(opts InstallOptions) error {
 	indexPath := filepath.Join(commandDir, "index.md")
 	if indexData, err := opts.FileSystem.ReadFile(indexPath); err == nil {
 		if err := opts.FileSystem.WriteFile(standalonePath, indexData, 0644); err != nil {
-			_ = opts.FileSystem.RemoveAll(commandDir) // Clean up on error
+			if removeErr := opts.FileSystem.RemoveAll(commandDir); removeErr != nil {
+				// Log error but don't fail the operation
+				_ = removeErr
+			}
 			return fmt.Errorf("failed to create standalone file: %w", err)
 		}
 	}

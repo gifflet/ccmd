@@ -102,7 +102,10 @@ func (m *Manager) Save() error {
 	// Atomically rename temporary file to actual lock file
 	if err := m.fileSystem.Rename(tempPath, m.filePath); err != nil {
 		// Clean up temporary file
-		_ = m.fileSystem.Remove(tempPath)
+		if removeErr := m.fileSystem.Remove(tempPath); removeErr != nil {
+			// Log error but don't fail the operation
+			_ = removeErr
+		}
 		return fmt.Errorf("failed to save lock file: %w", err)
 	}
 

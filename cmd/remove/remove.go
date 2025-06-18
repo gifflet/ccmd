@@ -1,3 +1,4 @@
+// Package remove provides the remove command for ccmd.
 package remove
 
 import (
@@ -62,7 +63,7 @@ func runRemove(commandName string, force bool) error {
 		var response string
 		_, _ = fmt.Scanln(&response)
 		if !isConfirmation(response) {
-			output.PrintInfo("Removal cancelled")
+			output.PrintInfo("Removal canceled")
 			return nil
 		}
 	}
@@ -82,7 +83,7 @@ func runRemove(commandName string, force bool) error {
 	}
 
 	spinner.Stop()
-	output.PrintSuccess("Command '%s' has been successfully removed", commandName)
+	output.PrintSuccessf("Command '%s' has been successfully removed", commandName)
 
 	return nil
 }

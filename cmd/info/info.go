@@ -53,8 +53,9 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info <command-name>",
 		Short: "Display detailed information about an installed command",
-		Long:  `Display detailed information about a specific installed command, including metadata and structure verification.`,
-		Args:  cobra.ExactArgs(1),
+		Long: `Display detailed information about a specific installed command,
+including metadata and structure verification.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runInfo(args[0], jsonFormat)
 		},
@@ -144,7 +145,8 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 	return nil
 }
 
-func checkCommandStructure(commandName, baseDir string, filesystem fs.FileSystem) (StructureInfo, *models.CommandMetadata) {
+func checkCommandStructure(commandName, baseDir string,
+	filesystem fs.FileSystem) (StructureInfo, *models.CommandMetadata) {
 	info := StructureInfo{
 		DirectoryExists: false,
 		MarkdownExists:  false,

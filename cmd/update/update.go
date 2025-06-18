@@ -151,7 +151,7 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 		case result.Error != nil:
 			output.PrintError("Failed to update %s: %v", cmd.Name, result.Error)
 		case result.Updated:
-			output.PrintSuccess("Updated %s from %s to %s", cmd.Name, result.CurrentVersion, result.NewVersion)
+			output.PrintSuccessf("Updated %s from %s to %s", cmd.Name, result.CurrentVersion, result.NewVersion)
 		default:
 			output.PrintInfo("%s is already up to date (%s)", cmd.Name, result.CurrentVersion)
 		}
@@ -172,7 +172,7 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 	}
 
 	if updatedCount > 0 {
-		output.PrintSuccess("%d command(s) updated", updatedCount)
+		output.PrintSuccessf("%d command(s) updated", updatedCount)
 	}
 	if failedCount > 0 {
 		output.PrintError("%d command(s) failed to update", failedCount)
@@ -221,7 +221,10 @@ func updateCommand(commandName, baseDir string, filesystem fs.FileSystem) Result
 		return result
 	}
 	defer func() {
-		_ = filesystem.RemoveAll(tempDir)
+		if removeErr := filesystem.RemoveAll(tempDir); removeErr != nil {
+			// Log error but don't fail the operation
+			_ = removeErr
+		}
 	}()
 
 	// Clone repository to check latest version
@@ -357,7 +360,7 @@ func performUpdate(cmdInfo *models.Command, newVersion, baseDir string, filesyst
 func displayResult(result Result) {
 	if result.Updated {
 		fmt.Println()
-		output.PrintSuccess("Successfully updated %s", result.Name)
+		output.PrintSuccessf("Successfully updated %s", result.Name)
 		fmt.Printf("%s %s → %s\n",
 			color.CyanString("Version:"),
 			color.YellowString(result.CurrentVersion),

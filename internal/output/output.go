@@ -1,3 +1,4 @@
+// Package output provides colored output utilities for command-line interface.
 package output
 
 import (
@@ -16,36 +17,60 @@ var (
 	Bold    = color.New(color.Bold).SprintFunc()
 )
 
-// Print functions for different message types
-func PrintSuccess(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, Success(format)+"\n", a...)
+// PrintSuccessf prints a formatted success message.
+func PrintSuccessf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, Success(format)+"\n", a...)
 }
 
+// PrintErrorf prints a formatted error message.
+func PrintErrorf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stderr, Error(format)+"\n", a...)
+}
+
+// PrintError is an alias for PrintErrorf for compatibility
 func PrintError(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, Error(format)+"\n", a...)
+	PrintErrorf(format, a...)
 }
 
+// PrintWarningf prints a formatted warning message.
+func PrintWarningf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, Warning(format)+"\n", a...)
+}
+
+// PrintWarning is an alias for PrintWarningf for compatibility
 func PrintWarning(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, Warning(format)+"\n", a...)
+	PrintWarningf(format, a...)
 }
 
+// PrintInfof prints a formatted info message.
+func PrintInfof(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, Info(format)+"\n", a...)
+}
+
+// PrintInfo is an alias for PrintInfof for compatibility
 func PrintInfo(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, Info(format)+"\n", a...)
+	PrintInfof(format, a...)
 }
 
+// Printf prints a formatted message.
+func Printf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, format+"\n", a...)
+}
+
+// Print is an alias for Printf for compatibility
 func Print(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, format+"\n", a...)
+	Printf(format, a...)
 }
 
-// Fatal prints an error message and exits with code 1
-func Fatal(format string, a ...interface{}) {
+// Fatalf prints an error message and exits with code 1.
+func Fatalf(format string, a ...interface{}) {
 	PrintError(format, a...)
 	os.Exit(1)
 }
 
-// PrintErrorf prints a formatted error message without exiting
+// PrintErrorf prints a formatted error message without exiting.
 func PrintErrorf(format string, a ...interface{}) {
-	fmt.Fprintf(os.Stderr, Error(format), a...)
+	_, _ = fmt.Fprintf(os.Stderr, Error(format), a...)
 }
 
 // Prompt asks the user for input with a colored prompt
@@ -56,9 +81,24 @@ func Prompt(prompt string) string {
 	return input
 }
 
-// Debug prints a debug message if debug mode is enabled
-func Debug(format string, a ...interface{}) {
+// Debugf prints a debug message if debug mode is enabled.
+func Debugf(format string, a ...interface{}) {
 	if os.Getenv("CCMD_DEBUG") == "1" {
-		fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", a...)
+		_, _ = fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", a...)
 	}
+}
+
+// Debug is an alias for Debugf for compatibility
+func Debug(format string, a ...interface{}) {
+	Debugf(format, a...)
+}
+
+// PrintSuccess prints a success message
+func PrintSuccess(format string, a ...interface{}) {
+	PrintSuccessf(format, a...)
+}
+
+// Fatal prints an error message and exits with code 1
+func Fatal(format string, a ...interface{}) {
+	Fatalf(format, a...)
 }

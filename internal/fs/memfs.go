@@ -343,7 +343,11 @@ func (m *MemFS) List(pattern string) []string {
 
 	var files []string
 	for path := range m.files {
-		if matched, _ := filepath.Match(pattern, path); matched {
+		matched, err := filepath.Match(pattern, path)
+		if err != nil {
+			continue // Skip invalid patterns
+		}
+		if matched {
 			files = append(files, path)
 		}
 	}
@@ -363,7 +367,7 @@ func (m *MemFS) String() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var paths []string
+	paths := make([]string, 0, len(m.files))
 	for path := range m.files {
 		paths = append(paths, path)
 	}

@@ -50,7 +50,7 @@ func PrintUserError(err error) {
 			PrintError("Details: %s", ue.Details)
 		}
 		if ue.Err != nil {
-			Debug("Underlying error: %v", ue.Err)
+			Debugf("Underlying error: %v", ue.Err)
 		}
 	} else {
 		PrintError("Error: %v", err)

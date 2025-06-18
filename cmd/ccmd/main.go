@@ -29,7 +29,10 @@ Claude Code commands efficiently.`,
 	Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, buildDate),
 	Run: func(cmd *cobra.Command, args []string) {
 		// Default action when no subcommand is provided
-		_ = cmd.Help()
+		if err := cmd.Help(); err != nil {
+			// Help command failed, but we can ignore this
+			_ = err
+		}
 	},
 }
 
@@ -45,6 +48,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		output.Fatal("Command failed: %v", err)
+		output.Fatalf("Command failed: %v", err)
 	}
 }

@@ -82,15 +82,17 @@ func printSimpleList(commands []*commands.CommandDetail) {
 
 	// Create a tabwriter for aligned output
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
+	defer func() {
+		_ = w.Flush()
+	}()
 
 	// Print header
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 		output.Bold("NAME"),
 		output.Bold("VERSION"),
 		output.Bold("SOURCE"),
 		output.Bold("UPDATED"))
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 		strings.Repeat("-", 20),
 		strings.Repeat("-", 10),
 		strings.Repeat("-", 30),
@@ -103,7 +105,7 @@ func printSimpleList(commands []*commands.CommandDetail) {
 			status = output.Warning(" ⚠")
 		}
 
-		fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
 			detail.Name,
 			status,
 			detail.Version,
