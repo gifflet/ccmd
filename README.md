@@ -395,7 +395,3 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## License
 
 ccmd is released under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-Made with ❤️ for the Claude Code community

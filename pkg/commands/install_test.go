@@ -82,6 +82,36 @@ func TestParseRepositorySpec(t *testing.T) {
 			wantRepository: "github.com/user@org/repo",
 			wantVersion:    "v1.0.0",
 		},
+		{
+			name:           "ssh url without version",
+			spec:           "git@github.com:user/repo.git",
+			wantRepository: "git@github.com:user/repo.git",
+			wantVersion:    "",
+		},
+		{
+			name:           "ssh url with version",
+			spec:           "git@github.com:user/repo.git@v2.0.0",
+			wantRepository: "git@github.com:user/repo.git",
+			wantVersion:    "v2.0.0",
+		},
+		{
+			name:           "tag without v prefix",
+			spec:           "github.com/user/repo@modular-architecture-improvements",
+			wantRepository: "github.com/user/repo",
+			wantVersion:    "modular-architecture-improvements",
+		},
+		{
+			name:           "branch name with slashes",
+			spec:           "github.com/user/repo@feature/new-feature",
+			wantRepository: "github.com/user/repo",
+			wantVersion:    "feature/new-feature",
+		},
+		{
+			name:           "release tag without v",
+			spec:           "github.com/user/repo@release-2.0",
+			wantRepository: "github.com/user/repo",
+			wantVersion:    "release-2.0",
+		},
 	}
 
 	for _, tt := range tests {

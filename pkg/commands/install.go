@@ -278,24 +278,23 @@ func ParseRepositorySpec(spec string) (repository, version string) {
 		return spec, ""
 	}
 
-	// Check if what follows @ looks like a version (starts with v, digit, or is a short hash)
-	possibleVersion := spec[lastAt+1:]
-	if possibleVersion != "" && (strings.HasPrefix(possibleVersion, "v") ||
-		(len(possibleVersion) >= 1 && possibleVersion[0] >= '0' && possibleVersion[0] <= '9') ||
-		(len(possibleVersion) >= 6 && len(possibleVersion) <= 40 && isHex(possibleVersion))) {
-		return spec[:lastAt], possibleVersion
+	// Check if this is an SSH URL (git@host:...)
+	// SSH URLs have @ before the host, not as version separator
+	beforeAt := spec[:lastAt]
+	afterAt := spec[lastAt+1:]
+
+	// If the part before @ looks like a protocol (git, ssh, https) or is very short,
+	// and the part after @ contains a colon followed by path, it's likely an SSH URL
+	if (strings.HasPrefix(beforeAt, "git") || strings.HasPrefix(beforeAt, "ssh") || len(beforeAt) < 5) &&
+		strings.Contains(afterAt, ":") && !strings.Contains(afterAt, "://") {
+		// This is likely an SSH URL like git@github.com:user/repo
+		return spec, ""
 	}
 
-	// Otherwise, the @ is part of the repository name
+	// Otherwise, treat everything after the last @ as a version/tag/branch
+	if afterAt != "" {
+		return beforeAt, afterAt
+	}
+
 	return spec, ""
-}
-
-// isHex checks if a string contains only hexadecimal characters
-func isHex(s string) bool {
-	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-			return false
-		}
-	}
-	return true
 }
