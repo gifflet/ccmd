@@ -7,7 +7,7 @@ import (
 	"github.com/gifflet/ccmd/internal/output"
 )
 
-func ExamplePrint() {
+func ExamplePrintf() {
 	// Basic output examples
 	output.Printf("Regular message")
 	output.PrintInfof("Information message")
