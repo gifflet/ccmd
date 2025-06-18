@@ -2,10 +2,8 @@ package list
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -80,48 +78,40 @@ func runList(verbose bool) error {
 func printSimpleList(commands []*commands.CommandDetail) {
 	output.PrintInfof("Found %d installed command(s):\n", len(commands))
 
-	// Create a tabwriter for aligned output
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer func() {
-		if err := w.Flush(); err != nil {
-			output.PrintErrorf("Failed to flush output: %v", err)
-		}
-	}()
+	// Define column widths
+	const (
+		nameWidth    = 20
+		versionWidth = 10
+		sourceWidth  = 30
+		updatedWidth = 20
+	)
 
-	// Print header
-	if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-		output.Bold("NAME"),
-		output.Bold("VERSION"),
-		output.Bold("SOURCE"),
-		output.Bold("UPDATED")); err != nil {
-		output.PrintErrorf("Failed to write header: %v", err)
-		return
-	}
-	if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-		strings.Repeat("-", 20),
-		strings.Repeat("-", 10),
-		strings.Repeat("-", 30),
-		strings.Repeat("-", 20)); err != nil {
-		output.PrintErrorf("Failed to write separator: %v", err)
-		return
-	}
+	// Print header - Bold adds ANSI codes, so we need to pad the content, not the formatted string
+	fmt.Printf("%s%s  %s%s  %s%s  %s\n",
+		output.Bold("NAME"), strings.Repeat(" ", nameWidth-4),
+		output.Bold("VERSION"), strings.Repeat(" ", versionWidth-7),
+		output.Bold("SOURCE"), strings.Repeat(" ", sourceWidth-6),
+		output.Bold("UPDATED"))
+
+	// Print separator line
+	fmt.Printf("%s  %s  %s  %s\n",
+		strings.Repeat("-", nameWidth),
+		strings.Repeat("-", versionWidth),
+		strings.Repeat("-", sourceWidth),
+		strings.Repeat("-", updatedWidth))
 
 	// Print commands
 	for _, detail := range commands {
-		status := ""
+		name := detail.Name
 		if !detail.StructureValid {
-			status = output.Warning(" ⚠")
+			name += output.Warning(" ⚠")
 		}
 
-		if _, err := fmt.Fprintf(w, "%s%s\t%s\t%s\t%s\n",
-			detail.Name,
-			status,
-			detail.Version,
-			truncateSource(detail.Source, 30),
-			formatTime(detail.UpdatedAt)); err != nil {
-			output.PrintErrorf("Failed to write command %s: %v", detail.Name, err)
-			return
-		}
+		fmt.Printf("%-*s  %-*s  %-*s  %-*s\n",
+			nameWidth, name,
+			versionWidth, detail.Version,
+			sourceWidth, truncateSource(detail.Source, sourceWidth),
+			updatedWidth, formatTime(detail.UpdatedAt))
 	}
 }
 
