@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/gifflet/ccmd/cmd/info"
 	"github.com/gifflet/ccmd/cmd/install"
 	"github.com/gifflet/ccmd/cmd/list"
 	"github.com/gifflet/ccmd/cmd/remove"
@@ -23,6 +24,7 @@ Claude Code commands efficiently.`,
 
 func init() {
 	// Register subcommands
+	rootCmd.AddCommand(info.NewCommand())
 	rootCmd.AddCommand(install.NewCommand())
 	rootCmd.AddCommand(list.NewCommand())
 	rootCmd.AddCommand(remove.NewCommand())
