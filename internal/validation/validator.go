@@ -7,8 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gifflet/ccmd/internal/models"
 	"gopkg.in/yaml.v3"
+
+	"github.com/gifflet/ccmd/internal/models"
 )
 
 // CommandValidator validates command structure and content

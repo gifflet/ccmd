@@ -107,6 +107,34 @@ func (m *MemFS) Remove(name string) error {
 	return nil
 }
 
+// RemoveAll removes path and any children it contains
+func (m *MemFS) RemoveAll(path string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	path = filepath.Clean(path)
+	found := false
+
+	// Remove all files that start with the path
+	toDelete := []string{}
+	for name := range m.files {
+		if name == path || strings.HasPrefix(name, path+string(filepath.Separator)) {
+			toDelete = append(toDelete, name)
+			found = true
+		}
+	}
+
+	for _, name := range toDelete {
+		delete(m.files, name)
+	}
+
+	if !found {
+		return os.ErrNotExist
+	}
+
+	return nil
+}
+
 // Rename renames (moves) oldpath to newpath
 func (m *MemFS) Rename(oldpath, newpath string) error {
 	m.mu.Lock()
