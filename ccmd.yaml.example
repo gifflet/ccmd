@@ -1,0 +1,18 @@
+# Example ccmd.yaml configuration file
+# Place this file at the root of your project and rename to ccmd.yaml
+
+commands:
+  # Command with semantic version
+  - repo: example/claude-command
+    version: v1.2.3
+  
+  # Command using latest version
+  - repo: another/useful-command
+    version: latest
+  
+  # Command with branch name
+  - repo: org/development-tool
+    version: main
+  
+  # Command with version omitted (defaults to latest)
+  - repo: tools/formatter
