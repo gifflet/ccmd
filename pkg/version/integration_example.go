@@ -46,4 +46,3 @@ func ResolveCommandVersion(gitClient *git.Client, repoPath, version string) (str
 	resolver := NewResolver(gitClient.GetTags)
 	return resolver.ResolveVersion(repoPath, version)
 }
-

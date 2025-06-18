@@ -220,7 +220,7 @@ func isSemverConstraint(s string) bool {
 
 // ValidateReference checks if a Git reference exists in the repository.
 // This is useful for validating branches and commit hashes.
-func (r *Resolver) ValidateReference(repoPath, ref string) error {
+func (r *Resolver) ValidateReference(_, _ string) error {
 	// This would typically use git commands to validate
 	// For now, we'll leave it as a placeholder
 	// The actual validation will happen during checkout
