@@ -1,0 +1,61 @@
+$ go run examples/version_precedence.go
+
+Version Specification Precedence Examples
+========================================
+
+Example 1:
+Command: ccmd tool@1.0.0
+---
+Command: tool
+@ version: 1.0.0
+--version flag: (not specified)
+✓ Using version from @ notation: 1.0.0
+
+Example 2:
+Command: ccmd tool --version 2.0.0
+---
+Command: tool
+@ version: 
+--version flag: 2.0.0
+✓ Using version from --version flag: 2.0.0
+
+Example 3:
+Command: ccmd tool@1.0.0 --version 2.0.0
+---
+Command: tool
+@ version: 1.0.0
+--version flag: 2.0.0
+✓ Using version from --version flag: 2.0.0
+
+Example 4:
+Command: ccmd tool
+---
+Command: tool
+@ version: (not specified)
+--version flag: (not specified)
+✓ Using latest version
+
+Real-world scenario:
+===================
+
+Scenario: You have a script that defaults to tool@1.0.0,
+but you want to override it for testing:
+
+Script default command:
+Command: ccmd mytool@1.0.0 run --flag value
+---
+Command: mytool
+@ version: 1.0.0
+--version flag: (not specified)
+✓ Using version from @ notation: 1.0.0
+
+Override with --version flag:
+Command: ccmd mytool@1.0.0 run --flag value --version 2.0.0-beta
+---
+Command: mytool
+@ version: 1.0.0
+--version flag: 2.0.0-beta
+✓ Using version from --version flag: 2.0.0-beta
+
+Key takeaway: --version flag always takes precedence over @ notation,
+allowing runtime overrides of hardcoded versions.

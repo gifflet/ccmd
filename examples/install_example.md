@@ -32,6 +32,13 @@ ccmd install github.com/user/my-command@abc123
 ccmd install github.com/user/my-command --version v2.1.0
 ```
 
+**Note on version precedence**: When both `@version` and `--version` are specified, the `--version` flag takes precedence. This allows you to override hardcoded versions in scripts:
+
+```bash
+# This will install v2.0.0, not v1.0.0
+ccmd install github.com/user/tool@v1.0.0 --version v2.0.0
+```
+
 ## Custom Command Name
 
 Override the default command name:
