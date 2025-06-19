@@ -77,9 +77,9 @@ func runInstallFromConfig(force bool) error {
 	ctx := context.Background()
 	if err := installer.InstallFromConfig(ctx, cwd, force); err != nil {
 		// Check if it's a partial failure
-		if errors.Is(err, errors.CodePartialFailure) {
+		if errors.IsCode(err, errors.CodePartialFailure) {
 			// Some commands failed but not all
-			output.Warn("Some commands failed to install")
+			output.PrintWarningf("Some commands failed to install")
 			// Don't return error for partial failures
 			return nil
 		}

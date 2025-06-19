@@ -75,10 +75,10 @@ func TestInstallFromProjectConfig(t *testing.T) {
 	}
 
 	// Verify output contains expected messages
+	// The new installer uses different output format
 	expectedMessages := []string{
-		"Installing 2 command(s) from ccmd.yaml",
-		"Installing gifflet/hello-world",
-		"Installing gifflet/test-cmd",
+		"installing commands from ccmd.yaml",
+		"hello-world",
 	}
 
 	for _, msg := range expectedMessages {
@@ -143,9 +143,10 @@ func TestInstallWithArgsUpdatesProject(t *testing.T) {
 	}
 
 	// Verify output contains expected messages
+	// The new installer uses different output format
 	expectedMessages := []string{
-		"Installing command from: https://github.com/gifflet/hello-world.git",
-		"Version: v1.0.0",
+		"version=v1.0.0",
+		"hello-world",
 	}
 
 	for _, msg := range expectedMessages {

@@ -28,14 +28,14 @@ const (
 // InstallationError represents an error that occurred during installation
 type InstallationError struct {
 	err        error
-	code       errors.Code
+	code       errors.ErrorCode
 	repository string
 	version    string
 	phase      string
 }
 
 // NewInstallationError creates a new installation error
-func NewInstallationError(code errors.Code, message, repository, version, phase string) *InstallationError {
+func NewInstallationError(code errors.ErrorCode, message, repository, version, phase string) *InstallationError {
 	return &InstallationError{
 		err:        errors.New(code, message),
 		code:       code,
@@ -67,7 +67,7 @@ func (e *InstallationError) Unwrap() error {
 }
 
 // GetCode returns the error code
-func (e *InstallationError) GetCode() errors.Code {
+func (e *InstallationError) GetCode() errors.ErrorCode {
 	return e.code
 }
 
@@ -99,7 +99,7 @@ const (
 )
 
 // WrapInstallationError wraps an error with installation context
-func WrapInstallationError(err error, code errors.Code, repository, version, phase string) error {
+func WrapInstallationError(err error, code errors.ErrorCode, repository, version, phase string) error {
 	if err == nil {
 		return nil
 	}

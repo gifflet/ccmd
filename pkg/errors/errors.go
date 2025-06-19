@@ -66,6 +66,17 @@ const (
 	CodeNetworkTimeout ErrorCode = "NETWORK_TIMEOUT"
 	// CodeNetworkUnavailable represents a network unavailable error
 	CodeNetworkUnavailable ErrorCode = "NETWORK_UNAVAILABLE"
+
+	// CodeValidation represents a general validation error
+	CodeValidation ErrorCode = "VALIDATION"
+	// CodeLockConflict represents a lock conflict error
+	CodeLockConflict ErrorCode = "LOCK_CONFLICT"
+	// CodeTimeout represents a general timeout error
+	CodeTimeout ErrorCode = "TIMEOUT"
+	// CodePartialFailure represents a partial failure where some operations succeeded
+	CodePartialFailure ErrorCode = "PARTIAL_FAILURE"
+	// CodeNotImplemented represents a not implemented error
+	CodeNotImplemented ErrorCode = "NOT_IMPLEMENTED"
 )
 
 // Error represents a structured error with code, message and context
@@ -215,4 +226,40 @@ func IsGitError(err error) bool {
 func IsNetworkError(err error) bool {
 	code := GetCode(err)
 	return code == CodeNetworkTimeout || code == CodeNetworkUnavailable
+}
+
+// MultiError represents multiple errors
+type MultiError struct {
+	Errors []error
+}
+
+// Error implements the error interface
+func (e *MultiError) Error() string {
+	if len(e.Errors) == 0 {
+		return "no errors"
+	}
+	if len(e.Errors) == 1 {
+		return e.Errors[0].Error()
+	}
+	return fmt.Sprintf("multiple errors occurred (%d errors)", len(e.Errors))
+}
+
+// NewMulti creates a new MultiError from a list of errors
+func NewMulti(errs ...error) error {
+	// Filter out nil errors
+	var nonNilErrors []error
+	for _, err := range errs {
+		if err != nil {
+			nonNilErrors = append(nonNilErrors, err)
+		}
+	}
+
+	if len(nonNilErrors) == 0 {
+		return nil
+	}
+	if len(nonNilErrors) == 1 {
+		return nonNilErrors[0]
+	}
+
+	return &MultiError{Errors: nonNilErrors}
 }

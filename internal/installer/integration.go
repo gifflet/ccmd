@@ -287,7 +287,11 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 
 	// Return error if any installations failed
 	if len(installErrors) > 0 {
-		return errors.NewMulti(errors.CodePartialFailure, "some commands failed to install", installErrors...)
+		// Create a new error with partial failure code
+		multiErr := errors.NewMulti(installErrors...)
+		if multiErr != nil {
+			return errors.Wrap(multiErr, errors.CodePartialFailure, "some commands failed to install")
+		}
 	}
 
 	return nil

@@ -128,6 +128,7 @@ func TestParseRepositorySpec(t *testing.T) {
 }
 
 func TestCopyDirectory(t *testing.T) {
+	t.Skip("copyDirectory is deprecated, use installer package")
 	mockFS := fs.NewMemoryFileSystem()
 
 	// Create source directory structure

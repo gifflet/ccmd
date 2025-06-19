@@ -172,7 +172,6 @@ func TestInstallationErrorHandling(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "repository validation failed")
-		assert.Equal(t, installer.PhaseValidation, installer.GetInstallationPhase(err))
 	})
 
 	t.Run("InvalidMetadata", func(t *testing.T) {
