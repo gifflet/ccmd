@@ -142,4 +142,3 @@ func TestIntegration_MultipleCommands(t *testing.T) {
 		assert.Equal(t, cmd.Description, readCmd.Description)
 	}
 }
-
