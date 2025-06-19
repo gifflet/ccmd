@@ -26,9 +26,9 @@ func NewHandler(log logger.Logger) *Handler {
 	}
 	return &Handler{
 		logger:       log,
-		printError:   defaultPrintError,
-		printWarning: defaultPrintWarning,
-		printInfo:    defaultPrintInfo,
+		printError:   defaultPrintErrorf,
+		printWarning: defaultPrintWarningf,
+		printInfo:    defaultPrintInfof,
 	}
 }
 
@@ -46,16 +46,16 @@ func (h *Handler) SetOutputFuncs(printError, printWarning, printInfo OutputFunc)
 }
 
 // Default output functions
-func defaultPrintError(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
+func defaultPrintErrorf(format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stderr, format+"\n", args...)
 }
 
-func defaultPrintWarning(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, format+"\n", args...)
+func defaultPrintWarningf(format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, format+"\n", args...)
 }
 
-func defaultPrintInfo(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, format+"\n", args...)
+func defaultPrintInfof(format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stdout, format+"\n", args...)
 }
 
 // DefaultHandler is the default error handler instance
@@ -156,7 +156,7 @@ func (h *Handler) getUserMessage(err *Error) string {
 
 	case CodeGitClone:
 		if repo, ok := err.Details["repository"].(string); ok {
-			msg = fmt.Sprintf("Failed to clone repository '%s'. Please check the URL and your network connection.", repo)
+			msg = fmt.Sprintf("Failed to clone repository '%s'. Check the URL and connection.", repo)
 		}
 
 	case CodeFilePermission:

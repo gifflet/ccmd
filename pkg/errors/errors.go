@@ -10,43 +10,61 @@ import (
 type ErrorCode string
 
 const (
-	// General errors
-	CodeUnknown          ErrorCode = "UNKNOWN"
-	CodeInternal         ErrorCode = "INTERNAL"
-	CodeInvalidArgument  ErrorCode = "INVALID_ARGUMENT"
-	CodeNotFound         ErrorCode = "NOT_FOUND"
-	CodeAlreadyExists    ErrorCode = "ALREADY_EXISTS"
+	// CodeUnknown represents an unknown error
+	CodeUnknown ErrorCode = "UNKNOWN"
+	// CodeInternal represents an internal error
+	CodeInternal ErrorCode = "INTERNAL"
+	// CodeInvalidArgument represents an invalid argument error
+	CodeInvalidArgument ErrorCode = "INVALID_ARGUMENT"
+	// CodeNotFound represents a not found error
+	CodeNotFound ErrorCode = "NOT_FOUND"
+	// CodeAlreadyExists represents an already exists error
+	CodeAlreadyExists ErrorCode = "ALREADY_EXISTS"
+	// CodePermissionDenied represents a permission denied error
 	CodePermissionDenied ErrorCode = "PERMISSION_DENIED"
 
-	// Git related errors
-	CodeGitClone       ErrorCode = "GIT_CLONE"
+	// CodeGitClone represents a git clone error
+	CodeGitClone ErrorCode = "GIT_CLONE"
+	// CodeGitInvalidRepo represents an invalid git repository error
 	CodeGitInvalidRepo ErrorCode = "GIT_INVALID_REPO"
-	CodeGitAuth        ErrorCode = "GIT_AUTH"
-	CodeGitNotFound    ErrorCode = "GIT_NOT_FOUND"
+	// CodeGitAuth represents a git authentication error
+	CodeGitAuth ErrorCode = "GIT_AUTH"
+	// CodeGitNotFound represents a git not found error
+	CodeGitNotFound ErrorCode = "GIT_NOT_FOUND"
 
-	// Command related errors
+	// CodeCommandNotFound represents a command not found error
 	CodeCommandNotFound ErrorCode = "COMMAND_NOT_FOUND"
-	CodeCommandExists   ErrorCode = "COMMAND_EXISTS"
-	CodeCommandInvalid  ErrorCode = "COMMAND_INVALID"
-	CodeCommandExecute  ErrorCode = "COMMAND_EXECUTE"
+	// CodeCommandExists represents a command already exists error
+	CodeCommandExists ErrorCode = "COMMAND_EXISTS"
+	// CodeCommandInvalid represents an invalid command error
+	CodeCommandInvalid ErrorCode = "COMMAND_INVALID"
+	// CodeCommandExecute represents a command execution error
+	CodeCommandExecute ErrorCode = "COMMAND_EXECUTE"
 
-	// Configuration errors
-	CodeConfigInvalid  ErrorCode = "CONFIG_INVALID"
+	// CodeConfigInvalid represents an invalid configuration error
+	CodeConfigInvalid ErrorCode = "CONFIG_INVALID"
+	// CodeConfigNotFound represents a configuration not found error
 	CodeConfigNotFound ErrorCode = "CONFIG_NOT_FOUND"
-	CodeConfigParse    ErrorCode = "CONFIG_PARSE"
+	// CodeConfigParse represents a configuration parse error
+	CodeConfigParse ErrorCode = "CONFIG_PARSE"
 
-	// File system errors
-	CodeFileNotFound   ErrorCode = "FILE_NOT_FOUND"
-	CodeFileExists     ErrorCode = "FILE_EXISTS"
+	// CodeFileNotFound represents a file not found error
+	CodeFileNotFound ErrorCode = "FILE_NOT_FOUND"
+	// CodeFileExists represents a file already exists error
+	CodeFileExists ErrorCode = "FILE_EXISTS"
+	// CodeFilePermission represents a file permission error
 	CodeFilePermission ErrorCode = "FILE_PERMISSION"
-	CodeFileIO         ErrorCode = "FILE_IO"
+	// CodeFileIO represents a file I/O error
+	CodeFileIO ErrorCode = "FILE_IO"
 
-	// Validation errors
+	// CodeValidationFailed represents a validation failure
 	CodeValidationFailed ErrorCode = "VALIDATION_FAILED"
+	// CodeValidationSchema represents a schema validation error
 	CodeValidationSchema ErrorCode = "VALIDATION_SCHEMA"
 
-	// Network errors
-	CodeNetworkTimeout     ErrorCode = "NETWORK_TIMEOUT"
+	// CodeNetworkTimeout represents a network timeout error
+	CodeNetworkTimeout ErrorCode = "NETWORK_TIMEOUT"
+	// CodeNetworkUnavailable represents a network unavailable error
 	CodeNetworkUnavailable ErrorCode = "NETWORK_UNAVAILABLE"
 )
 

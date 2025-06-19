@@ -144,7 +144,7 @@ func (l *logger) log(level Level, msg string, fields Fields) {
 	entry := l.formatEntry(level, msg, allFields)
 
 	// Write to output
-	fmt.Fprint(output, entry)
+	_, _ = fmt.Fprint(output, entry)
 
 	// Exit on fatal
 	if level == FatalLevel {
@@ -192,7 +192,7 @@ func (l *logger) formatEntry(level Level, msg string, fields Fields) string {
 }
 
 // getSourceLocation returns the file and line number of the caller
-func getSourceLocation() (string, int) {
+func getSourceLocation() (file string, line int) {
 	// Skip 3 frames: getSourceLocation, formatEntry, log
 	_, file, line, ok := runtime.Caller(4)
 	if !ok {

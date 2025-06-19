@@ -104,6 +104,8 @@ linters-settings:
       - TODO
       - FIXME
       - BUG
+      - HACK
+      - OPTIMIZE
       
   mnd:
     checks:
@@ -133,6 +135,15 @@ issues:
         - dupl
         - mnd
         - err113
+        
+    # Ignore TODO/FIXME comments in specific files
+    - path: internal/model/
+      linters:
+        - godox
+        
+    - path: internal/repository/
+      linters:
+        - godox
         
     - path: cmd/
       linters:
@@ -181,6 +192,18 @@ issues:
       
     # Ignore specific errcheck warnings in output functions
     - path: internal/output/
+      linters:
+        - errcheck
+      text: "Error return value of `fmt.Fprintf` is not checked"
+      
+    # Ignore errcheck warnings for fmt.Fprint in logger
+    - path: pkg/logger/logger.go
+      linters:
+        - errcheck
+      text: "Error return value of `fmt.Fprint` is not checked"
+      
+    # Ignore errcheck warnings for fmt.Fprintf in errors handler
+    - path: pkg/errors/handler.go
       linters:
         - errcheck
       text: "Error return value of `fmt.Fprintf` is not checked"

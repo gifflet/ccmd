@@ -42,8 +42,8 @@ func DebugError(err error, context string) {
 	Debugf("%s: %v", context, err)
 }
 
-// LogAndPrint logs at the appropriate level and prints to output
-func LogAndPrint(level string, format string, args ...interface{}) {
+// LogAndPrintf logs at the appropriate level and prints to output
+func LogAndPrintf(level, format string, args ...interface{}) {
 	switch level {
 	case "success":
 		logger.Infof("[SUCCESS] "+format, args...)
