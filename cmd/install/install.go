@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -8,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/gifflet/ccmd/internal/installer"
 	"github.com/gifflet/ccmd/internal/output"
-	"github.com/gifflet/ccmd/pkg/commands"
 	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
 	"github.com/gifflet/ccmd/pkg/project"
@@ -72,70 +73,18 @@ func runInstallFromConfig(force bool) error {
 		return fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	// Create project manager
-	pm := project.NewManager(cwd)
-
-	// Check if config exists
-	if !pm.ConfigExists() {
-		return fmt.Errorf("no ccmd.yaml found in current directory")
-	}
-
-	// Load config
-	config, err := pm.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load ccmd.yaml: %w", err)
-	}
-
-	if len(config.Commands) == 0 {
-		output.Info("No commands found in ccmd.yaml")
-		return nil
-	}
-
-	output.Info("Installing %d command(s) from ccmd.yaml", len(config.Commands))
-
-	// Install each command
-	installedCount := 0
-	for _, cmd := range config.Commands {
-		// Build repository URL
-		repository := fmt.Sprintf("https://github.com/%s.git", cmd.Repo)
-
-		output.Info("\nInstalling %s", cmd.Repo)
-		if cmd.Version != "" {
-			output.Info("Version: %s", cmd.Version)
+	// Use new installer to install from config
+	ctx := context.Background()
+	if err := installer.InstallFromConfig(ctx, cwd, force); err != nil {
+		// Check if it's a partial failure
+		if errors.Is(err, errors.CodePartialFailure) {
+			// Some commands failed but not all
+			output.Warn("Some commands failed to install")
+			// Don't return error for partial failures
+			return nil
 		}
-
-		// Create spinner for installation process
-		spinner := output.NewSpinner(fmt.Sprintf("Installing %s...", cmd.Repo))
-		spinner.Start()
-
-		// Parse repo to get command name
-		_, repoName, err := cmd.ParseOwnerRepo()
-		if err != nil {
-			spinner.Stop()
-			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
-			continue
-		}
-
-		// Install the command
-		installOpts := commands.InstallOptions{
-			Repository: repository,
-			Version:    cmd.Version,
-			Name:       repoName,
-			Force:      force,
-		}
-
-		if err := commands.Install(installOpts); err != nil {
-			spinner.Stop()
-			output.Error("Failed to install %s: %v", cmd.Repo, err)
-			continue
-		}
-
-		spinner.Stop()
-		output.Success("Command '%s' has been successfully installed", repoName)
-		installedCount++
+		return err
 	}
-
-	output.Info("\nSuccessfully installed %d out of %d command(s)", installedCount, len(config.Commands))
 
 	return nil
 }
@@ -148,14 +97,15 @@ func runInstall(repository, version, name string, force bool) error {
 		"name":       name,
 		"force":      force,
 	}).Debug("starting install")
+
 	// Parse repository spec if version is included
-	repo, specVersion := commands.ParseRepositorySpec(repository)
+	repo, specVersion := installer.ParseRepositorySpec(repository)
 	if specVersion != "" && version == "" {
 		version = specVersion
 	}
 
 	// Normalize repository URL
-	repo = normalizeRepositoryURL(repo)
+	repo = installer.NormalizeRepositoryURL(repo)
 
 	// Show installation info
 	output.Info("Installing command from: %s", repo)
@@ -170,15 +120,24 @@ func runInstall(repository, version, name string, force bool) error {
 	spinner := output.NewSpinner("Installing command...")
 	spinner.Start()
 
-	// Install the command
-	installOpts := commands.InstallOptions{
-		Repository: repo,
-		Version:    version,
-		Name:       name,
-		Force:      force,
+	// Get current directory for project updates
+	cwd, err := os.Getwd()
+	projectPath := ""
+	if err == nil {
+		projectPath = cwd
 	}
 
-	if err := commands.Install(installOpts); err != nil {
+	// Install using new installer
+	ctx := context.Background()
+	opts := installer.IntegrationOptions{
+		Repository:  repo,
+		Version:     version,
+		Name:        name,
+		Force:       force,
+		ProjectPath: projectPath,
+	}
+
+	if err := installer.InstallCommand(ctx, opts); err != nil {
 		spinner.Stop()
 		log.WithError(err).Error("installation failed")
 		return err
@@ -196,29 +155,11 @@ func runInstall(repository, version, name string, force bool) error {
 
 	output.Success("Command '%s' has been successfully installed", commandName)
 
-	// Add to project config if it exists
-	cwd, err := os.Getwd()
-	if err == nil {
-		pm := project.NewManager(cwd)
+	// Project files are now updated by the installer itself
+	if projectPath != "" {
+		pm := project.NewManager(projectPath)
 		if pm.ConfigExists() {
-			// Extract owner/repo from repository URL
-			repoPath := extractRepoPath(repo)
-			if repoPath != "" {
-				// Try to add the command to ccmd.yaml
-				if err := pm.AddCommand(repoPath, version); err != nil {
-					// Don't fail the installation, just warn
-					log.WithError(err).Warn("failed to add command to ccmd.yaml")
-				} else {
-					output.Info("Added to ccmd.yaml")
-
-					// Also update the lock file with project info
-					if err := updateProjectLockFile(pm, commandName, repo, version); err != nil {
-						log.WithError(err).Warn("failed to update ccmd-lock.yaml")
-					} else {
-						output.Info("Updated ccmd-lock.yaml")
-					}
-				}
-			}
+			output.Info("Updated ccmd.yaml and ccmd-lock.yaml")
 		}
 	}
 
@@ -226,54 +167,6 @@ func runInstall(repository, version, name string, force bool) error {
 	output.Info("  ccmd %s", commandName)
 
 	return nil
-}
-
-// normalizeRepositoryURL normalizes a repository URL to include https://
-func normalizeRepositoryURL(url string) string {
-	url = strings.TrimSpace(url)
-
-	// If URL doesn't have a protocol, add https://
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "git@") {
-		// Check if it looks like a GitHub/GitLab/etc URL
-		if strings.Contains(url, "github.com") ||
-			strings.Contains(url, "gitlab.com") ||
-			strings.Contains(url, "bitbucket.org") {
-			url = "https://" + url
-		}
-	}
-
-	// Ensure .git suffix for consistency
-	if !strings.HasSuffix(url, ".git") && !strings.Contains(url, ".git@") {
-		url += ".git"
-	}
-
-	return url
-}
-
-// extractRepoPath extracts owner/repo from a Git URL
-func extractRepoPath(gitURL string) string {
-	// Remove protocol
-	url := strings.TrimPrefix(gitURL, "https://")
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimPrefix(url, "git://")
-
-	// Handle SSH URLs
-	if strings.HasPrefix(url, "git@") {
-		url = strings.TrimPrefix(url, "git@")
-		url = strings.Replace(url, ":", "/", 1)
-	}
-
-	// Remove .git suffix
-	url = strings.TrimSuffix(url, ".git")
-
-	// Extract path after domain
-	parts := strings.Split(url, "/")
-	if len(parts) >= 3 {
-		// Return owner/repo
-		return parts[1] + "/" + parts[2]
-	}
-
-	return ""
 }
 
 // updateProjectLockFile updates the project's lock file with the installed command info
