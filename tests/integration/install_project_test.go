@@ -195,7 +195,7 @@ func TestInstallNoConfigFile(t *testing.T) {
 	}
 
 	// Verify error message
-	if !strings.Contains(output, "no ccmd.yaml found") {
+	if !strings.Contains(strings.ToLower(output), "no ccmd.yaml found") {
 		t.Errorf("expected error about missing ccmd.yaml, got output:\n%s", output)
 	}
 }

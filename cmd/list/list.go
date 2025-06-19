@@ -14,24 +14,50 @@ import (
 
 // NewCommand creates a new list command.
 func NewCommand() *cobra.Command {
-	var verbose bool
+	var (
+		verbose bool
+		jsonOut bool
+		sortBy  string
+	)
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List all installed commands",
-		Long:  `List all installed commands with their versions, sources, and last update dates.`,
-		Args:  cobra.NoArgs,
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all installed commands",
+		Long: `List all installed commands with their versions, sources, and last update dates.
+
+The list command provides a quick overview of all ccmd-managed commands currently
+installed on your system. Use various flags to customize the output format.
+
+Examples:
+  # List all commands in table format
+  ccmd list
+
+  # Show detailed information for each command
+  ccmd list --verbose
+
+  # Output in JSON format
+  ccmd list --json
+
+  # Sort by different fields
+  ccmd list --sort name
+  ccmd list --sort version
+  ccmd list --sort updated`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runList(verbose)
+			return runList(verbose, jsonOut, sortBy)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed information")
+	cmd.Flags().BoolVar(&verbose, "long", false, "Alias for --verbose")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output in JSON format")
+	cmd.Flags().StringVar(&sortBy, "sort", "name", "Sort by field: name, version, updated, installed")
 
 	return cmd
 }
 
-func runList(verbose bool) error {
+func runList(verbose, jsonOut bool, sortBy string) error {
 	// Get detailed command information
 	opts := commands.ListOptions{}
 	details, err := commands.List(opts)
@@ -40,15 +66,39 @@ func runList(verbose bool) error {
 	}
 
 	if len(details) == 0 {
-		output.PrintInfof("No commands installed yet.")
-		output.PrintInfof("Use 'ccmd install' to install commands.")
+		if jsonOut {
+			output.Printf("[]")
+		} else {
+			output.PrintInfof("No commands installed yet.")
+			output.PrintInfof("Use 'ccmd install' to install commands.")
+		}
 		return nil
 	}
 
-	// Sort by name
-	sort.Slice(details, func(i, j int) bool {
-		return details[i].Name < details[j].Name
-	})
+	// Sort based on sortBy parameter
+	switch sortBy {
+	case "name":
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].Name < details[j].Name
+		})
+	case "version":
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].Version < details[j].Version
+		})
+	case "updated":
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].UpdatedAt.After(details[j].UpdatedAt)
+		})
+	case "installed":
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].InstalledAt.After(details[j].InstalledAt)
+		})
+	default:
+		// Default to name
+		sort.Slice(details, func(i, j int) bool {
+			return details[i].Name < details[j].Name
+		})
+	}
 
 	// Check for structure issues
 	hasStructureIssues := false
@@ -57,6 +107,11 @@ func runList(verbose bool) error {
 			hasStructureIssues = true
 			break
 		}
+	}
+
+	// Output based on format
+	if jsonOut {
+		return output.PrintJSON(details)
 	}
 
 	// Print table

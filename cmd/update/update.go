@@ -39,15 +39,37 @@ type Result struct {
 
 // NewCommand creates a new update command.
 func NewCommand() *cobra.Command {
-	var updateAll bool
+	var (
+		updateAll bool
+		version   string
+		force     bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "update [command-name]",
 		Short: "Update installed commands to their latest versions",
 		Long: `Update installed commands to their latest versions.
 
-Without arguments, it updates the specified command.
-With --all flag, it updates all installed commands.`,
+The update command checks for newer versions of installed commands and updates them
+if available. It can update a single command or all installed commands at once.
+
+Version comparison:
+- Semantic versions (e.g., v1.2.3) are compared properly
+- Tagged versions are preferred over commit hashes
+- Use --version to update to a specific version
+
+Examples:
+  # Update a specific command to latest version
+  ccmd update mycommand
+
+  # Update all installed commands
+  ccmd update --all
+
+  # Update to a specific version
+  ccmd update mycommand --version v2.0.0
+
+  # Force update even if version appears current
+  ccmd update mycommand --force`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 && !updateAll {
@@ -58,20 +80,22 @@ With --all flag, it updates all installed commands.`,
 				return ErrCannotSpecifyWithAll
 			}
 
-			return runUpdate(args, updateAll)
+			return runUpdate(args, updateAll, version, force)
 		},
 	}
 
 	cmd.Flags().BoolVar(&updateAll, "all", false, "Update all installed commands")
+	cmd.Flags().StringVarP(&version, "version", "v", "", "Update to specific version")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force update even if version appears current")
 
 	return cmd
 }
 
-func runUpdate(args []string, updateAll bool) error {
-	return runUpdateWithFS(args, updateAll, nil)
+func runUpdate(args []string, updateAll bool, version string, force bool) error {
+	return runUpdateWithFS(args, updateAll, version, force, nil)
 }
 
-func runUpdateWithFS(args []string, updateAll bool, filesystem fs.FileSystem) error {
+func runUpdateWithFS(args []string, updateAll bool, version string, force bool, filesystem fs.FileSystem) error {
 	if filesystem == nil {
 		filesystem = fs.OS{}
 	}
@@ -89,12 +113,12 @@ func runUpdateWithFS(args []string, updateAll bool, filesystem fs.FileSystem) er
 	baseDir := ".claude"
 
 	if updateAll {
-		return updateAllCommands(baseDir, filesystem)
+		return updateAllCommands(baseDir, filesystem, force)
 	}
 
 	// Update single command
 	commandName := args[0]
-	result := updateCommand(commandName, baseDir, filesystem)
+	result := updateCommand(commandName, baseDir, filesystem, version, force)
 
 	if result.Error != nil {
 		output.PrintErrorf("Failed to update %s: %v", commandName, result.Error)
@@ -105,7 +129,7 @@ func runUpdateWithFS(args []string, updateAll bool, filesystem fs.FileSystem) er
 	return nil
 }
 
-func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
+func updateAllCommands(baseDir string, filesystem fs.FileSystem, force bool) error {
 	// List all installed commands
 	listOpts := commands.ListOptions{
 		BaseDir:    baseDir,
@@ -136,7 +160,7 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 			spinner.Start()
 		}
 
-		result := updateCommand(cmd.Name, baseDir, filesystem)
+		result := updateCommand(cmd.Name, baseDir, filesystem, "", force)
 		results = append(results, result)
 
 		if spinner != nil {
@@ -181,7 +205,7 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 	return nil
 }
 
-func updateCommand(commandName, baseDir string, filesystem fs.FileSystem) Result {
+func updateCommand(commandName, baseDir string, filesystem fs.FileSystem, requestedVersion string, force bool) Result {
 	result := Result{
 		Name: commandName,
 	}
@@ -235,29 +259,41 @@ func updateCommand(commandName, baseDir string, filesystem fs.FileSystem) Result
 		return result
 	}
 
-	// Get latest version
-	latestVersion, err := getLatestVersion(gitClient, tempDir)
-	if err != nil {
-		result.Error = fmt.Errorf("failed to get latest version: %w", err)
-		return result
+	// Determine target version
+	var targetVersion string
+	if requestedVersion != "" {
+		// Use the requested version
+		targetVersion = requestedVersion
+	} else {
+		// Get latest version
+		latestVersion, err := getLatestVersion(gitClient, tempDir)
+		if err != nil {
+			result.Error = fmt.Errorf("failed to get latest version: %w", err)
+			return result
+		}
+		targetVersion = latestVersion
 	}
 
 	// Compare versions
-	needsUpdate, err := versionNeedsUpdate(cmdInfo.Version, latestVersion)
-	if err != nil {
-		// If we can't compare versions, check if they're different
-		needsUpdate = cmdInfo.Version != latestVersion
+	needsUpdate := force // Force update if requested
+	if !force {
+		var err error
+		needsUpdate, err = versionNeedsUpdate(cmdInfo.Version, targetVersion)
+		if err != nil {
+			// If we can't compare versions, check if they're different
+			needsUpdate = cmdInfo.Version != targetVersion
+		}
 	}
 
 	if !needsUpdate {
-		result.NewVersion = latestVersion
+		result.NewVersion = targetVersion
 		result.Updated = false
 		return result
 	}
 
 	// Perform update
-	result.NewVersion = latestVersion
-	if err := performUpdate(cmdInfo, latestVersion, baseDir, filesystem); err != nil {
+	result.NewVersion = targetVersion
+	if err := performUpdate(cmdInfo, targetVersion, baseDir, filesystem); err != nil {
 		result.Error = fmt.Errorf("failed to update command: %w", err)
 		return result
 	}

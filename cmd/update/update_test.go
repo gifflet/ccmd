@@ -137,7 +137,7 @@ entry: test.sh
 	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", "test-cmd.md"), []byte("# Test Command"), 0o644))
 
 	t.Run("command not installed", func(t *testing.T) {
-		result := updateCommand("nonexistent", baseDir, memfs)
+		result := updateCommand("nonexistent", baseDir, memfs, "", false)
 		assert.Error(t, result.Error)
 		assert.Contains(t, result.Error.Error(), "not installed")
 	})
@@ -145,7 +145,7 @@ entry: test.sh
 	t.Run("command exists", func(t *testing.T) {
 		// This test would need a mock git client to fully test
 		// For now, we test the initial checks
-		result := updateCommand("test-cmd", baseDir, memfs)
+		result := updateCommand("test-cmd", baseDir, memfs, "", false)
 		assert.Equal(t, "test-cmd", result.Name)
 		assert.Equal(t, "v1.0.0", result.CurrentVersion)
 		// The actual update would fail due to git operations
@@ -172,7 +172,7 @@ func TestUpdateAllCommands(t *testing.T) {
 		lockData, _ := json.Marshal(lockContent)
 		require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands.lock"), lockData, 0o644))
 
-		err := updateAllCommands(baseDir, memfs)
+		err := updateAllCommands(baseDir, memfs, false)
 		assert.NoError(t, err)
 	})
 
@@ -213,7 +213,7 @@ description: Test command
 		}
 
 		// This would fail due to git operations, but we test the flow
-		err := updateAllCommands(baseDir, memfs)
+		err := updateAllCommands(baseDir, memfs, false)
 		assert.Error(t, err) // Expected due to missing git operations
 	})
 }
@@ -222,13 +222,13 @@ func TestRunUpdateWithFS(t *testing.T) {
 	memfs := fs.NewMemFS()
 
 	t.Run("no arguments without --all", func(t *testing.T) {
-		err := runUpdateWithFS([]string{}, false, memfs)
+		err := runUpdateWithFS([]string{}, false, "", false, memfs)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "command name required")
 	})
 
 	t.Run("argument with --all", func(t *testing.T) {
-		err := runUpdateWithFS([]string{"cmd"}, true, memfs)
+		err := runUpdateWithFS([]string{"cmd"}, true, "", false, memfs)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "cannot specify command name with --all")
 	})

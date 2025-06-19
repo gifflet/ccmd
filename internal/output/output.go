@@ -2,6 +2,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -61,4 +62,11 @@ func Debugf(format string, a ...interface{}) {
 	if os.Getenv("CCMD_DEBUG") == "1" {
 		_, _ = fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", a...)
 	}
+}
+
+// PrintJSON prints data as formatted JSON.
+func PrintJSON(data interface{}) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(data)
 }
