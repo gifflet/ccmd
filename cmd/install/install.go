@@ -87,11 +87,11 @@ func runInstallFromConfig(force bool) error {
 	}
 
 	if len(config.Commands) == 0 {
-		output.Info("No commands found in ccmd.yaml")
+		output.PrintInfof("No commands found in ccmd.yaml")
 		return nil
 	}
 
-	output.Info("Installing %d command(s) from ccmd.yaml", len(config.Commands))
+	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(config.Commands))
 
 	// Install each command
 	installedCount := 0
@@ -99,9 +99,9 @@ func runInstallFromConfig(force bool) error {
 		// Build repository URL
 		repository := fmt.Sprintf("https://github.com/%s.git", cmd.Repo)
 
-		output.Info("\nInstalling %s", cmd.Repo)
+		output.PrintInfof("\nInstalling %s", cmd.Repo)
 		if cmd.Version != "" {
-			output.Info("Version: %s", cmd.Version)
+			output.PrintInfof("Version: %s", cmd.Version)
 		}
 
 		// Create spinner for installation process
@@ -131,11 +131,11 @@ func runInstallFromConfig(force bool) error {
 		}
 
 		spinner.Stop()
-		output.Success("Command '%s' has been successfully installed", repoName)
+		output.PrintSuccessf("Command '%s' has been successfully installed", repoName)
 		installedCount++
 	}
 
-	output.Info("\nSuccessfully installed %d out of %d command(s)", installedCount, len(config.Commands))
+	output.PrintInfof("\nSuccessfully installed %d out of %d command(s)", installedCount, len(config.Commands))
 
 	return nil
 }
@@ -158,12 +158,12 @@ func runInstall(repository, version, name string, force bool) error {
 	repo = normalizeRepositoryURL(repo)
 
 	// Show installation info
-	output.Info("Installing command from: %s", repo)
+	output.PrintInfof("Installing command from: %s", repo)
 	if version != "" {
-		output.Info("Version: %s", version)
+		output.PrintInfof("Version: %s", version)
 	}
 	if name != "" {
-		output.Info("Custom name: %s", name)
+		output.PrintInfof("Custom name: %s", name)
 	}
 
 	// Create spinner for installation process
@@ -194,7 +194,7 @@ func runInstall(repository, version, name string, force bool) error {
 		commandName = parts[len(parts)-1]
 	}
 
-	output.Success("Command '%s' has been successfully installed", commandName)
+	output.PrintSuccessf("Command '%s' has been successfully installed", commandName)
 
 	// Add to project config if it exists
 	cwd, err := os.Getwd()
@@ -209,21 +209,21 @@ func runInstall(repository, version, name string, force bool) error {
 					// Don't fail the installation, just warn
 					log.WithError(err).Warn("failed to add command to ccmd.yaml")
 				} else {
-					output.Info("Added to ccmd.yaml")
+					output.PrintInfof("Added to ccmd.yaml")
 
 					// Also update the lock file with project info
 					if err := updateProjectLockFile(pm, commandName, repo, version); err != nil {
 						log.WithError(err).Warn("failed to update ccmd-lock.yaml")
 					} else {
-						output.Info("Updated ccmd-lock.yaml")
+						output.PrintInfof("Updated ccmd-lock.yaml")
 					}
 				}
 			}
 		}
 	}
 
-	output.Info("\nTo use the command, run:")
-	output.Info("  ccmd %s", commandName)
+	output.PrintInfof("\nTo use the command, run:")
+	output.PrintInfof("/%s", commandName)
 
 	return nil
 }
