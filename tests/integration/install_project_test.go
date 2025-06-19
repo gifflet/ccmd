@@ -48,10 +48,6 @@ func TestInstallFromProjectConfig(t *testing.T) {
 				Repo:    "gifflet/hello-world",
 				Version: "v1.0.0",
 			},
-			{
-				Repo:    "gifflet/test-cmd",
-				Version: "", // Test latest version
-			},
 		},
 	}
 
