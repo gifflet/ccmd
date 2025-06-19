@@ -37,6 +37,9 @@ func (cm *CommandMetadata) Validate() error {
 	if cm.Repository == "" {
 		return fmt.Errorf("repository is required")
 	}
+	if cm.Entry == "" {
+		return fmt.Errorf("entry is required")
+	}
 	return nil
 }
 

@@ -1,268 +1,51 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
-	"time"
 
-	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/git"
-	"github.com/gifflet/ccmd/internal/lock"
-	"github.com/gifflet/ccmd/internal/models"
-	"github.com/gifflet/ccmd/internal/validation"
+	"github.com/gifflet/ccmd/internal/installer"
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // InstallOptions represents options for installing a command
 type InstallOptions struct {
-	Repository string        // Git repository URL
-	Version    string        // Version/tag to install (optional)
-	Name       string        // Override command name (optional)
-	Force      bool          // Force reinstall if already exists
-	FileSystem fs.FileSystem // File system to use (defaults to OS)
-}
-
-// GitClient interface for git operations
-type GitClient interface {
-	Clone(opts git.CloneOptions) error
-	ValidateRemoteRepository(url string) error
-	GetLatestTag(repoPath string) (string, error)
-	GetCurrentCommit(repoPath string) (string, error)
+	Repository string // Git repository URL
+	Version    string // Version/tag to install (optional)
+	Name       string // Override command name (optional)
+	Force      bool   // Force reinstall if already exists
 }
 
 // Install installs a command from a Git repository
 func Install(opts InstallOptions) error {
 	if opts.Repository == "" {
-		return fmt.Errorf("repository URL is required")
-	}
-
-	// Use default file system if not provided
-	if opts.FileSystem == nil {
-		opts.FileSystem = fs.NewOSFileSystem()
+		return errors.New(errors.CodeInvalidArgument, "repository URL is required")
 	}
 
 	// Get config directory (project-local)
 	configDir := ".claude"
-
-	// Create config directory if it doesn't exist
-	if err := opts.FileSystem.MkdirAll(configDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Create commands directory
 	commandsDir := filepath.Join(configDir, "commands")
-	if err := opts.FileSystem.MkdirAll(commandsDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create commands directory: %w", err)
+
+	// Create installer options
+	installerOpts := installer.Options{
+		Repository: opts.Repository,
+		Version:    opts.Version,
+		Name:       opts.Name,
+		Force:      opts.Force,
+		InstallDir: commandsDir,
 	}
 
-	// Parse repository URL to get default command name
-	repoName, err := git.ParseRepositoryURL(opts.Repository)
+	// Create installer
+	inst, err := installer.New(installerOpts)
 	if err != nil {
-		return fmt.Errorf("failed to parse repository URL: %w", err)
+		return errors.Wrap(err, errors.CodeInternal, "failed to create installer")
 	}
 
-	// Create git client
-	gitClient := git.NewClient(configDir)
-
-	// Validate remote repository exists
-	if err := gitClient.ValidateRemoteRepository(opts.Repository); err != nil {
-		return fmt.Errorf("repository not accessible: %w", err)
-	}
-
-	// Create temporary directory for cloning
-	tempDir := filepath.Join(configDir, "tmp", fmt.Sprintf("install-%s-%d", repoName, time.Now().Unix()))
-	if err := opts.FileSystem.MkdirAll(tempDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create temp directory: %w", err)
-	}
-	defer func() {
-		if removeErr := opts.FileSystem.RemoveAll(tempDir); removeErr != nil {
-			// Log error but don't fail the operation
-			_ = removeErr
-		}
-	}()
-
-	// Clone repository
-	cloneOpts := git.CloneOptions{
-		URL:     opts.Repository,
-		Target:  tempDir,
-		Tag:     opts.Version,
-		Shallow: true,
-		Depth:   1,
-	}
-	if err := gitClient.Clone(cloneOpts); err != nil {
-		return fmt.Errorf("failed to clone repository: %w", err)
-	}
-
-	// Get version if not specified
-	version := opts.Version
-	if version == "" {
-		// Try to get latest tag
-		latestTag, err := gitClient.GetLatestTag(tempDir)
-		if err != nil {
-			// Fall back to current commit
-			commit, err := gitClient.GetCurrentCommit(tempDir)
-			if err != nil {
-				return fmt.Errorf("failed to determine version: %w", err)
-			}
-			version = commit[:7] // Use short commit hash
-		} else {
-			version = latestTag
-		}
-	}
-
-	// Read and validate ccmd.yaml
-	metadataPath := filepath.Join(tempDir, "ccmd.yaml")
-	metadataData, err := opts.FileSystem.ReadFile(metadataPath)
-	if err != nil {
-		return fmt.Errorf("failed to read ccmd.yaml: %w", err)
-	}
-
-	var metadata models.CommandMetadata
-	if err := metadata.UnmarshalYAML(metadataData); err != nil {
-		return fmt.Errorf("failed to parse ccmd.yaml: %w", err)
-	}
-
-	if err := metadata.Validate(); err != nil {
-		return fmt.Errorf("invalid ccmd.yaml: %w", err)
-	}
-
-	// Use override name if provided
-	commandName := metadata.Name
-	if opts.Name != "" {
-		commandName = opts.Name
-	}
-
-	// Check if command already exists
-	commandDir := filepath.Join(commandsDir, commandName)
-	exists, existsErr := opts.FileSystem.Exists(commandDir)
-	if existsErr != nil {
-		return fmt.Errorf("failed to check if command exists: %w", existsErr)
-	}
-	if exists && !opts.Force {
-		return fmt.Errorf("command '%s' already exists (use --force to reinstall)", commandName)
-	}
-
-	// Validate command structure
-	validator := validation.NewValidator(opts.FileSystem)
-	if err := validator.ValidateCommandStructure(tempDir); err != nil {
-		return fmt.Errorf("invalid command structure: %w", err)
-	}
-
-	// Remove existing command if force install
-	if exists && opts.Force {
-		if err := opts.FileSystem.RemoveAll(commandDir); err != nil {
-			return fmt.Errorf("failed to remove existing command: %w", err)
-		}
-	}
-
-	// Create command directory
-	if err := opts.FileSystem.MkdirAll(commandDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create command directory: %w", err)
-	}
-
-	// Copy files to command directory
-	if err := copyDirectory(opts.FileSystem, tempDir, commandDir); err != nil {
-		if removeErr := opts.FileSystem.RemoveAll(commandDir); removeErr != nil {
-			// Log error but don't fail the operation
-			_ = removeErr
-		}
-		return fmt.Errorf("failed to install command: %w", err)
-	}
-
-	// Create standalone .md file for dual structure
-	standalonePath := filepath.Join(commandsDir, fmt.Sprintf("%s.md", commandName))
-	indexPath := filepath.Join(commandDir, "index.md")
-	if indexData, err := opts.FileSystem.ReadFile(indexPath); err == nil {
-		if err := opts.FileSystem.WriteFile(standalonePath, indexData, 0o644); err != nil {
-			if removeErr := opts.FileSystem.RemoveAll(commandDir); removeErr != nil {
-				// Log error but don't fail the operation
-				_ = removeErr
-			}
-			return fmt.Errorf("failed to create standalone file: %w", err)
-		}
-	}
-
-	// Update lock file
-	lockManager := lock.NewManagerWithFS(configDir, opts.FileSystem)
-	if err := lockManager.Load(); err != nil {
-		return fmt.Errorf("failed to load lock file: %w", err)
-	}
-
-	// Add command to lock file
-	cmd := &models.Command{
-		Name:        commandName,
-		Version:     version,
-		Source:      opts.Repository,
-		InstalledAt: time.Now(),
-		UpdatedAt:   time.Now(),
-		Metadata: map[string]string{
-			"description": metadata.Description,
-			"author":      metadata.Author,
-		},
-	}
-
-	if err := lockManager.AddCommand(cmd); err != nil {
-		return fmt.Errorf("failed to add command to lock file: %w", err)
-	}
-
-	// Save lock file
-	if err := lockManager.Save(); err != nil {
-		return fmt.Errorf("failed to save lock file: %w", err)
-	}
-
-	return nil
-}
-
-// copyDirectory recursively copies a directory
-func copyDirectory(fs fs.FileSystem, src, dst string) error {
-	// Get source directory info
-	srcInfo, err := fs.Stat(src)
-	if err != nil {
-		return fmt.Errorf("failed to stat source: %w", err)
-	}
-
-	// Create destination directory with same permissions
-	if err := fs.MkdirAll(dst, srcInfo.Mode()); err != nil {
-		return fmt.Errorf("failed to create destination: %w", err)
-	}
-
-	// Read source directory
-	entries, err := fs.ReadDir(src)
-	if err != nil {
-		return fmt.Errorf("failed to read source directory: %w", err)
-	}
-
-	// Copy each entry
-	for _, entry := range entries {
-		srcPath := filepath.Join(src, entry.Name())
-		dstPath := filepath.Join(dst, entry.Name())
-
-		// Skip .git directory
-		if entry.Name() == ".git" {
-			continue
-		}
-
-		if entry.IsDir() {
-			// Recursively copy subdirectory
-			if err := copyDirectory(fs, srcPath, dstPath); err != nil {
-				return err
-			}
-		} else {
-			// Copy file
-			data, err := fs.ReadFile(srcPath)
-			if err != nil {
-				return fmt.Errorf("failed to read file %s: %w", srcPath, err)
-			}
-
-			info, err := fs.Stat(srcPath)
-			if err != nil {
-				return fmt.Errorf("failed to stat file %s: %w", srcPath, err)
-			}
-
-			if err := fs.WriteFile(dstPath, data, info.Mode()); err != nil {
-				return fmt.Errorf("failed to write file %s: %w", dstPath, err)
-			}
-		}
+	// Perform installation
+	ctx := context.Background()
+	if err := inst.Install(ctx); err != nil {
+		return err
 	}
 
 	return nil
@@ -270,31 +53,62 @@ func copyDirectory(fs fs.FileSystem, src, dst string) error {
 
 // ParseRepositorySpec parses a repository specification (URL[@version])
 func ParseRepositorySpec(spec string) (repository, version string) {
-	// Find the last @ that could be a version separator
-	lastAt := strings.LastIndex(spec, "@")
+	return installer.ParseRepositorySpec(spec)
+}
 
-	// If no @ found, it's all repository
-	if lastAt == -1 {
-		return spec, ""
+// InstallFromProject installs all commands defined in the project's ccmd.yaml
+func InstallFromProject(projectPath string, force bool) error {
+	ctx := context.Background()
+	return installer.InstallFromConfig(ctx, projectPath, force)
+}
+
+// NormalizeRepositoryURL normalizes various repository formats to a full URL
+func NormalizeRepositoryURL(url string) string {
+	return installer.NormalizeRepositoryURL(url)
+}
+
+// ExtractRepoPath extracts owner/repo from a Git URL
+func ExtractRepoPath(gitURL string) string {
+	return installer.ExtractRepoPath(gitURL)
+}
+
+// GetInstalledCommands returns a list of installed commands
+func GetInstalledCommands(projectPath string) ([]InstalledCommand, error) {
+	cm := installer.NewCommandManager(projectPath)
+
+	commands, err := cm.GetInstalledCommands()
+	if err != nil {
+		return nil, err
 	}
 
-	// Check if this is an SSH URL (git@host:...)
-	// SSH URLs have @ before the host, not as version separator
-	beforeAt := spec[:lastAt]
-	afterAt := spec[lastAt+1:]
-
-	// If the part before @ looks like a protocol (git, ssh, https) or is very short,
-	// and the part after @ contains a colon followed by path, it's likely an SSH URL
-	if (strings.HasPrefix(beforeAt, "git") || strings.HasPrefix(beforeAt, "ssh") || len(beforeAt) < 5) &&
-		strings.Contains(afterAt, ":") && !strings.Contains(afterAt, "://") {
-		// This is likely an SSH URL like git@github.com:user/repo
-		return spec, ""
+	// Convert to our public type
+	result := make([]InstalledCommand, len(commands))
+	for i, cmd := range commands {
+		result[i] = InstalledCommand{
+			Name:        cmd.Name,
+			Version:     cmd.Version,
+			Description: cmd.Description,
+			Author:      cmd.Author,
+			Repository:  cmd.Repository,
+			Path:        cmd.Path,
+		}
 	}
 
-	// Otherwise, treat everything after the last @ as a version/tag/branch
-	if afterAt != "" {
-		return beforeAt, afterAt
-	}
+	return result, nil
+}
 
-	return spec, ""
+// InstalledCommand represents an installed command
+type InstalledCommand struct {
+	Name        string
+	Version     string
+	Description string
+	Author      string
+	Repository  string
+	Path        string
+}
+
+// copyDirectory recursively copies a directory (deprecated - use installer package)
+// Kept for backward compatibility
+func copyDirectory(_ interface{}, _, _ string) error {
+	return fmt.Errorf("copyDirectory is deprecated, use installer package")
 }

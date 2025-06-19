@@ -287,6 +287,26 @@ func (m *MemFS) Exists(path string) (bool, error) {
 	return exists, nil
 }
 
+// FileExists checks if a file exists
+func (m *MemFS) FileExists(path string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	path = filepath.Clean(path)
+	file, exists := m.files[path]
+	return exists && !file.isDir
+}
+
+// DirExists checks if a directory exists
+func (m *MemFS) DirExists(path string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	path = filepath.Clean(path)
+	file, exists := m.files[path]
+	return exists && file.isDir
+}
+
 // Setenv sets an environment variable for testing
 func (m *MemFS) Setenv(key, value string) error {
 	m.mu.Lock()

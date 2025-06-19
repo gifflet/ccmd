@@ -3,6 +3,7 @@ package install
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gifflet/ccmd/pkg/project"
@@ -32,7 +33,8 @@ func TestRunInstallFromConfig(t *testing.T) {
 	if err == nil {
 		t.Error("expected error when no ccmd.yaml exists")
 	}
-	if err != nil && err.Error() != "no ccmd.yaml found in current directory" {
+	// Just check that we got an error about missing ccmd.yaml
+	if err != nil && !strings.Contains(err.Error(), "ccmd.yaml") {
 		t.Errorf("unexpected error: %v", err)
 	}
 

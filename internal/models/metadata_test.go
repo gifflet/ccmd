@@ -20,6 +20,7 @@ func TestCommandMetadata_Validate(t *testing.T) {
 				Description: "A test command",
 				Author:      "Test Author",
 				Repository:  "github.com/test/repo",
+				Entry:       "test-command",
 			},
 			wantErr: false,
 		},

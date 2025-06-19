@@ -324,7 +324,6 @@ func performUpdate(cmdInfo *models.Command, newVersion, baseDir string, filesyst
 		Version:    newVersion,
 		Name:       cmdInfo.Name,
 		Force:      true,
-		FileSystem: filesystem,
 	}
 
 	if err := commands.Install(installOpts); err != nil {

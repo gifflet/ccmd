@@ -94,6 +94,7 @@ func TestIntegration_MultipleCommands(t *testing.T) {
 			Description: "First command",
 			Author:      "Author One",
 			Repository:  "https://github.com/author/command-one",
+			Entry:       "command-one",
 		},
 		{
 			Name:        "command-two",
@@ -102,6 +103,7 @@ func TestIntegration_MultipleCommands(t *testing.T) {
 			Author:      "Author Two",
 			Repository:  "https://github.com/author/command-two",
 			Tags:        []string{"utility", "helper"},
+			Entry:       "command-two",
 		},
 		{
 			Name:        "command-three",
@@ -110,6 +112,7 @@ func TestIntegration_MultipleCommands(t *testing.T) {
 			Author:      "Author Three",
 			Repository:  "https://github.com/author/command-three",
 			License:     "Apache-2.0",
+			Entry:       "command-three",
 		},
 	}
 
