@@ -7,13 +7,18 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // NewCommand creates a new remove command.
 func NewCommand() *cobra.Command {
-	var force bool
+	var (
+		force bool
+		save  bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "remove <command-name>",
@@ -21,16 +26,17 @@ func NewCommand() *cobra.Command {
 		Long:  `Remove an installed command and clean up all associated files.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runRemove(args[0], force)
+			return runRemove(args[0], force, save)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force removal without confirmation")
+	cmd.Flags().BoolVarP(&save, "save", "s", false, "Update ccmd.yaml and ccmd-lock.yaml files")
 
 	return cmd
 }
 
-func runRemove(commandName string, force bool) error {
+func runRemove(commandName string, force, save bool) error {
 	// Check if command exists
 	exists, err := commands.CommandExists(commandName, "", nil)
 	if err != nil {
@@ -85,10 +91,65 @@ func runRemove(commandName string, force bool) error {
 	spinner.Stop()
 	output.PrintSuccessf("Command '%s' has been successfully removed", commandName)
 
+	// Update project files if --save flag is used
+	if save {
+		if err := updateProjectFiles(commandName, cmdInfo); err != nil {
+			output.PrintWarningf("Command removed but failed to update project files: %v", err)
+			// Don't return error as the command was already removed successfully
+		} else {
+			output.PrintSuccessf("Updated ccmd.yaml and ccmd-lock.yaml")
+		}
+	}
+
 	return nil
 }
 
 func isConfirmation(response string) bool {
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
+}
+
+func updateProjectFiles(commandName string, cmdInfo *models.Command) error {
+	// Get the repository from command info
+	repo := ""
+	if cmdInfo != nil && cmdInfo.Metadata != nil {
+		if r, ok := cmdInfo.Metadata["repository"]; ok {
+			repo = r
+		}
+	}
+
+	if repo == "" {
+		return fmt.Errorf("cannot determine repository for command %s", commandName)
+	}
+
+	// Create project manager for current directory
+	manager := project.NewManager(".")
+
+	// Update ccmd.yaml if it exists
+	if manager.ConfigExists() {
+		// Remove the command from ccmd.yaml
+		if err := manager.RemoveCommand(repo); err != nil {
+			// If command is not in ccmd.yaml, that's okay
+			if !strings.Contains(err.Error(), "not found in configuration") {
+				return fmt.Errorf("failed to update ccmd.yaml: %w", err)
+			}
+		}
+	}
+
+	// Update ccmd-lock.yaml if it exists
+	if manager.LockExists() {
+		lockFile, err := manager.LoadLockFile()
+		if err != nil {
+			return fmt.Errorf("failed to load lock file: %w", err)
+		}
+
+		// Remove from lock file
+		if lockFile.RemoveCommand(commandName) {
+			if err := manager.SaveLockFile(lockFile); err != nil {
+				return fmt.Errorf("failed to save lock file: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
