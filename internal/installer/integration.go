@@ -116,7 +116,7 @@ func ExtractRepoPath(gitURL string) string {
 }
 
 // InstallCommand performs an integrated installation with project management
-func InstallCommand(ctx context.Context, opts IntegrationOptions) error {
+func InstallCommand(ctx context.Context, opts IntegrationOptions, addToConfig bool) error {
 	log := logger.WithField("component", "installer-integration")
 
 	// Parse repository spec if version is included
@@ -163,7 +163,7 @@ func InstallCommand(ctx context.Context, opts IntegrationOptions) error {
 	}
 
 	// Update project files if in a project context
-	if opts.ProjectPath != "" {
+	if opts.ProjectPath != "" && addToConfig {
 		if err := updateProjectFiles(opts.ProjectPath, repo, opts.Version, opts.Name); err != nil {
 			// Don't fail the installation, just warn
 			log.WithError(err).Warn("failed to update project files")
@@ -284,7 +284,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 			ProjectPath: projectPath,
 		}
 
-		if err := InstallCommand(ctx, opts); err != nil {
+		if err := InstallCommand(ctx, opts, false); err != nil {
 			spinner.Stop()
 			output.Error("Failed to install %s: %v", cmd.Repo, err)
 			installErrors = append(installErrors, errors.Wrap(err, errors.CodeInternal, "failed to install command").
@@ -345,7 +345,7 @@ func (cm *CommandManager) Install(ctx context.Context, repository, version, name
 		ProjectPath: cm.projectPath,
 	}
 
-	return InstallCommand(ctx, opts)
+	return InstallCommand(ctx, opts, true)
 }
 
 // InstallFromProject installs all commands from the project's ccmd.yaml

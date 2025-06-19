@@ -138,7 +138,7 @@ func runInstall(repository, version, name string, force bool) error {
 		ProjectPath: projectPath,
 	}
 
-	if err := installer.InstallCommand(ctx, opts); err != nil {
+	if err := installer.InstallCommand(ctx, opts, true); err != nil {
 		spinner.Stop()
 		log.WithError(err).Error("installation failed")
 		return err

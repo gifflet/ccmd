@@ -84,7 +84,7 @@ func Example_installFromShorthand() {
 		Version:    "latest",
 	}
 
-	if err := installer.InstallCommand(ctx, opts); err != nil {
+	if err := installer.InstallCommand(ctx, opts, true); err != nil {
 		log.Fatal(err)
 	}
 
