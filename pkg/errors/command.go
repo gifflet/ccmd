@@ -1,8 +1,9 @@
 package errors
 
 import (
-	"github.com/gifflet/ccmd/pkg/logger"
 	"github.com/spf13/cobra"
+
+	"github.com/gifflet/ccmd/pkg/logger"
 )
 
 // CommandRunner wraps a cobra command with error handling
