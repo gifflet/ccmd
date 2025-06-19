@@ -38,19 +38,19 @@ func BenchmarkInstallCommand(b *testing.B) {
 
 			opts := Options{
 				Repository: "https://github.com/bench/test.git",
-				InstallDir: ".ccmd/commands",
+				InstallDir: ".claude/commands",
 				FileSystem: memFS,
 				GitClient:  gitClient,
 			}
 
 			// Create lock directory
-			_ = memFS.MkdirAll(".ccmd", 0o755)
+			_ = memFS.MkdirAll(".claude", 0o755)
 
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
 				// Clean up from previous iteration
-				_ = memFS.RemoveAll(".ccmd/commands/benchcmd")
+				_ = memFS.RemoveAll(".claude/commands/benchcmd")
 
 				installer, err := New(opts)
 				if err != nil {
@@ -105,10 +105,10 @@ func BenchmarkLockFileOperations(b *testing.B) {
 	for _, count := range commandCounts {
 		b.Run(fmt.Sprintf("%dCommands", count), func(b *testing.B) {
 			memFS := fs.NewMemFS()
-			_ = memFS.MkdirAll(".ccmd", 0o755)
+			_ = memFS.MkdirAll(".claude", 0o755)
 
 			// Create lock manager
-			lockManager := lock.NewManagerWithFS(".ccmd", memFS)
+			lockManager := lock.NewManagerWithFS(".claude", memFS)
 			_ = lockManager.Load()
 
 			// Add commands

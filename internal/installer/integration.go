@@ -136,7 +136,7 @@ func InstallCommand(ctx context.Context, opts IntegrationOptions) error {
 	}).Debug("starting integrated installation")
 
 	// Determine installation directory
-	installDir := ".ccmd/commands"
+	installDir := ".claude/commands"
 	if opts.GlobalInstall {
 		// Global installation path support will be added in a future release
 		return errors.New(errors.CodeNotImplemented, "global installation not yet supported")
@@ -333,7 +333,7 @@ func (cm *CommandManager) InstallFromProject(ctx context.Context, force bool) er
 
 // GetInstalledCommands returns a list of installed commands
 func (cm *CommandManager) GetInstalledCommands() ([]InstalledCommand, error) {
-	installDir := filepath.Join(cm.projectPath, ".ccmd", "commands")
+	installDir := filepath.Join(cm.projectPath, ".claude", "commands")
 
 	entries, err := cm.fileSystem.ReadDir(installDir)
 	if err != nil {

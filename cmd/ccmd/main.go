@@ -10,6 +10,7 @@ import (
 	"github.com/gifflet/ccmd/cmd/list"
 	"github.com/gifflet/ccmd/cmd/remove"
 	"github.com/gifflet/ccmd/cmd/search"
+	"github.com/gifflet/ccmd/cmd/sync"
 	"github.com/gifflet/ccmd/cmd/update"
 	"github.com/gifflet/ccmd/internal/output"
 )
@@ -43,6 +44,7 @@ func main() {
 	rootCmd.AddCommand(list.NewCommand())
 	rootCmd.AddCommand(remove.NewCommand())
 	rootCmd.AddCommand(search.NewCommand())
+	rootCmd.AddCommand(sync.NewCommand())
 	rootCmd.AddCommand(update.NewCommand())
 
 	if err := rootCmd.Execute(); err != nil {

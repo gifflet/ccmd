@@ -24,7 +24,6 @@ func Install(opts InstallOptions) error {
 	}
 
 	// Get config directory (project-local)
-	// Note: Using .claude for backward compatibility, should eventually migrate to .ccmd
 	configDir := ".claude"
 	commandsDir := filepath.Join(configDir, "commands")
 

@@ -38,8 +38,8 @@ func TestInstallationProcess(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, memFS.WriteFile(filepath.Join(projectDir, "ccmd.yaml"), configData, 0o644))
 
-	// Create .ccmd directory
-	ccmdDir := filepath.Join(projectDir, ".ccmd")
+	// Create .claude directory
+	ccmdDir := filepath.Join(projectDir, ".claude")
 	require.NoError(t, memFS.MkdirAll(ccmdDir, 0o755))
 
 	// Test individual command installation
@@ -144,7 +144,7 @@ func TestInstallationProcess(t *testing.T) {
 // TestInstallationErrorHandling tests error scenarios
 func TestInstallationErrorHandling(t *testing.T) {
 	memFS := fs.NewMemFS()
-	ccmdDir := "/test/.ccmd"
+	ccmdDir := "/test/.claude"
 
 	t.Run("RepositoryNotFound", func(t *testing.T) {
 		opts := installer.Options{

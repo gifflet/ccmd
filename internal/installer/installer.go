@@ -22,7 +22,7 @@ type Options struct {
 	Version       string        // Version/tag to install (optional)
 	Name          string        // Override command name (optional)
 	Force         bool          // Force reinstall if already exists
-	InstallDir    string        // Directory to install commands (default: .ccmd/commands)
+	InstallDir    string        // Directory to install commands (default: .claude/commands)
 	FileSystem    fs.FileSystem // File system interface (for testing)
 	GitClient     GitClient     // Git client interface (for testing)
 	TempDirPrefix string        // Prefix for temporary directories
@@ -57,7 +57,7 @@ func New(opts Options) (*Installer, error) {
 
 	// Set defaults
 	if opts.InstallDir == "" {
-		opts.InstallDir = filepath.Join(".ccmd", "commands")
+		opts.InstallDir = filepath.Join(".claude", "commands")
 	}
 	if opts.FileSystem == nil {
 		opts.FileSystem = fs.NewOSFileSystem()
@@ -135,17 +135,24 @@ func (i *Installer) Install(_ context.Context) error {
 		return errors.Wrap(err, errors.CodeFileIO, "failed to install command files")
 	}
 
-	// Step 8: Update metadata with installation info
+	// Step 8: Create standalone .md file
+	if err := i.createStandaloneFile(commandDir, metadata); err != nil {
+		// Rollback on failure with metadata to remove standalone file
+		i.rollbackInstallationWithMetadata(commandDir, metadata)
+		return errors.Wrap(err, errors.CodeFileIO, "failed to create standalone file")
+	}
+
+	// Step 9: Update metadata with installation info
 	if err := i.updateCommandMetadata(commandDir, metadata, version); err != nil {
-		// Rollback on failure
-		i.rollbackInstallation(commandDir)
+		// Rollback on failure with metadata to remove standalone file
+		i.rollbackInstallationWithMetadata(commandDir, metadata)
 		return errors.Wrap(err, errors.CodeFileIO, "failed to update command metadata")
 	}
 
-	// Step 9: Update lock file
+	// Step 10: Update lock file
 	if err := i.updateLockFile(commandName, version, metadata); err != nil {
-		// Rollback on failure
-		i.rollbackInstallation(commandDir)
+		// Rollback on failure with metadata to remove standalone file
+		i.rollbackInstallationWithMetadata(commandDir, metadata)
 		return errors.Wrap(err, errors.CodeLockConflict, "failed to update lock file")
 	}
 
@@ -295,6 +302,12 @@ func (i *Installer) checkExistingCommand(commandName string) error {
 		if err := i.fileSystem.RemoveAll(commandDir); err != nil {
 			return errors.Wrap(err, errors.CodeFileIO, "failed to remove existing command")
 		}
+
+		// Also remove standalone file if it exists
+		standaloneFile := filepath.Join(i.opts.InstallDir, fmt.Sprintf("%s.md", commandName))
+		if err := i.fileSystem.Remove(standaloneFile); err != nil && !os.IsNotExist(err) {
+			i.logger.WithError(err).Warn("failed to remove existing standalone file")
+		}
 	}
 
 	return nil
@@ -407,11 +420,54 @@ func (i *Installer) updateLockFile(commandName, version string, metadata *models
 	return i.lockManager.Save()
 }
 
+// createStandaloneFile creates a standalone .md file from the command's index.md
+func (i *Installer) createStandaloneFile(commandDir string, metadata *models.CommandMetadata) error {
+	// Use metadata.Name for the standalone file
+	standaloneFile := filepath.Join(i.opts.InstallDir, fmt.Sprintf("%s.md", metadata.Name))
+
+	// Read index.md from command directory
+	indexPath := filepath.Join(commandDir, "index.md")
+	indexData, err := i.fileSystem.ReadFile(indexPath)
+	if err != nil {
+		return errors.Wrap(err, errors.CodeFileIO, "failed to read index.md")
+	}
+
+	// Write standalone file
+	if err := i.fileSystem.WriteFile(standaloneFile, indexData, 0o644); err != nil {
+		return errors.Wrap(err, errors.CodeFileIO, "failed to create standalone file")
+	}
+
+	i.logger.WithFields(logger.Fields{
+		"standalone": standaloneFile,
+		"source":     indexPath,
+	}).Debug("created standalone .md file")
+
+	return nil
+}
+
 // rollbackInstallation removes partially installed command
 func (i *Installer) rollbackInstallation(commandDir string) {
 	i.logger.WithField("path", commandDir).Warn("rolling back installation")
 
 	if err := i.fileSystem.RemoveAll(commandDir); err != nil {
 		i.logger.WithError(err).Error("failed to rollback installation")
+	}
+}
+
+// rollbackInstallationWithMetadata removes partially installed command including standalone file
+func (i *Installer) rollbackInstallationWithMetadata(commandDir string, metadata *models.CommandMetadata) {
+	i.logger.WithField("path", commandDir).Warn("rolling back installation")
+
+	// Remove command directory
+	if err := i.fileSystem.RemoveAll(commandDir); err != nil {
+		i.logger.WithError(err).Error("failed to rollback command directory")
+	}
+
+	// Remove standalone file using metadata.Name
+	if metadata != nil {
+		standaloneFile := filepath.Join(i.opts.InstallDir, fmt.Sprintf("%s.md", metadata.Name))
+		if err := i.fileSystem.Remove(standaloneFile); err != nil && !os.IsNotExist(err) {
+			i.logger.WithError(err).Error("failed to rollback standalone file")
+		}
 	}
 }

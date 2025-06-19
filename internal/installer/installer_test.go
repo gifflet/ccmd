@@ -66,7 +66,7 @@ func setupTestInstaller(t testing.TB) (*Installer, *fs.MemFS, *mockGitClient) {
 
 	opts := Options{
 		Repository:    "https://github.com/test/repo.git",
-		InstallDir:    ".ccmd/commands",
+		InstallDir:    ".claude/commands",
 		FileSystem:    memFS,
 		GitClient:     gitClient,
 		TempDirPrefix: "test-install",
@@ -178,7 +178,7 @@ func TestInstall_Success(t *testing.T) {
 	}
 
 	// Create lock file directory
-	require.NoError(t, memFS.MkdirAll(".ccmd", 0o755))
+	require.NoError(t, memFS.MkdirAll(".claude", 0o755))
 
 	// Run installation
 	ctx := context.Background()
@@ -187,7 +187,7 @@ func TestInstall_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify command was installed
-	commandDir := filepath.Join(".ccmd/commands/testcmd")
+	commandDir := filepath.Join(".claude/commands/testcmd")
 	assert.True(t, memFS.DirExists(commandDir))
 
 	// Verify ccmd.yaml exists
@@ -199,7 +199,7 @@ func TestInstall_Success(t *testing.T) {
 	assert.True(t, memFS.FileExists(scriptPath))
 
 	// Verify lock file was updated
-	lockPath := filepath.Join(".ccmd", "commands.lock")
+	lockPath := filepath.Join(".claude", "commands.lock")
 	assert.True(t, memFS.FileExists(lockPath))
 }
 
@@ -214,7 +214,7 @@ func TestInstall_WithVersion(t *testing.T) {
 	}
 
 	// Create lock file directory
-	require.NoError(t, memFS.MkdirAll(".ccmd", 0o755))
+	require.NoError(t, memFS.MkdirAll(".claude", 0o755))
 
 	// Run installation
 	ctx := context.Background()
@@ -233,7 +233,7 @@ func TestInstall_WithCustomName(t *testing.T) {
 	}
 
 	// Create lock file directory
-	require.NoError(t, memFS.MkdirAll(".ccmd", 0o755))
+	require.NoError(t, memFS.MkdirAll(".claude", 0o755))
 
 	// Run installation
 	ctx := context.Background()
@@ -242,7 +242,7 @@ func TestInstall_WithCustomName(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify command was installed with custom name
-	commandDir := filepath.Join(".ccmd/commands/customcmd")
+	commandDir := filepath.Join(".claude/commands/customcmd")
 	assert.True(t, memFS.DirExists(commandDir))
 }
 
@@ -250,7 +250,7 @@ func TestInstall_AlreadyExists(t *testing.T) {
 	installer, memFS, gitClient := setupTestInstaller(t)
 
 	// Create existing command
-	existingDir := filepath.Join(".ccmd/commands/testcmd")
+	existingDir := filepath.Join(".claude/commands/testcmd")
 	require.NoError(t, memFS.MkdirAll(existingDir, 0o755))
 	require.NoError(t, memFS.WriteFile(filepath.Join(existingDir, "existing.txt"), []byte("existing"), 0o644))
 
@@ -272,7 +272,7 @@ func TestInstall_ForceReinstall(t *testing.T) {
 	installer.opts.Force = true
 
 	// Create existing command
-	existingDir := filepath.Join(".ccmd/commands/testcmd")
+	existingDir := filepath.Join(".claude/commands/testcmd")
 	require.NoError(t, memFS.MkdirAll(existingDir, 0o755))
 	require.NoError(t, memFS.WriteFile(filepath.Join(existingDir, "existing.txt"), []byte("existing"), 0o644))
 
@@ -282,7 +282,7 @@ func TestInstall_ForceReinstall(t *testing.T) {
 	}
 
 	// Create lock file directory
-	require.NoError(t, memFS.MkdirAll(".ccmd", 0o755))
+	require.NoError(t, memFS.MkdirAll(".claude", 0o755))
 
 	// Run installation with force
 	ctx := context.Background()
@@ -370,10 +370,10 @@ func TestInstall_Rollback(t *testing.T) {
 	}
 
 	// Create lock file directory
-	require.NoError(t, memFS.MkdirAll(".ccmd", 0o755))
+	require.NoError(t, memFS.MkdirAll(".claude", 0o755))
 
 	// Simulate lock file error by making it read-only
-	lockPath := filepath.Join(".ccmd", "commands.lock")
+	lockPath := filepath.Join(".claude", "commands.lock")
 	require.NoError(t, memFS.WriteFile(lockPath, []byte("invalid json"), 0o444))
 
 	// Run installation
@@ -383,7 +383,7 @@ func TestInstall_Rollback(t *testing.T) {
 	assert.Error(t, err)
 
 	// Verify command directory was rolled back
-	commandDir := filepath.Join(".ccmd/commands/testcmd")
+	commandDir := filepath.Join(".claude/commands/testcmd")
 	assert.False(t, memFS.DirExists(commandDir))
 }
 
@@ -516,7 +516,7 @@ func BenchmarkInstall(b *testing.B) {
 			return createTestRepository(memFS, opts.Target)
 		}
 
-		_ = memFS.MkdirAll(".ccmd", 0o755)
+		_ = memFS.MkdirAll(".claude", 0o755)
 
 		ctx := context.Background()
 		_ = installer.Install(ctx)

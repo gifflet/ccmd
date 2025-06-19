@@ -14,7 +14,7 @@ func Example() {
 	opts := installer.Options{
 		Repository: "https://github.com/example/mycmd.git",
 		Version:    "v1.0.0",
-		InstallDir: ".ccmd/commands",
+		InstallDir: ".claude/commands",
 	}
 
 	inst, err := installer.New(opts)
@@ -36,7 +36,7 @@ func Example_withCustomName() {
 	opts := installer.Options{
 		Repository: "https://github.com/example/long-command-name.git",
 		Name:       "lcn", // Short alias
-		InstallDir: ".ccmd/commands",
+		InstallDir: ".claude/commands",
 	}
 
 	inst, err := installer.New(opts)
@@ -58,7 +58,7 @@ func Example_forceReinstall() {
 		Repository: "https://github.com/example/mycmd.git",
 		Version:    "v2.0.0",
 		Force:      true, // Overwrite existing installation
-		InstallDir: ".ccmd/commands",
+		InstallDir: ".claude/commands",
 	}
 
 	inst, err := installer.New(opts)
@@ -132,7 +132,7 @@ func Example_commandManager() {
 func Example_errorHandling() {
 	opts := installer.Options{
 		Repository: "https://github.com/nonexistent/repo.git",
-		InstallDir: ".ccmd/commands",
+		InstallDir: ".claude/commands",
 	}
 
 	inst, err := installer.New(opts)

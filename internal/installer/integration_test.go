@@ -247,7 +247,7 @@ func TestCommandManager_GetInstalledCommands(t *testing.T) {
 
 	// Create project structure
 	projectDir := "/test/project"
-	commandsDir := filepath.Join(projectDir, ".ccmd", "commands")
+	commandsDir := filepath.Join(projectDir, ".claude", "commands")
 
 	// Create test commands
 	testCommands := []struct {
@@ -342,7 +342,7 @@ func TestCommandManager_GetInstalledCommands_EmptyDir(t *testing.T) {
 func TestCommandManager_GetInstalledCommands_InvalidMetadata(t *testing.T) {
 	memFS := fs.NewMemFS()
 	projectDir := "/test/project"
-	commandsDir := filepath.Join(projectDir, ".ccmd", "commands")
+	commandsDir := filepath.Join(projectDir, ".claude", "commands")
 
 	// Create command with invalid metadata
 	cmdDir := filepath.Join(commandsDir, "badcmd")

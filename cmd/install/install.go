@@ -11,6 +11,7 @@ import (
 
 	"github.com/gifflet/ccmd/internal/installer"
 	"github.com/gifflet/ccmd/internal/output"
+	"github.com/gifflet/ccmd/pkg/commands"
 	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
 	"github.com/gifflet/ccmd/pkg/project"
@@ -86,6 +87,71 @@ func runInstallFromConfig(force bool) error {
 		return err
 	}
 
+	// Create project manager
+	pm := project.NewManager(cwd)
+
+	// Check if config exists
+	if !pm.ConfigExists() {
+		return fmt.Errorf("no ccmd.yaml found in current directory")
+	}
+
+	// Load config
+	config, err := pm.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load ccmd.yaml: %w", err)
+	}
+
+	if len(config.Commands) == 0 {
+		output.PrintInfof("No commands found in ccmd.yaml")
+		return nil
+	}
+
+	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(config.Commands))
+
+	// Install each command
+	installedCount := 0
+	for _, cmd := range config.Commands {
+		// Build repository URL
+		repository := fmt.Sprintf("https://github.com/%s.git", cmd.Repo)
+
+		output.PrintInfof("\nInstalling %s", cmd.Repo)
+		if cmd.Version != "" {
+			output.PrintInfof("Version: %s", cmd.Version)
+		}
+
+		// Create spinner for installation process
+		spinner := output.NewSpinner(fmt.Sprintf("Installing %s...", cmd.Repo))
+		spinner.Start()
+
+		// Parse repo to get command name
+		_, repoName, err := cmd.ParseOwnerRepo()
+		if err != nil {
+			spinner.Stop()
+			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
+			continue
+		}
+
+		// Install the command
+		installOpts := commands.InstallOptions{
+			Repository: repository,
+			Version:    cmd.Version,
+			Name:       repoName,
+			Force:      force,
+		}
+
+		if err := commands.Install(installOpts); err != nil {
+			spinner.Stop()
+			output.Error("Failed to install %s: %v", cmd.Repo, err)
+			continue
+		}
+
+		spinner.Stop()
+		output.PrintSuccessf("Command '%s' has been successfully installed", repoName)
+		installedCount++
+	}
+
+	output.PrintInfof("\nSuccessfully installed %d out of %d command(s)", installedCount, len(config.Commands))
+
 	return nil
 }
 
@@ -108,12 +174,12 @@ func runInstall(repository, version, name string, force bool) error {
 	repo = installer.NormalizeRepositoryURL(repo)
 
 	// Show installation info
-	output.Info("Installing command from: %s", repo)
+	output.PrintInfof("Installing command from: %s", repo)
 	if version != "" {
-		output.Info("Version: %s", version)
+		output.PrintInfof("Version: %s", version)
 	}
 	if name != "" {
-		output.Info("Custom name: %s", name)
+		output.PrintInfof("Custom name: %s", name)
 	}
 
 	// Create spinner for installation process
@@ -153,18 +219,35 @@ func runInstall(repository, version, name string, force bool) error {
 		commandName = parts[len(parts)-1]
 	}
 
-	output.Success("Command '%s' has been successfully installed", commandName)
+	output.PrintSuccessf("Command '%s' has been successfully installed", commandName)
 
 	// Project files are now updated by the installer itself
 	if projectPath != "" {
 		pm := project.NewManager(projectPath)
 		if pm.ConfigExists() {
-			output.Info("Updated ccmd.yaml and ccmd-lock.yaml")
+			// Extract owner/repo from repository URL
+			repoPath := commands.ExtractRepoPath(repo)
+			if repoPath != "" {
+				// Try to add the command to ccmd.yaml
+				if err := pm.AddCommand(repoPath, version); err != nil {
+					// Don't fail the installation, just warn
+					log.WithError(err).Warn("failed to add command to ccmd.yaml")
+				} else {
+					output.PrintInfof("Added to ccmd.yaml")
+
+					// Also update the lock file with project info
+					if err := updateProjectLockFile(pm, commandName, repo, version); err != nil {
+						log.WithError(err).Warn("failed to update ccmd-lock.yaml")
+					} else {
+						output.PrintInfof("Updated ccmd-lock.yaml")
+					}
+				}
+			}
 		}
 	}
 
-	output.Info("\nTo use the command, run:")
-	output.Info("  ccmd %s", commandName)
+	output.PrintInfof("\nTo use the command, run:")
+	output.PrintInfof("/%s", commandName)
 
 	return nil
 }
