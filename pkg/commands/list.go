@@ -23,6 +23,8 @@ type CommandDetail struct {
 	HasMarkdownFile  bool
 	StructureValid   bool
 	StructureMessage string
+	// Metadata from command's ccmd.yaml file
+	CommandMetadata *models.CommandMetadata
 }
 
 // List returns detailed information about all installed commands.
@@ -61,6 +63,18 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 		commandDir := filepath.Join(opts.BaseDir, "commands", cmd.Name)
 		if stat, err := opts.FileSystem.Stat(commandDir); err == nil && stat.IsDir() {
 			detail.HasDirectory = true
+
+			// Try to read command metadata from ccmd.yaml
+			metadataPath := filepath.Join(commandDir, "ccmd.yaml")
+			if data, err := opts.FileSystem.ReadFile(metadataPath); err == nil {
+				var metadata models.CommandMetadata
+				if err := metadata.UnmarshalYAML(data); err == nil {
+					// Only use valid metadata
+					if err := metadata.Validate(); err == nil {
+						detail.CommandMetadata = &metadata
+					}
+				}
+			}
 		}
 
 		// Check markdown file existence
