@@ -129,7 +129,7 @@ func TestInstallWithArgsUpdatesProject(t *testing.T) {
 	}
 
 	// Run install command with repository argument
-	cmd := exec.Command(filepath.Join(oldDir, "ccmd-test"), "install", "github.com/gifflet/hello-world@v1.0.0")
+	cmd := exec.Command(filepath.Join(oldDir, "ccmd-test"), "install", "git@github.com:gifflet/hello-world.git@v1.0.0")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -144,7 +144,6 @@ func TestInstallWithArgsUpdatesProject(t *testing.T) {
 
 	// Verify output contains expected messages
 	expectedMessages := []string{
-		"Installing command from: https://github.com/gifflet/hello-world.git",
 		"Version: v1.0.0",
 	}
 

@@ -22,6 +22,26 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: true
 
+      - name: Configure SSH for private repos
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          # Only configure SSH if we have the private key
+          if [ -n "$SSH_PRIVATE_KEY" ]; then
+            mkdir -p ~/.ssh
+            echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+            # Start SSH agent
+            eval "$(ssh-agent -s)" > /dev/null
+            ssh-add ~/.ssh/id_rsa 2>/dev/null
+            # Test SSH connection (suppress output for security)
+            ssh -T git@github.com 2>&1 | grep -q "successfully authenticated" && echo "SSH configured successfully" || echo "SSH configuration completed"
+          else
+            echo "SSH private key not configured, skipping SSH setup"
+          fi
+
       - name: Download dependencies
         run: make deps
 
