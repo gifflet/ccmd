@@ -93,6 +93,7 @@ func Example_packageLevelFunctions() {
 			Description: "A new command",
 			Author:      "Author Name",
 			Repository:  "https://github.com/author/new-command",
+			Entry:       "new-command",
 		}
 
 		if err := metadata.WriteCommandMetadata(commandDir, meta); err != nil {

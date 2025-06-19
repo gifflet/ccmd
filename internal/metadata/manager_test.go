@@ -178,6 +178,7 @@ func TestManager_UpdateCommandMetadata(t *testing.T) {
 		Description: "A test command",
 		Author:      "Test Author",
 		Repository:  "https://github.com/test/command",
+		Entry:       "test-command",
 	}
 	err := manager.WriteCommandMetadata(tmpDir, initialMetadata)
 	require.NoError(t, err)
@@ -239,6 +240,7 @@ func TestManager_Exists(t *testing.T) {
 		Description: "A test command",
 		Author:      "Test Author",
 		Repository:  "https://github.com/test/command",
+		Entry:       "test-command",
 	}
 	err := manager.WriteCommandMetadata(tmpDir, metadata)
 	require.NoError(t, err)

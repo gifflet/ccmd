@@ -221,6 +221,7 @@ func TestInstallFromConfig(t *testing.T) {
 				Description: "Test command",
 				Author:      "Test",
 				Repository:  opts.URL,
+				Entry:       cmdName,
 			}
 
 			yamlData, _ := metadata.MarshalYAML()
@@ -262,6 +263,7 @@ func TestCommandManager_GetInstalledCommands(t *testing.T) {
 				Description: "First test command",
 				Author:      "Test Author 1",
 				Repository:  "https://github.com/test/cmd1.git",
+				Entry:       "cmd1",
 			},
 		},
 		{
@@ -272,6 +274,7 @@ func TestCommandManager_GetInstalledCommands(t *testing.T) {
 				Description: "Second test command",
 				Author:      "Test Author 2",
 				Repository:  "https://github.com/test/cmd2.git",
+				Entry:       "cmd2",
 			},
 		},
 	}

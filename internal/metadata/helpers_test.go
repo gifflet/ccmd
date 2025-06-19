@@ -24,6 +24,7 @@ func TestHelperFunctions(t *testing.T) {
 		Author:      "Test Author",
 		Repository:  "https://github.com/test/helper",
 		Tags:        []string{"test", "helper"},
+		Entry:       "helper-test",
 	}
 
 	err := WriteCommandMetadata(tmpDir, metadata)

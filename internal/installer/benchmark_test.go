@@ -151,6 +151,7 @@ func BenchmarkRepositoryValidation(b *testing.B) {
 		Description: "Test command",
 		Author:      "Test",
 		Repository:  "https://github.com/test/repo.git",
+		Entry:       "testcmd",
 	}
 
 	yamlData, _ := meta.MarshalYAML()
@@ -179,6 +180,7 @@ func createBenchmarkRepository(fs fs.FileSystem, path string, fileCount, fileSiz
 		Description: "Benchmark command",
 		Author:      "Benchmark",
 		Repository:  "https://github.com/bench/test.git",
+		Entry:       "benchcmd",
 	}
 
 	yamlData, err := metadata.MarshalYAML()

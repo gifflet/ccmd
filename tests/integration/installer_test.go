@@ -59,6 +59,7 @@ func TestInstallationProcess(t *testing.T) {
 						Description: "Example command",
 						Author:      "Test Author",
 						Repository:  "https://github.com/test/example.git",
+						Entry:       "example",
 					}
 
 					yamlData, _ := metadata.MarshalYAML()
@@ -117,6 +118,7 @@ func TestInstallationProcess(t *testing.T) {
 						Description: "Updated example",
 						Author:      "Test Author",
 						Repository:  "https://github.com/test/example.git",
+						Entry:       "example",
 					}
 
 					yamlData, _ := metadata.MarshalYAML()

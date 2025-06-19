@@ -27,6 +27,7 @@ version: 1.0.0
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: mycommand
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
@@ -106,6 +107,7 @@ version: 1.0.0
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: mycommand
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
@@ -127,6 +129,7 @@ version: 1.0.0
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: mycommand
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 
@@ -151,6 +154,7 @@ version: 1.0.0
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: differentname
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
@@ -173,6 +177,7 @@ version: invalid-version
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: mycommand
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
@@ -195,6 +200,7 @@ version: 1.0.0
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: mycommand
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
@@ -216,6 +222,7 @@ version: 2.0.0
 description: A test command
 author: Test Author
 repository: https://github.com/test/mycommand
+entry: mycommand
 `
 				_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 				_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Command\n"), 0o644)
@@ -305,6 +312,7 @@ version: 1.0.0
 description: Test command
 author: Test
 repository: https://github.com/test/cmd
+entry: testcmd
 `
 	_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 	_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Test\n"), 0o644)
@@ -327,6 +335,7 @@ version: 1.0.0
 description: Installed command
 author: Test
 repository: https://github.com/test/cmd
+entry: installed-cmd
 `
 	_ = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), []byte(ccmdContent), 0o644)
 	_ = os.WriteFile(filepath.Join(cmdDir, "index.md"), []byte("# Installed\n"), 0o644)
