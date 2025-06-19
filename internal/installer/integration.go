@@ -11,6 +11,7 @@ import (
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
 	"github.com/gifflet/ccmd/pkg/project"
@@ -233,10 +234,12 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 
 	if len(config.Commands) == 0 {
 		log.Info("no commands found in ccmd.yaml")
+		output.PrintInfof("No commands found in ccmd.yaml")
 		return nil
 	}
 
 	log.WithField("count", len(config.Commands)).Info("installing commands from ccmd.yaml")
+	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(config.Commands))
 
 	// Install each command
 	var installErrors []error
@@ -251,9 +254,21 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 			"version":    cmd.Version,
 		}).Debug("installing command")
 
+		// Show user output for installation
+		output.PrintInfof("\nInstalling %s", cmd.Repo)
+		if cmd.Version != "" {
+			output.PrintInfof("Version: %s", cmd.Version)
+		}
+
+		// Create spinner for installation process
+		spinner := output.NewSpinner(fmt.Sprintf("Installing %s...", cmd.Repo))
+		spinner.Start()
+
 		// Parse repo to get command name
 		_, repoName, err := cmd.ParseOwnerRepo()
 		if err != nil {
+			spinner.Stop()
+			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
 			installErrors = append(installErrors,
 				errors.Wrap(err, errors.CodeInvalidArgument, "failed to parse repository").
 					WithDetail("repository", cmd.Repo))
@@ -270,11 +285,15 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		}
 
 		if err := InstallCommand(ctx, opts); err != nil {
+			spinner.Stop()
+			output.Error("Failed to install %s: %v", cmd.Repo, err)
 			installErrors = append(installErrors, errors.Wrap(err, errors.CodeInternal, "failed to install command").
 				WithDetail("repository", cmd.Repo))
 			continue
 		}
 
+		spinner.Stop()
+		output.PrintSuccessf("Command '%s' has been successfully installed", repoName)
 		successCount++
 	}
 
@@ -284,6 +303,9 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		"failed":  len(installErrors),
 		"total":   len(config.Commands),
 	}).Info("installation complete")
+
+	// Show final summary to user
+	output.PrintInfof("\nSuccessfully installed %d out of %d command(s)", successCount, len(config.Commands))
 
 	// Return error if any installations failed
 	if len(installErrors) > 0 {
