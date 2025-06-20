@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
 	"github.com/gifflet/ccmd/pkg/project"
@@ -37,15 +37,14 @@ func NewCommand() *cobra.Command {
 }
 
 func runRemove(commandName string, force, save bool) error {
-	// Check if command exists
-	exists, err := commands.CommandExists(commandName, "", nil)
-	if err != nil {
-		return fmt.Errorf("failed to check command existence: %w", err)
+	// Check if command exists in lock file
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", fs.OS{})
+	if err := lockManager.Load(); err != nil {
+		return fmt.Errorf("failed to load lock file: %w", err)
 	}
 
-	if !exists {
-		output.PrintErrorf("Command '%s' is not installed", commandName)
-		return fmt.Errorf("command not found")
+	if !lockManager.HasCommand(commandName) {
+		return fmt.Errorf("command '%s' is not installed", commandName)
 	}
 
 	// Get command info for display
@@ -109,7 +108,7 @@ func isConfirmation(response string) bool {
 	return response == "y" || response == "yes"
 }
 
-func updateProjectFiles(commandName string, cmdInfo *models.Command) error {
+func updateProjectFiles(commandName string, cmdInfo *project.CommandLockInfo) error {
 	// Get the repository from command info
 	repo := ""
 	if cmdInfo != nil && cmdInfo.Metadata != nil {

@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/lock"
-	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // RemoveOptions contains options for removing a command.
@@ -28,10 +27,11 @@ func Remove(opts RemoveOptions) error {
 	}
 
 	if opts.BaseDir == "" {
-		opts.BaseDir = ".claude"
+		opts.BaseDir = "."
 	}
 
-	lockManager := lock.NewManagerWithFS(opts.BaseDir, opts.FileSystem)
+	lockPath := "ccmd-lock.yaml"
+	lockManager := project.NewLockManagerWithFS(lockPath, opts.FileSystem)
 
 	// Load current lock file
 	if err := lockManager.Load(); err != nil {
@@ -44,13 +44,13 @@ func Remove(opts RemoveOptions) error {
 	}
 
 	// Remove command directory (ignore if doesn't exist)
-	commandDir := filepath.Join(opts.BaseDir, "commands", opts.Name)
+	commandDir := filepath.Join(opts.BaseDir, ".claude", "commands", opts.Name)
 	if err := opts.FileSystem.RemoveAll(commandDir); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to remove command directory: %w", err)
 	}
 
 	// Remove command markdown file (ignore if doesn't exist)
-	commandFile := filepath.Join(opts.BaseDir, "commands", opts.Name+".md")
+	commandFile := filepath.Join(opts.BaseDir, ".claude", "commands", opts.Name+".md")
 	if err := opts.FileSystem.Remove(commandFile); err != nil && !os.IsNotExist(err) {
 		// Try to restore the command directory if markdown removal fails
 		if mkdirErr := opts.FileSystem.MkdirAll(commandDir, 0o755); mkdirErr != nil {
@@ -88,11 +88,12 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 		filesystem = fs.OS{}
 	}
 
-	if baseDir == "" {
-		baseDir = ".claude"
-	}
+	// baseDir parameter is kept for API compatibility but not used
+	// Always use lock file from project root
+	_ = baseDir
 
-	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
+	lockPath := "ccmd-lock.yaml"
+	lockManager := project.NewLockManagerWithFS(lockPath, filesystem)
 	if err := lockManager.Load(); err != nil {
 		if os.IsNotExist(err) {
 			return []string{}, nil
@@ -113,38 +114,18 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 	return commands, nil
 }
 
-// CommandExists checks if a command exists.
-func CommandExists(name, baseDir string, filesystem fs.FileSystem) (bool, error) {
-	if filesystem == nil {
-		filesystem = fs.OS{}
-	}
-
-	if baseDir == "" {
-		baseDir = ".claude"
-	}
-
-	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
-	if err := lockManager.Load(); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed to load lock file: %w", err)
-	}
-
-	return lockManager.HasCommand(name), nil
-}
-
 // GetCommandInfo retrieves information about a specific command.
-func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*models.Command, error) {
+func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*project.CommandLockInfo, error) {
 	if filesystem == nil {
 		filesystem = fs.OS{}
 	}
 
-	if baseDir == "" {
-		baseDir = ".claude"
-	}
+	// baseDir parameter is kept for API compatibility but not used
+	// Always use lock file from project root
+	_ = baseDir
 
-	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
+	lockPath := "ccmd-lock.yaml"
+	lockManager := project.NewLockManagerWithFS(lockPath, filesystem)
 	if err := lockManager.Load(); err != nil {
 		return nil, fmt.Errorf("failed to load lock file: %w", err)
 	}
@@ -152,6 +133,10 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*models.Com
 	cmd, err := lockManager.GetCommand(name)
 	if err != nil {
 		return nil, err
+	}
+
+	if cmd == nil {
+		return nil, fmt.Errorf("command %q not found", name)
 	}
 
 	return cmd, nil

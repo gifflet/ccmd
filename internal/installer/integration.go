@@ -145,11 +145,12 @@ func InstallCommand(ctx context.Context, opts IntegrationOptions, addToConfig bo
 
 	// Create installer
 	installerOpts := Options{
-		Repository: repo,
-		Version:    opts.Version,
-		Name:       opts.Name,
-		Force:      opts.Force,
-		InstallDir: installDir,
+		Repository:  repo,
+		Version:     opts.Version,
+		Name:        opts.Name,
+		Force:       opts.Force,
+		InstallDir:  installDir,
+		ProjectPath: opts.ProjectPath,
 	}
 
 	installer, err := New(installerOpts)
@@ -165,8 +166,10 @@ func InstallCommand(ctx context.Context, opts IntegrationOptions, addToConfig bo
 	// Update project files if in a project context
 	if opts.ProjectPath != "" && addToConfig {
 		if err := updateProjectFiles(opts.ProjectPath, repo, opts.Version, opts.Name); err != nil {
-			// Don't fail the installation, just warn
-			log.WithError(err).Warn("failed to update project files")
+			// Check if it's just "already exists" error
+			if !strings.Contains(err.Error(), "already exists in configuration") {
+				log.WithError(err).Warn("failed to update project files")
+			}
 		}
 	}
 
@@ -179,7 +182,9 @@ func updateProjectFiles(projectPath, repository, version, _ string) error {
 
 	// Check if project has ccmd.yaml
 	if !pm.ConfigExists() {
-		return nil // No project config to update
+		if err := pm.InitializeConfig(); err != nil {
+			return errors.Wrap(err, errors.CodeFileIO, "failed to initialize ccmd.yaml")
+		}
 	}
 
 	// Extract owner/repo from repository URL
@@ -232,21 +237,43 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		return errors.Wrap(err, errors.CodeFileIO, "failed to load ccmd.yaml")
 	}
 
-	if len(config.Commands) == 0 {
+	// Get normalized commands
+	configCommands, err := config.GetCommands()
+	if err != nil {
+		return errors.Wrap(err, errors.CodeInvalidArgument, "failed to parse commands")
+	}
+
+	if len(configCommands) == 0 {
 		log.Info("no commands found in ccmd.yaml")
 		output.PrintInfof("No commands found in ccmd.yaml")
 		return nil
 	}
 
-	log.WithField("count", len(config.Commands)).Info("installing commands from ccmd.yaml")
-	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(config.Commands))
+	log.WithField("count", len(configCommands)).Info("installing commands from ccmd.yaml")
+	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(configCommands))
 
 	// Install each command
 	var installErrors []error
 	successCount := 0
 
-	for _, cmd := range config.Commands {
-		// Build repository URL
+	for _, cmd := range configCommands {
+		_, repoName, err := cmd.ParseOwnerRepo()
+		if err != nil {
+			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
+			installErrors = append(installErrors,
+				errors.Wrap(err, errors.CodeInvalidArgument, "failed to parse repository").
+					WithDetail("repository", cmd.Repo))
+			continue
+		}
+
+		manager := project.NewManager(".claude")
+		exists, err := manager.CommandExists(repoName)
+		if err == nil && exists && !force {
+			output.PrintInfof("Command '%s' is already installed", repoName)
+			successCount++
+			continue
+		}
+
 		repository := fmt.Sprintf("https://github.com/%s.git", cmd.Repo)
 
 		log.WithFields(logger.Fields{
@@ -265,7 +292,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		spinner.Start()
 
 		// Parse repo to get command name
-		_, repoName, err := cmd.ParseOwnerRepo()
+		_, repoName, err = cmd.ParseOwnerRepo()
 		if err != nil {
 			spinner.Stop()
 			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
@@ -301,11 +328,11 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 	log.WithFields(logger.Fields{
 		"success": successCount,
 		"failed":  len(installErrors),
-		"total":   len(config.Commands),
+		"total":   len(configCommands),
 	}).Info("installation complete")
 
 	// Show final summary to user
-	output.PrintInfof("\nSuccessfully installed %d out of %d command(s)", successCount, len(config.Commands))
+	output.PrintInfof("\nSuccessfully installed %d out of %d command(s)", successCount, len(configCommands))
 
 	// Return error if any installations failed
 	if len(installErrors) > 0 {

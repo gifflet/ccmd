@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/gifflet/ccmd/internal/fs"
 )
 
 func TestIntegration(t *testing.T) {
@@ -46,8 +48,12 @@ func TestIntegration(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if len(config.Commands) != 3 {
-			t.Errorf("expected 3 commands, got %d", len(config.Commands))
+		configCommands, err := config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(configCommands) != 3 {
+			t.Errorf("expected 3 commands, got %d", len(configCommands))
 		}
 
 		// Step 4: Add commands to lock file (simulating installation)
@@ -56,16 +62,15 @@ func TestIntegration(t *testing.T) {
 			t.Fatalf("failed to load lock file: %v", err)
 		}
 
-		installedCommands := []*Command{
+		installedCommands := []*CommandLockInfo{
 			{
 				Name:         "gh",
-				Repository:   "github/cli",
+				Source:       "github/cli",
 				Version:      "v2.0.0",
-				CommitHash:   "1234567890abcdef1234567890abcdef12345678",
+				Resolved:     "github/cli@v2.0.0",
+				Commit:       "1234567890abcdef1234567890abcdef12345678",
 				InstalledAt:  time.Now(),
 				UpdatedAt:    time.Now(),
-				FileSize:     10485760, // 10MB
-				Checksum:     "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
 				Dependencies: []string{},
 				Metadata: map[string]string{
 					"description": "GitHub CLI",
@@ -73,13 +78,12 @@ func TestIntegration(t *testing.T) {
 			},
 			{
 				Name:         "fzf",
-				Repository:   "junegunn/fzf",
+				Source:       "junegunn/fzf",
 				Version:      "latest",
-				CommitHash:   "2345678901bcdefg2345678901bcdefg23456789",
+				Resolved:     "junegunn/fzf@latest",
+				Commit:       "2345678901bcdefg2345678901bcdefg23456789",
 				InstalledAt:  time.Now(),
 				UpdatedAt:    time.Now(),
-				FileSize:     2097152, // 2MB
-				Checksum:     "bcdefg2345678901bcdefg2345678901bcdefg2345678901bcdefg2345678901",
 				Dependencies: []string{},
 				Metadata: map[string]string{
 					"description": "Fuzzy finder",
@@ -117,13 +121,17 @@ func TestIntegration(t *testing.T) {
 			t.Fatalf("failed to load final config: %v", err)
 		}
 
-		if len(finalConfig.Commands) != 2 {
-			t.Errorf("expected 2 commands after removal, got %d", len(finalConfig.Commands))
+		finalCommands, err := finalConfig.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get final commands: %v", err)
+		}
+		if len(finalCommands) != 2 {
+			t.Errorf("expected 2 commands after removal, got %d", len(finalCommands))
 		}
 
 		// Check updated version
 		found := false
-		for _, cmd := range finalConfig.Commands {
+		for _, cmd := range finalCommands {
 			if cmd.Repo == "github/cli" {
 				found = true
 				if cmd.Version != "v2.1.0" {
@@ -159,7 +167,8 @@ func TestIntegration(t *testing.T) {
 		}
 
 		configPath := filepath.Join(tmpDir, ConfigFileName)
-		err := SaveConfig(config, configPath)
+		fileSystem := fs.OS{}
+		err := SaveConfig(config, configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to save initial config: %v", err)
 		}
@@ -172,7 +181,7 @@ func TestIntegration(t *testing.T) {
 		go func() {
 			defer func() { done <- true }()
 			for i := 0; i < 10; i++ {
-				_, err := LoadConfig(configPath)
+				_, err := LoadConfig(configPath, fileSystem)
 				if err != nil {
 					errors <- err
 					return
@@ -185,7 +194,7 @@ func TestIntegration(t *testing.T) {
 		go func() {
 			defer func() { done <- true }()
 			for i := 0; i < 10; i++ {
-				_, err := LoadConfig(configPath)
+				_, err := LoadConfig(configPath, fileSystem)
 				if err != nil {
 					errors <- err
 					return
@@ -198,8 +207,10 @@ func TestIntegration(t *testing.T) {
 		go func() {
 			defer func() { done <- true }()
 			for i := 0; i < 5; i++ {
-				config.Commands[0].Version = "v1.0." + string(rune('0'+i))
-				err := SaveConfig(config, configPath)
+				if cmds, ok := config.Commands.([]ConfigCommand); ok && len(cmds) > 0 {
+					cmds[0].Version = "v1.0." + string(rune('0'+i))
+				}
+				err := SaveConfig(config, configPath, fileSystem)
 				if err != nil {
 					errors <- err
 					return
@@ -221,13 +232,17 @@ func TestIntegration(t *testing.T) {
 		}
 
 		// Verify final state is valid
-		finalConfig, err := LoadConfig(configPath)
+		finalConfig, err := LoadConfig(configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to load final config: %v", err)
 		}
 
-		if len(finalConfig.Commands) != 1 {
-			t.Errorf("expected 1 command, got %d", len(finalConfig.Commands))
+		finalCommands, err := finalConfig.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get final commands: %v", err)
+		}
+		if len(finalCommands) != 1 {
+			t.Errorf("expected 1 command, got %d", len(finalCommands))
 		}
 	})
 
@@ -266,8 +281,12 @@ func TestIntegration(t *testing.T) {
 			t.Fatalf("failed to load after recovery: %v", err)
 		}
 
-		if len(loaded.Commands) != 1 {
-			t.Errorf("expected 1 command after recovery, got %d", len(loaded.Commands))
+		loadedCommands, err := loaded.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get loaded commands: %v", err)
+		}
+		if len(loadedCommands) != 1 {
+			t.Errorf("expected 1 command after recovery, got %d", len(loadedCommands))
 		}
 	})
 }

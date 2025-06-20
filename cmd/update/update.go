@@ -13,10 +13,9 @@ import (
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/git"
-	"github.com/gifflet/ccmd/internal/lock"
-	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 var (
@@ -186,14 +185,14 @@ func updateCommand(commandName, baseDir string, filesystem fs.FileSystem) Result
 		Name: commandName,
 	}
 
-	// Check if command exists
-	exists, err := commands.CommandExists(commandName, baseDir, filesystem)
-	if err != nil {
-		result.Error = fmt.Errorf("failed to check command existence: %w", err)
+	// Check if command exists in lock file
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", filesystem)
+	if err := lockManager.Load(); err != nil {
+		result.Error = fmt.Errorf("failed to load lock file: %w", err)
 		return result
 	}
 
-	if !exists {
+	if !lockManager.HasCommand(commandName) {
 		result.Error = fmt.Errorf("command '%s' is not installed", commandName)
 		return result
 	}
@@ -257,7 +256,7 @@ func updateCommand(commandName, baseDir string, filesystem fs.FileSystem) Result
 
 	// Perform update
 	result.NewVersion = latestVersion
-	if err := performUpdate(cmdInfo, latestVersion, baseDir, filesystem); err != nil {
+	if err := performUpdate(cmdInfo, latestVersion, filesystem); err != nil {
 		result.Error = fmt.Errorf("failed to update command: %w", err)
 		return result
 	}
@@ -317,7 +316,7 @@ func versionNeedsUpdate(current, latest string) (bool, error) {
 	return false, fmt.Errorf("cannot compare versions: %s vs %s", current, latest)
 }
 
-func performUpdate(cmdInfo *models.Command, newVersion, baseDir string, filesystem fs.FileSystem) error {
+func performUpdate(cmdInfo *project.CommandLockInfo, newVersion string, filesystem fs.FileSystem) error {
 	// Use the install command with force flag to update
 	installOpts := commands.InstallOptions{
 		Repository: cmdInfo.Source,
@@ -331,21 +330,20 @@ func performUpdate(cmdInfo *models.Command, newVersion, baseDir string, filesyst
 	}
 
 	// Update the lock file with new update time
-	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
-	if err := lockManager.Load(); err != nil {
+	lockManager2 := project.NewLockManagerWithFS("ccmd-lock.yaml", filesystem)
+	if err := lockManager2.Load(); err != nil {
 		return fmt.Errorf("failed to load lock file: %w", err)
 	}
 
 	// Update the UpdatedAt timestamp
-	if err := lockManager.UpdateCommand(cmdInfo.Name, func(cmd *models.Command) error {
-		cmd.UpdatedAt = time.Now()
-		return nil
-	}); err != nil {
+	cmdToUpdate := project.FromCommandLockInfo(cmdInfo)
+	cmdToUpdate.UpdatedAt = time.Now()
+	if err := lockManager2.UpdateCommand(cmdToUpdate); err != nil {
 		return fmt.Errorf("failed to update command in lock: %w", err)
 	}
 
 	// Save the lock file
-	if err := lockManager.Save(); err != nil {
+	if err := lockManager2.Save(); err != nil {
 		return fmt.Errorf("failed to save lock file: %w", err)
 	}
 

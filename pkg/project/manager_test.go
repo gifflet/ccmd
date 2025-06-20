@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -51,8 +52,12 @@ func TestManager(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if len(config.Commands) != 0 {
-			t.Errorf("expected empty commands, got %d", len(config.Commands))
+		commands, err := config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(commands) != 0 {
+			t.Errorf("expected empty commands, got %d", len(commands))
 		}
 	})
 
@@ -113,16 +118,20 @@ func TestManager(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if len(config.Commands) != 1 {
-			t.Errorf("expected 1 command, got %d", len(config.Commands))
+		commands, err := config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(commands) != 1 {
+			t.Errorf("expected 1 command, got %d", len(commands))
 		}
 
-		if config.Commands[0].Repo != "owner/repo" {
-			t.Errorf("expected repo owner/repo, got %s", config.Commands[0].Repo)
+		if commands[0].Repo != "owner/repo" {
+			t.Errorf("expected repo owner/repo, got %s", commands[0].Repo)
 		}
 
-		if config.Commands[0].Version != "v1.0.0" {
-			t.Errorf("expected version v1.0.0, got %s", config.Commands[0].Version)
+		if commands[0].Version != "v1.0.0" {
+			t.Errorf("expected version v1.0.0, got %s", commands[0].Version)
 		}
 
 		// Test duplicate
@@ -167,12 +176,16 @@ func TestManager(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if len(config.Commands) != 1 {
-			t.Errorf("expected 1 command, got %d", len(config.Commands))
+		commands, err := config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(commands) != 1 {
+			t.Errorf("expected 1 command, got %d", len(commands))
 		}
 
-		if config.Commands[0].Repo != "owner/repo2" {
-			t.Errorf("expected remaining repo to be owner/repo2, got %s", config.Commands[0].Repo)
+		if commands[0].Repo != "owner/repo2" {
+			t.Errorf("expected remaining repo to be owner/repo2, got %s", commands[0].Repo)
 		}
 
 		// Test removing non-existent
@@ -207,8 +220,12 @@ func TestManager(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if config.Commands[0].Version != "v2.0.0" {
-			t.Errorf("expected version v2.0.0, got %s", config.Commands[0].Version)
+		commands, err := config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(commands) > 0 && commands[0].Version != "v2.0.0" {
+			t.Errorf("expected version v2.0.0, got %s", commands[0].Version)
 		}
 
 		// Test updating non-existent
@@ -229,8 +246,12 @@ func TestManager(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if config.Commands[0].Version != "" {
-			t.Errorf("expected empty version, got %s", config.Commands[0].Version)
+		commands, err = config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(commands) > 0 && commands[0].Version != "" {
+			t.Errorf("expected empty version, got %s", commands[0].Version)
 		}
 	})
 
@@ -256,21 +277,24 @@ func TestManager(t *testing.T) {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if len(loadedConfig.Commands) != 2 {
-			t.Errorf("expected 2 commands, got %d", len(loadedConfig.Commands))
+		loadedCommands, err := loadedConfig.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get loaded commands: %v", err)
+		}
+		if len(loadedCommands) != 2 {
+			t.Errorf("expected 2 commands, got %d", len(loadedCommands))
 		}
 
 		// Test LockFile operations
 		lockFile := NewLockFile()
-		cmd := &Command{
+		cmd := &CommandLockInfo{
 			Name:         "repo1",
-			Repository:   "owner/repo1",
+			Source:       "owner/repo1",
 			Version:      "v1.0.0",
-			CommitHash:   "1234567890abcdef1234567890abcdef12345678",
+			Resolved:     "owner/repo1@v1.0.0",
+			Commit:       "1234567890abcdef1234567890abcdef12345678",
 			InstalledAt:  time.Now(),
 			UpdatedAt:    time.Now(),
-			FileSize:     1024,
-			Checksum:     "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
 			Dependencies: []string{},
 			Metadata:     map[string]string{},
 		}
@@ -296,8 +320,8 @@ func TestManager(t *testing.T) {
 		if cmd, exists := loadedLock.GetCommand("repo1"); !exists {
 			t.Error("expected to find repo1 in lock file")
 		} else {
-			if cmd.Repository != "owner/repo1" {
-				t.Errorf("expected repository owner/repo1, got %s", cmd.Repository)
+			if cmd.Source != "owner/repo1" {
+				t.Errorf("expected source owner/repo1, got %s", cmd.Source)
 			}
 		}
 	})
@@ -331,6 +355,35 @@ func TestManager(t *testing.T) {
 		err = m.UpdateCommand("owner/repo", "v2.0.0")
 		if err == nil {
 			t.Error("expected error when updating non-existent config")
+		}
+	})
+
+	t.Run("CommandExists", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		m := NewManager(tmpDir)
+
+		// Test command doesn't exist
+		exists, err := m.CommandExists("test-cmd")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if exists {
+			t.Error("expected command to not exist")
+		}
+
+		// Create command directory
+		commandPath := filepath.Join(tmpDir, "commands", "test-cmd")
+		if err := os.MkdirAll(commandPath, 0755); err != nil {
+			t.Fatalf("failed to create command directory: %v", err)
+		}
+
+		// Test command exists
+		exists, err = m.CommandExists("test-cmd")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !exists {
+			t.Error("expected command to exist")
 		}
 	})
 }

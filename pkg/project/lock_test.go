@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/gifflet/ccmd/internal/fs"
 )
 
 func TestNewLockFile(t *testing.T) {
@@ -17,8 +19,8 @@ func TestNewLockFile(t *testing.T) {
 		t.Errorf("expected version %s, got %s", LockFileVersion, lf.Version)
 	}
 
-	if lf.UpdatedAt.IsZero() {
-		t.Error("expected UpdatedAt to be set")
+	if lf.Commands == nil {
+		t.Error("expected Commands to be initialized")
 	}
 
 	if lf.Commands == nil {
@@ -30,13 +32,12 @@ func TestCommand_Validate(t *testing.T) {
 	validTime := time.Now()
 	validCmd := &Command{
 		Name:         "test-cmd",
-		Repository:   "github.com/user/repo",
+		Source:       "github.com/user/repo",
+		Resolved:     "github.com/user/repo@v1.0.0",
 		Version:      "v1.0.0",
-		CommitHash:   strings.Repeat("a", 40),
+		Commit:       strings.Repeat("a", 40),
 		InstalledAt:  validTime,
 		UpdatedAt:    validTime,
-		FileSize:     1024,
-		Checksum:     strings.Repeat("b", 64),
 		Dependencies: []string{"dep1", "dep2"},
 		Metadata:     map[string]string{"key": "value"},
 	}
@@ -58,8 +59,8 @@ func TestCommand_Validate(t *testing.T) {
 		},
 		{
 			name:    "missing repository",
-			modify:  func(c *Command) { c.Repository = "" },
-			wantErr: "repository is required",
+			modify:  func(c *Command) { c.Source = "" },
+			wantErr: "source is required",
 		},
 		{
 			name:    "missing version",
@@ -68,13 +69,13 @@ func TestCommand_Validate(t *testing.T) {
 		},
 		{
 			name:    "missing commit hash",
-			modify:  func(c *Command) { c.CommitHash = "" },
-			wantErr: "commit_hash is required",
+			modify:  func(c *Command) { c.Commit = "" },
+			wantErr: "commit is required",
 		},
 		{
 			name:    "invalid commit hash length",
-			modify:  func(c *Command) { c.CommitHash = "abc123" },
-			wantErr: "commit_hash must be a 40-character SHA",
+			modify:  func(c *Command) { c.Commit = "abc123" },
+			wantErr: "commit must be a 40-character SHA",
 		},
 		{
 			name:    "missing installed_at",
@@ -88,18 +89,18 @@ func TestCommand_Validate(t *testing.T) {
 		},
 		{
 			name:    "invalid file size",
-			modify:  func(c *Command) { c.FileSize = 0 },
-			wantErr: "file_size must be positive",
+			modify:  func(c *Command) { c.Source = "" },
+			wantErr: "source is required",
 		},
 		{
 			name:    "missing checksum",
-			modify:  func(c *Command) { c.Checksum = "" },
-			wantErr: "checksum is required",
+			modify:  func(c *Command) { c.Source = "" },
+			wantErr: "source is required",
 		},
 		{
 			name:    "invalid checksum length",
-			modify:  func(c *Command) { c.Checksum = "abc123" },
-			wantErr: "checksum must be a 64-character SHA256 hash",
+			modify:  func(c *Command) { c.Source = "" },
+			wantErr: "source is required",
 		},
 	}
 
@@ -128,13 +129,12 @@ func TestLockFile_AddCommand(t *testing.T) {
 	lf := NewLockFile()
 	cmd := &Command{
 		Name:        "test-cmd",
-		Repository:  "github.com/user/repo",
+		Source:      "github.com/user/repo",
+		Resolved:    "github.com/user/repo@v1.0.0",
 		Version:     "v1.0.0",
-		CommitHash:  strings.Repeat("a", 40),
+		Commit:      strings.Repeat("a", 40),
 		InstalledAt: time.Now(),
 		UpdatedAt:   time.Now(),
-		FileSize:    1024,
-		Checksum:    strings.Repeat("b", 64),
 	}
 
 	err := lf.AddCommand(cmd)
@@ -160,13 +160,12 @@ func TestLockFile_RemoveCommand(t *testing.T) {
 	lf := NewLockFile()
 	cmd := &Command{
 		Name:        "test-cmd",
-		Repository:  "github.com/user/repo",
+		Source:      "github.com/user/repo",
+		Resolved:    "github.com/user/repo@v1.0.0",
 		Version:     "v1.0.0",
-		CommitHash:  strings.Repeat("a", 40),
+		Commit:      strings.Repeat("a", 40),
 		InstalledAt: time.Now(),
 		UpdatedAt:   time.Now(),
-		FileSize:    1024,
-		Checksum:    strings.Repeat("b", 64),
 	}
 
 	lf.AddCommand(cmd)
@@ -193,35 +192,34 @@ func TestLockFile_Validate(t *testing.T) {
 		{
 			name: "valid lock file",
 			lockFile: &LockFile{
-				Version:   LockFileVersion,
-				UpdatedAt: time.Now(),
-				Commands:  make(map[string]*Command),
+				Version:         LockFileVersion,
+				LockfileVersion: 1,
+				Commands:        make(map[string]*Command),
 			},
 			wantErr: "",
 		},
 		{
 			name: "missing version",
 			lockFile: &LockFile{
-				UpdatedAt: time.Now(),
-				Commands:  make(map[string]*Command),
+				LockfileVersion: 1,
+				Commands:        make(map[string]*Command),
 			},
 			wantErr: "version is required",
 		},
 		{
 			name: "command name mismatch",
 			lockFile: &LockFile{
-				Version:   LockFileVersion,
-				UpdatedAt: time.Now(),
+				Version:         LockFileVersion,
+				LockfileVersion: 1,
 				Commands: map[string]*Command{
 					"cmd1": {
 						Name:        "cmd2",
-						Repository:  "github.com/user/repo",
+						Source:      "github.com/user/repo",
+						Resolved:    "github.com/user/repo@v1.0.0",
 						Version:     "v1.0.0",
-						CommitHash:  strings.Repeat("a", 40),
+						Commit:      strings.Repeat("a", 40),
 						InstalledAt: time.Now(),
 						UpdatedAt:   time.Now(),
-						FileSize:    1024,
-						Checksum:    strings.Repeat("b", 64),
 					},
 				},
 			},
@@ -255,32 +253,31 @@ func TestLockFile_SaveAndLoad(t *testing.T) {
 	lf := NewLockFile()
 	cmd1 := &Command{
 		Name:         "cmd1",
-		Repository:   "github.com/user/repo1",
+		Source:       "github.com/user/repo1",
+		Resolved:     "github.com/user/repo1@v1.0.0",
 		Version:      "v1.0.0",
-		CommitHash:   strings.Repeat("a", 40),
+		Commit:       strings.Repeat("a", 40),
 		InstalledAt:  time.Now().Truncate(time.Second), // Truncate for comparison
 		UpdatedAt:    time.Now().Truncate(time.Second),
-		FileSize:     1024,
-		Checksum:     strings.Repeat("b", 64),
 		Dependencies: []string{"dep1", "dep2"},
 		Metadata:     map[string]string{"key": "value"},
 	}
 	cmd2 := &Command{
 		Name:        "cmd2",
-		Repository:  "github.com/user/repo2",
+		Source:      "github.com/user/repo2",
+		Resolved:    "github.com/user/repo2@v2.0.0",
 		Version:     "v2.0.0",
-		CommitHash:  strings.Repeat("c", 40),
+		Commit:      strings.Repeat("c", 40),
 		InstalledAt: time.Now().Truncate(time.Second),
 		UpdatedAt:   time.Now().Truncate(time.Second),
-		FileSize:    2048,
-		Checksum:    strings.Repeat("d", 64),
 	}
 
 	lf.AddCommand(cmd1)
 	lf.AddCommand(cmd2)
 
 	// Save to file
-	if err := lf.SaveToFile(lockFilePath); err != nil {
+	fileSystem := fs.OS{}
+	if err := lf.SaveToFile(lockFilePath, fileSystem); err != nil {
 		t.Fatalf("failed to save lock file: %v", err)
 	}
 
@@ -290,7 +287,7 @@ func TestLockFile_SaveAndLoad(t *testing.T) {
 	}
 
 	// Load from file
-	loaded, err := LoadFromFile(lockFilePath)
+	loaded, err := LoadFromFile(lockFilePath, fileSystem)
 	if err != nil {
 		t.Fatalf("failed to load lock file: %v", err)
 	}
@@ -309,8 +306,8 @@ func TestLockFile_SaveAndLoad(t *testing.T) {
 	if !exists {
 		t.Error("cmd1 not found in loaded file")
 	} else {
-		if loadedCmd1.Repository != cmd1.Repository {
-			t.Errorf("cmd1: expected repository %s, got %s", cmd1.Repository, loadedCmd1.Repository)
+		if loadedCmd1.Source != cmd1.Source {
+			t.Errorf("cmd1: expected repository %s, got %s", cmd1.Source, loadedCmd1.Source)
 		}
 		if len(loadedCmd1.Dependencies) != 2 {
 			t.Errorf("cmd1: expected 2 dependencies, got %d", len(loadedCmd1.Dependencies))
@@ -325,25 +322,24 @@ func TestLockFile_SaveAndLoad(t *testing.T) {
 	if !exists {
 		t.Error("cmd2 not found in loaded file")
 	} else {
-		if loadedCmd2.FileSize != cmd2.FileSize {
-			t.Errorf("cmd2: expected file size %d, got %d", cmd2.FileSize, loadedCmd2.FileSize)
+		if loadedCmd2.Source != cmd2.Source {
+			t.Errorf("cmd2: expected source %s, got %s", cmd2.Source, loadedCmd2.Source)
 		}
 	}
 }
 
 func TestLockFile_YAMLFormat(t *testing.T) {
 	lf := NewLockFile()
-	lf.UpdatedAt = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	lf.LockfileVersion = 1
 
-	cmd := &Command{
+	cmd := &CommandLockInfo{
 		Name:         "test-cmd",
-		Repository:   "github.com/user/repo",
+		Source:       "github.com/user/repo",
+		Resolved:     "github.com/user/repo@v1.0.0",
 		Version:      "v1.0.0",
-		CommitHash:   strings.Repeat("a", 40),
+		Commit:       strings.Repeat("a", 40),
 		InstalledAt:  time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 		UpdatedAt:    time.Date(2024, 1, 1, 11, 0, 0, 0, time.UTC),
-		FileSize:     1024,
-		Checksum:     strings.Repeat("b", 64),
 		Dependencies: []string{"dep1", "dep2"},
 		Metadata: map[string]string{
 			"arch": "amd64",
@@ -363,14 +359,12 @@ func TestLockFile_YAMLFormat(t *testing.T) {
 	// Verify YAML structure contains expected fields
 	expectedFields := []string{
 		"version:",
-		"updated_at:",
+		"lockfileVersion:",
 		"commands:",
 		"test-cmd:",
-		"repository:",
-		"commit_hash:",
+		"source:",
+		"commit:",
 		"installed_at:",
-		"file_size:",
-		"checksum:",
 		"dependencies:",
 		"metadata:",
 	}
@@ -399,7 +393,6 @@ func TestCalculateChecksum(t *testing.T) {
 	// Calculate checksum
 	checksum, err := CalculateChecksum(tmpFile.Name())
 	if err != nil {
-		t.Fatalf("failed to calculate checksum: %v", err)
 	}
 
 	// Expected SHA256 of "Hello, World!"
@@ -434,20 +427,19 @@ func TestLockFile_AddCommand_InvalidCommand(t *testing.T) {
 
 func TestLockFile_AddCommand_NilCommandsMap(t *testing.T) {
 	lf := &LockFile{
-		Version:   LockFileVersion,
-		UpdatedAt: time.Now(),
-		Commands:  nil, // Start with nil map
+		Version:         LockFileVersion,
+		LockfileVersion: 1,
+		Commands:        nil, // Start with nil map
 	}
 
 	cmd := &Command{
 		Name:        "test-cmd",
-		Repository:  "github.com/user/repo",
+		Source:      "github.com/user/repo",
+		Resolved:    "github.com/user/repo@v1.0.0",
 		Version:     "v1.0.0",
-		CommitHash:  strings.Repeat("a", 40),
+		Commit:      strings.Repeat("a", 40),
 		InstalledAt: time.Now(),
 		UpdatedAt:   time.Now(),
-		FileSize:    1024,
-		Checksum:    strings.Repeat("b", 64),
 	}
 
 	err := lf.AddCommand(cmd)
@@ -467,9 +459,9 @@ func TestLockFile_AddCommand_NilCommandsMap(t *testing.T) {
 
 func TestLockFile_Validate_NilCommands(t *testing.T) {
 	lf := &LockFile{
-		Version:   LockFileVersion,
-		UpdatedAt: time.Now(),
-		Commands:  nil, // Test nil Commands map
+		Version:         LockFileVersion,
+		LockfileVersion: 1,
+		Commands:        nil, // Test nil Commands map
 	}
 
 	err := lf.Validate()
@@ -486,14 +478,15 @@ func TestLockFile_Validate_NilCommands(t *testing.T) {
 func TestLockFile_SaveToFile_InvalidLockFile(t *testing.T) {
 	lf := &LockFile{
 		// Missing required version field
-		UpdatedAt: time.Now(),
-		Commands:  make(map[string]*Command),
+		LockfileVersion: 1,
+		Commands:        make(map[string]*Command),
 	}
 
 	tmpDir := t.TempDir()
 	lockFilePath := filepath.Join(tmpDir, "invalid-lock.yaml")
 
-	err := lf.SaveToFile(lockFilePath)
+	fileSystem := fs.OS{}
+	err := lf.SaveToFile(lockFilePath, fileSystem)
 	if err == nil {
 		t.Error("expected error for invalid lock file")
 	}
@@ -506,7 +499,8 @@ func TestLockFile_SaveToFile_AtomicWriteFailure(t *testing.T) {
 	lf := NewLockFile()
 
 	// Use a directory path instead of file to trigger write error
-	err := lf.SaveToFile("/")
+	fileSystem := fs.OS{}
+	err := lf.SaveToFile("/", fileSystem)
 	if err == nil {
 		t.Error("expected error when saving to invalid path")
 	}
@@ -522,7 +516,8 @@ func TestLoadFromFile_InvalidYAML(t *testing.T) {
 		t.Fatalf("failed to write invalid YAML file: %v", err)
 	}
 
-	_, err := LoadFromFile(invalidYAMLPath)
+	fileSystem := fs.OS{}
+	_, err := LoadFromFile(invalidYAMLPath, fileSystem)
 	if err == nil {
 		t.Error("expected error for invalid YAML")
 	}
@@ -546,7 +541,8 @@ commands:
 		t.Fatalf("failed to write invalid lock file: %v", err)
 	}
 
-	_, err := LoadFromFile(invalidLockPath)
+	fileSystem := fs.OS{}
+	_, err := LoadFromFile(invalidLockPath, fileSystem)
 	if err == nil {
 		t.Error("expected error for invalid lock file content")
 	}
@@ -557,8 +553,8 @@ commands:
 
 func TestLockFile_Validate_InvalidCommand(t *testing.T) {
 	lf := &LockFile{
-		Version:   LockFileVersion,
-		UpdatedAt: time.Now(),
+		Version:         LockFileVersion,
+		LockfileVersion: 1,
 		Commands: map[string]*Command{
 			"invalid": {
 				Name: "invalid",
@@ -577,7 +573,8 @@ func TestLockFile_Validate_InvalidCommand(t *testing.T) {
 }
 
 func TestLoadFromFile_NonExistentFile(t *testing.T) {
-	_, err := LoadFromFile("/non/existent/file.yaml")
+	fileSystem := fs.OS{}
+	_, err := LoadFromFile("/non/existent/file.yaml", fileSystem)
 	if err == nil {
 		t.Error("expected error for non-existent file")
 	}

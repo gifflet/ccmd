@@ -10,38 +10,39 @@ import (
 func TestListWithMetadata(t *testing.T) {
 	// Create a mock filesystem
 	mockFS := fs.NewMemFS()
-	baseDir := ".claude"
+	baseDir := "/test"
 
 	// Create lock file with commands
-	lockContent := `{
-  "version": "1.0",
-  "commands": {
-    "test-cmd": {
-      "name": "test-cmd",
-      "version": "1.0.0",
-      "source": "github.com/user/test-cmd",
-      "installed_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    },
-    "no-metadata-cmd": {
-      "name": "no-metadata-cmd",
-      "version": "0.5.0",
-      "source": "github.com/user/no-metadata",
-      "installed_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  }
-}`
-	lockPath := filepath.Join(baseDir, "commands.lock")
-	if err := mockFS.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("Failed to create lock directory: %v", err)
+	lockContent := `version: "1.0"
+lockfileVersion: 1
+commands:
+  test-cmd:
+    name: test-cmd
+    version: 1.0.0
+    source: github.com/user/test-cmd
+    resolved: github.com/user/test-cmd@1.0.0
+    commit: 1234567890abcdef1234567890abcdef12345678
+    installed_at: 2024-01-01T00:00:00Z
+    updated_at: 2024-01-01T00:00:00Z
+  no-metadata-cmd:
+    name: no-metadata-cmd
+    version: 0.5.0
+    source: github.com/user/no-metadata
+    resolved: github.com/user/no-metadata@0.5.0
+    commit: 1234567890abcdef1234567890abcdef12345678
+    installed_at: 2024-01-01T00:00:00Z
+    updated_at: 2024-01-01T00:00:00Z`
+	// Write lock file directly with YAML content
+	if err := mockFS.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("Failed to create base directory: %v", err)
 	}
+	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
 	if err := mockFS.WriteFile(lockPath, []byte(lockContent), 0o644); err != nil {
 		t.Fatalf("Failed to write lock file: %v", err)
 	}
 
 	// Create command directories and files
-	commandsDir := filepath.Join(baseDir, "commands")
+	commandsDir := filepath.Join(baseDir, ".claude", "commands")
 	if err := mockFS.MkdirAll(commandsDir, 0o755); err != nil {
 		t.Fatalf("Failed to create commands directory: %v", err)
 	}
@@ -171,31 +172,31 @@ homepage: https://test-cmd.example.com
 func TestListWithInvalidMetadata(t *testing.T) {
 	// Create a mock filesystem
 	mockFS := fs.NewMemFS()
-	baseDir := ".claude"
+	baseDir := "/test"
 
 	// Create lock file
-	lockContent := `{
-  "version": "1.0",
-  "commands": {
-    "invalid-metadata-cmd": {
-      "name": "invalid-metadata-cmd",
-      "version": "1.0.0",
-      "source": "github.com/user/invalid",
-      "installed_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  }
-}`
-	lockPath := filepath.Join(baseDir, "commands.lock")
-	if err := mockFS.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("Failed to create lock directory: %v", err)
+	lockContent := `version: "1.0"
+lockfileVersion: 1
+commands:
+  invalid-metadata-cmd:
+    name: invalid-metadata-cmd
+    version: 1.0.0
+    source: github.com/user/invalid
+    resolved: github.com/user/invalid@1.0.0
+    commit: 1234567890abcdef1234567890abcdef12345678
+    installed_at: 2024-01-01T00:00:00Z
+    updated_at: 2024-01-01T00:00:00Z`
+	// Write lock file directly with YAML content
+	if err := mockFS.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("Failed to create base directory: %v", err)
 	}
+	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
 	if err := mockFS.WriteFile(lockPath, []byte(lockContent), 0o644); err != nil {
 		t.Fatalf("Failed to write lock file: %v", err)
 	}
 
 	// Create command directory
-	commandsDir := filepath.Join(baseDir, "commands")
+	commandsDir := filepath.Join(baseDir, ".claude", "commands")
 	cmdDir := filepath.Join(commandsDir, "invalid-metadata-cmd")
 	if err := mockFS.MkdirAll(cmdDir, 0o755); err != nil {
 		t.Fatalf("Failed to create command directory: %v", err)
@@ -244,25 +245,25 @@ description: Missing required fields
 func TestListFiltersByLockFile(t *testing.T) {
 	// Create a mock filesystem
 	mockFS := fs.NewMemFS()
-	baseDir := ".claude"
+	baseDir := "/test"
 
 	// Create lock file with only one command
-	lockContent := `{
-  "version": "1.0",
-  "commands": {
-    "tracked-cmd": {
-      "name": "tracked-cmd",
-      "version": "1.0.0",
-      "source": "github.com/user/tracked",
-      "installed_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  }
-}`
-	lockPath := filepath.Join(baseDir, "commands.lock")
-	if err := mockFS.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("Failed to create lock directory: %v", err)
+	lockContent := `version: "1.0"
+lockfileVersion: 1
+commands:
+  tracked-cmd:
+    name: tracked-cmd
+    version: 1.0.0
+    source: github.com/user/tracked
+    resolved: github.com/user/tracked@1.0.0
+    commit: 1234567890abcdef1234567890abcdef12345678
+    installed_at: 2024-01-01T00:00:00Z
+    updated_at: 2024-01-01T00:00:00Z`
+	// Write lock file directly with YAML content
+	if err := mockFS.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("Failed to create base directory: %v", err)
 	}
+	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
 	if err := mockFS.WriteFile(lockPath, []byte(lockContent), 0o644); err != nil {
 		t.Fatalf("Failed to write lock file: %v", err)
 	}
@@ -314,25 +315,25 @@ func TestListFiltersByLockFile(t *testing.T) {
 func TestListHandlesMissingFiles(t *testing.T) {
 	// Create a mock filesystem
 	mockFS := fs.NewMemFS()
-	baseDir := ".claude"
+	baseDir := "/test"
 
 	// Create lock file with a command that has missing files
-	lockContent := `{
-  "version": "1.0",
-  "commands": {
-    "missing-files-cmd": {
-      "name": "missing-files-cmd",
-      "version": "1.0.0",
-      "source": "github.com/user/missing",
-      "installed_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  }
-}`
-	lockPath := filepath.Join(baseDir, "commands.lock")
-	if err := mockFS.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("Failed to create lock directory: %v", err)
+	lockContent := `version: "1.0"
+lockfileVersion: 1
+commands:
+  missing-files-cmd:
+    name: missing-files-cmd
+    version: 1.0.0
+    source: github.com/user/missing
+    resolved: github.com/user/missing@1.0.0
+    commit: 1234567890abcdef1234567890abcdef12345678
+    installed_at: 2024-01-01T00:00:00Z
+    updated_at: 2024-01-01T00:00:00Z`
+	// Write lock file directly with YAML content
+	if err := mockFS.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("Failed to create base directory: %v", err)
 	}
+	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
 	if err := mockFS.WriteFile(lockPath, []byte(lockContent), 0o644); err != nil {
 		t.Fatalf("Failed to write lock file: %v", err)
 	}

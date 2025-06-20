@@ -74,24 +74,25 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 		filesystem = fs.OS{}
 	}
 
-	// Check if command exists
-	exists, err := commands.CommandExists(commandName, "", filesystem)
+	// Get command info from lock file (this will check if command exists)
+	cmdInfo, err := commands.GetCommandInfo(commandName, ".claude", filesystem)
 	if err != nil {
-		return fmt.Errorf("failed to check command existence: %w", err)
+		if err.Error() == fmt.Sprintf("command %q not found", commandName) {
+			if jsonFormat {
+				return fmt.Errorf("command '%s' is not installed", commandName)
+			}
+			output.PrintErrorf("Command '%s' is not installed", commandName)
+			return fmt.Errorf("command not found")
+		}
+		return fmt.Errorf("failed to get command info: %w", err)
 	}
 
-	if !exists {
+	if cmdInfo == nil {
 		if jsonFormat {
 			return fmt.Errorf("command '%s' is not installed", commandName)
 		}
 		output.PrintErrorf("Command '%s' is not installed", commandName)
 		return fmt.Errorf("command not found")
-	}
-
-	// Get command info from lock file
-	cmdInfo, err := commands.GetCommandInfo(commandName, "", filesystem)
-	if err != nil {
-		return fmt.Errorf("failed to get command info: %w", err)
 	}
 
 	// Get base directory (project-local)

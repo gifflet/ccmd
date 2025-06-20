@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -42,7 +43,8 @@ func TestRunInstallFromConfig(t *testing.T) {
 	config := &project.Config{
 		Commands: []project.ConfigCommand{},
 	}
-	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName)); err != nil {
+	fileSystem := fs.OS{}
+	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName), fileSystem); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,7 +66,7 @@ func TestRunInstallFromConfig(t *testing.T) {
 			},
 		},
 	}
-	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName)); err != nil {
+	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName), fileSystem); err != nil {
 		t.Fatal(err)
 	}
 
@@ -121,8 +123,8 @@ func TestUpdateProjectLockFile(t *testing.T) {
 		t.Errorf("expected command name 'test-cmd', got %q", cmd.Name)
 	}
 
-	if cmd.Repository != "https://github.com/test/test-cmd.git" {
-		t.Errorf("expected repository 'https://github.com/test/test-cmd.git', got %q", cmd.Repository)
+	if cmd.Source != "https://github.com/test/test-cmd.git" {
+		t.Errorf("expected source 'https://github.com/test/test-cmd.git', got %q", cmd.Source)
 	}
 
 	if cmd.Version != "v1.0.0" {

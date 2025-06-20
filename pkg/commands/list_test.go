@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/lock"
-	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 func TestList(t *testing.T) {
@@ -33,10 +33,12 @@ func TestList(t *testing.T) {
 		{
 			name: "empty lock file",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-				err = lockManager.Save()
+				// Create empty lock file with proper YAML format
+				lockContent := `version: "1.0"
+lockfileVersion: 1
+commands: {}
+`
+				err := memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), []byte(lockContent), 0o644)
 				require.NoError(t, err)
 			},
 			expectedCount: 0,
@@ -45,29 +47,33 @@ func TestList(t *testing.T) {
 		{
 			name: "single command with valid structure",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "test-cmd",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/test-cmd",
+					Resolved:    "github.com/example/test-cmd@1.0.0",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Create valid structure
-				commandDir := filepath.Join(baseDir, "commands", "test-cmd")
+				commandsDir := filepath.Join(baseDir, ".claude", "commands")
+				err = memFS.MkdirAll(commandsDir, 0o755)
+				require.NoError(t, err)
+
+				commandDir := filepath.Join(baseDir, ".claude", "commands", "test-cmd")
 				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 
-				markdownFile := filepath.Join(baseDir, "commands", "test-cmd.md")
+				markdownFile := filepath.Join(baseDir, ".claude", "commands", "test-cmd.md")
 				err = memFS.WriteFile(markdownFile, []byte("# Test Command"), 0o644)
 				require.NoError(t, err)
 			},
@@ -83,25 +89,27 @@ func TestList(t *testing.T) {
 		{
 			name: "command missing directory",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "no-dir",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/no-dir",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Only create markdown file
-				markdownFile := filepath.Join(baseDir, "commands", "no-dir.md")
+				commandsDir := filepath.Join(baseDir, ".claude", "commands")
+				err = memFS.MkdirAll(commandsDir, 0o755)
+				require.NoError(t, err)
+				markdownFile := filepath.Join(baseDir, ".claude", "commands", "no-dir.md")
 				err = memFS.WriteFile(markdownFile, []byte("# No Dir Command"), 0o644)
 				require.NoError(t, err)
 			},
@@ -117,25 +125,24 @@ func TestList(t *testing.T) {
 		{
 			name: "command missing markdown",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "no-md",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/no-md",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Only create directory
-				commandDir := filepath.Join(baseDir, "commands", "no-md")
+				commandDir := filepath.Join(baseDir, ".claude", "commands", "no-md")
 				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 			},
@@ -151,21 +158,20 @@ func TestList(t *testing.T) {
 		{
 			name: "command missing both files",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "no-files",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/no-files",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Don't create any files
@@ -183,21 +189,20 @@ func TestList(t *testing.T) {
 		{
 			name: "multiple commands with mixed structure",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
+				// Create lock file directly
+				lockFile := project.NewLockFile()
 
 				// Add multiple commands
 				commands := []struct {
-					cmd       *models.Command
+					cmd       *project.CommandLockInfo
 					createDir bool
 					createMD  bool
 				}{
 					{
-						cmd: &models.Command{
+						cmd: &project.CommandLockInfo{
 							Name:        "valid-cmd",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "github.com/example/valid-cmd",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
@@ -206,9 +211,10 @@ func TestList(t *testing.T) {
 						createMD:  true,
 					},
 					{
-						cmd: &models.Command{
+						cmd: &project.CommandLockInfo{
 							Name:        "broken-cmd",
 							Version:     "2.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "github.com/example/broken-cmd",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
@@ -217,9 +223,10 @@ func TestList(t *testing.T) {
 						createMD:  false,
 					},
 					{
-						cmd: &models.Command{
+						cmd: &project.CommandLockInfo{
 							Name:        "another-cmd",
 							Version:     "3.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "github.com/example/another-cmd",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
@@ -230,23 +237,27 @@ func TestList(t *testing.T) {
 				}
 
 				for _, c := range commands {
-					err = lockManager.AddCommand(c.cmd)
-					require.NoError(t, err)
+					lockFile.Commands[c.cmd.Name] = c.cmd
 
 					if c.createDir {
-						commandDir := filepath.Join(baseDir, "commands", c.cmd.Name)
-						err = memFS.MkdirAll(commandDir, 0o755)
+						commandDir := filepath.Join(baseDir, ".claude", "commands", c.cmd.Name)
+						err := memFS.MkdirAll(commandDir, 0o755)
 						require.NoError(t, err)
 					}
 
 					if c.createMD {
-						markdownFile := filepath.Join(baseDir, "commands", c.cmd.Name+".md")
+						commandsDir := filepath.Join(baseDir, ".claude", "commands")
+						err := memFS.MkdirAll(commandsDir, 0o755)
+						require.NoError(t, err)
+						markdownFile := filepath.Join(baseDir, ".claude", "commands", c.cmd.Name+".md")
 						err = memFS.WriteFile(markdownFile, []byte("# "+c.cmd.Name), 0o644)
 						require.NoError(t, err)
 					}
 				}
 
-				err = lockManager.Save()
+				data, err := yaml.Marshal(lockFile)
+				require.NoError(t, err)
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 			},
 			expectedCount: 3,
@@ -270,7 +281,7 @@ func TestList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			memFS := fs.NewMemFS()
-			baseDir := "/test/.claude"
+			baseDir := "/test"
 
 			// Create base directory
 			err := memFS.MkdirAll(baseDir, 0o755)
@@ -322,11 +333,11 @@ func TestVerifyCommandStructure(t *testing.T) {
 			name:        "command not in lock file",
 			commandName: "nonexistent",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create empty lock file
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
+				// Create empty lock file with YAML format
+				lockFile := project.NewLockFile()
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 			},
 			wantValid:   false,
@@ -337,29 +348,28 @@ func TestVerifyCommandStructure(t *testing.T) {
 			name:        "valid structure",
 			commandName: "valid-cmd",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file with command
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file with command directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "valid-cmd",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/valid-cmd",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Create both directory and markdown file
-				commandDir := filepath.Join(baseDir, "commands", "valid-cmd")
+				commandDir := filepath.Join(baseDir, ".claude", "commands", "valid-cmd")
 				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 
-				markdownFile := filepath.Join(baseDir, "commands", "valid-cmd.md")
+				markdownFile := filepath.Join(baseDir, ".claude", "commands", "valid-cmd.md")
 				err = memFS.WriteFile(markdownFile, []byte("# Valid Command"), 0o644)
 				require.NoError(t, err)
 			},
@@ -371,25 +381,27 @@ func TestVerifyCommandStructure(t *testing.T) {
 			name:        "missing directory",
 			commandName: "no-dir",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file with command
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file with command directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "no-dir",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/no-dir",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Only create markdown file
-				markdownFile := filepath.Join(baseDir, "commands", "no-dir.md")
+				commandsDir := filepath.Join(baseDir, ".claude", "commands")
+				err = memFS.MkdirAll(commandsDir, 0o755)
+				require.NoError(t, err)
+				markdownFile := filepath.Join(baseDir, ".claude", "commands", "no-dir.md")
 				err = memFS.WriteFile(markdownFile, []byte("# No Dir"), 0o644)
 				require.NoError(t, err)
 			},
@@ -401,25 +413,24 @@ func TestVerifyCommandStructure(t *testing.T) {
 			name:        "missing markdown",
 			commandName: "no-md",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file with command
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file with command directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "no-md",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/no-md",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Only create directory
-				commandDir := filepath.Join(baseDir, "commands", "no-md")
+				commandDir := filepath.Join(baseDir, ".claude", "commands", "no-md")
 				err = memFS.MkdirAll(commandDir, 0o755)
 				require.NoError(t, err)
 			},
@@ -431,21 +442,20 @@ func TestVerifyCommandStructure(t *testing.T) {
 			name:        "missing both",
 			commandName: "no-files",
 			setupFunc: func(t *testing.T, memFS *fs.MemFS, baseDir string) {
-				// Create lock file with command
-				lockManager := lock.NewManagerWithFS(baseDir, memFS)
-				err := lockManager.Load()
-				require.NoError(t, err)
-
-				cmd := &models.Command{
+				// Create lock file with command directly
+				lockFile := project.NewLockFile()
+				cmd := &project.CommandLockInfo{
 					Name:        "no-files",
 					Version:     "1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					Source:      "github.com/example/no-files",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
 				}
-				err = lockManager.AddCommand(cmd)
+				lockFile.Commands[cmd.Name] = cmd
+				data, err := yaml.Marshal(lockFile)
 				require.NoError(t, err)
-				err = lockManager.Save()
+				err = memFS.WriteFile(filepath.Join(baseDir, "ccmd-lock.yaml"), data, 0o644)
 				require.NoError(t, err)
 
 				// Don't create any files
@@ -469,7 +479,7 @@ func TestVerifyCommandStructure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			memFS := fs.NewMemFS()
-			baseDir := "/test/.claude"
+			baseDir := "/test"
 
 			// Create base directory
 			err := memFS.MkdirAll(baseDir, 0o755)

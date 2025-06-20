@@ -102,8 +102,13 @@ func runSync(dryRun, force bool) error {
 	}
 
 	// Create map of config commands
+	configCommands, err := config.GetCommands()
+	if err != nil {
+		return fmt.Errorf("failed to get commands from config: %w", err)
+	}
+
 	configMap := make(map[string]project.ConfigCommand)
-	for _, cmd := range config.Commands {
+	for _, cmd := range configCommands {
 		_, repoName, err := cmd.ParseOwnerRepo()
 		if err != nil {
 			output.PrintErrorf("Invalid repository format in ccmd.yaml: %s", cmd.Repo)
@@ -332,13 +337,11 @@ func updateLockFile(pm *project.Manager) error {
 		// Create command entry from installed command info
 		projectCmd := &project.Command{
 			Name:         cmd.Name,
-			Repository:   cmd.Source,
+			Source:       cmd.Source,
 			Version:      cmd.Version,
-			CommitHash:   "", // We don't have this info from models.Command
+			Resolved:     cmd.Source + "@" + cmd.Version,
 			InstalledAt:  cmd.InstalledAt,
 			UpdatedAt:    cmd.UpdatedAt,
-			FileSize:     0,  // We don't have this info from models.Command
-			Checksum:     "", // We don't have this info from models.Command
 			Dependencies: cmd.Dependencies,
 			Metadata:     cmd.Metadata,
 		}

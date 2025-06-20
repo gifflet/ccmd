@@ -3,17 +3,23 @@ package project
 import (
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v3"
+
+	"github.com/gifflet/ccmd/internal/fs"
 )
 
 // Config represents the ccmd.yaml configuration file structure
 type Config struct {
-	Commands []ConfigCommand `yaml:"commands"`
+	// Optional project metadata
+	Name        string `yaml:"name,omitempty"`
+	Description string `yaml:"description,omitempty"`
+
+	// Commands can be either strings or ConfigCommand objects
+	Commands interface{} `yaml:"commands"`
 }
 
 // ConfigCommand represents a single command declaration in ccmd.yaml
@@ -22,15 +28,91 @@ type ConfigCommand struct {
 	Version string `yaml:"version,omitempty"`
 }
 
-// Validate performs validation on the Config
-func (c *Config) Validate() error {
-	// Empty config is valid - it's a starting point
+// GetCommands returns a normalized list of ConfigCommand objects
+func (c *Config) GetCommands() ([]ConfigCommand, error) {
 	if c.Commands == nil {
-		c.Commands = []ConfigCommand{}
-		return nil
+		return []ConfigCommand{}, nil
 	}
 
-	for i, cmd := range c.Commands {
+	var commands []ConfigCommand
+
+	switch v := c.Commands.(type) {
+	case []interface{}:
+		// Handle mixed array (strings or objects)
+		for i, item := range v {
+			cmd, err := parseCommandItem(item)
+			if err != nil {
+				return nil, fmt.Errorf("command %d: %w", i, err)
+			}
+			commands = append(commands, cmd)
+		}
+	case []string:
+		// Handle pure string array
+		for i, str := range v {
+			cmd, err := parseCommandString(str)
+			if err != nil {
+				return nil, fmt.Errorf("command %d: %w", i, err)
+			}
+			commands = append(commands, cmd)
+		}
+	case []ConfigCommand:
+		// Already in correct format
+		commands = v
+	default:
+		return nil, fmt.Errorf("commands must be an array")
+	}
+
+	return commands, nil
+}
+
+// parseCommandItem parses a single command item (string or map)
+func parseCommandItem(item interface{}) (ConfigCommand, error) {
+	switch v := item.(type) {
+	case string:
+		return parseCommandString(v)
+	case map[string]interface{}:
+		// Convert map to ConfigCommand
+		cmd := ConfigCommand{}
+		if repo, ok := v["repo"].(string); ok {
+			cmd.Repo = repo
+		}
+		if version, ok := v["version"].(string); ok {
+			cmd.Version = version
+		}
+		// Check for unknown fields
+		for key := range v {
+			if key != "repo" && key != "version" {
+				return ConfigCommand{}, fmt.Errorf("field %s not found in type ConfigCommand", key)
+			}
+		}
+		return cmd, nil
+	default:
+		return ConfigCommand{}, fmt.Errorf("command must be a string or object")
+	}
+}
+
+// parseCommandString parses a command string in format "repo" or "repo@version"
+func parseCommandString(s string) (ConfigCommand, error) {
+	parts := strings.SplitN(s, "@", 2)
+	cmd := ConfigCommand{
+		Repo: parts[0],
+	}
+	if len(parts) > 1 {
+		cmd.Version = parts[1]
+	}
+	return cmd, nil
+}
+
+// Validate performs validation on the Config
+func (c *Config) Validate() error {
+	// Get normalized commands
+	commands, err := c.GetCommands()
+	if err != nil {
+		return err
+	}
+
+	// Validate each command
+	for i, cmd := range commands {
 		if err := cmd.Validate(); err != nil {
 			return fmt.Errorf("command %d: %w", i, err)
 		}
@@ -124,16 +206,13 @@ func validateVersion(version string) error {
 }
 
 // LoadConfig loads and parses a ccmd.yaml file
-func LoadConfig(path string) (*Config, error) {
-	file, err := os.Open(path) // #nosec G304 - path is expected to be user-provided
+func LoadConfig(path string, fileSystem fs.FileSystem) (*Config, error) {
+	data, err := fileSystem.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open config file: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	defer func() {
-		_ = file.Close() //nolint:errcheck
-	}()
 
-	return ParseConfig(file)
+	return ParseConfig(strings.NewReader(string(data)))
 }
 
 // ParseConfig parses ccmd.yaml content from a reader
@@ -160,13 +239,64 @@ func ParseConfig(r io.Reader) (*Config, error) {
 }
 
 // SaveConfig saves a Config to a ccmd.yaml file
-func SaveConfig(config *Config, path string) error {
+func SaveConfig(config *Config, path string, fileSystem fs.FileSystem) error {
 	if err := config.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	// Convert to save format
+	saveConfig := config.toSaveFormat()
+
 	// Config files are readable by all (0644)
-	return writeYAMLFile(path, config, 0o644)
+	return writeYAMLFile(path, saveConfig, 0o644, fileSystem)
+}
+
+// toSaveFormat converts Config to a format that saves as string array when possible
+func (c *Config) toSaveFormat() interface{} {
+	// Get normalized commands
+	commands, err := c.GetCommands()
+	if err != nil || len(commands) == 0 {
+		return c
+	}
+
+	// Check if all commands can be represented as strings
+	allSimple := true
+	for _, cmd := range commands {
+		if cmd.Version != "" {
+			// Still simple if version is embedded in repo
+			if !strings.Contains(cmd.Repo, "@") {
+				allSimple = false
+				break
+			}
+		}
+	}
+
+	if allSimple {
+		// Convert to string array format
+		stringCommands := make([]string, len(commands))
+		for i, cmd := range commands {
+			if cmd.Version != "" && !strings.Contains(cmd.Repo, "@") {
+				stringCommands[i] = cmd.Repo + "@" + cmd.Version
+			} else {
+				stringCommands[i] = cmd.Repo
+			}
+		}
+
+		// Return a simplified structure
+		type simpleConfig struct {
+			Name        string   `yaml:"name,omitempty"`
+			Description string   `yaml:"description,omitempty"`
+			Commands    []string `yaml:"commands"`
+		}
+		return &simpleConfig{
+			Name:        c.Name,
+			Description: c.Description,
+			Commands:    stringCommands,
+		}
+	}
+
+	// Keep original format
+	return c
 }
 
 // WriteConfig writes a Config to an io.Writer
@@ -175,12 +305,15 @@ func WriteConfig(config *Config, w io.Writer) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	// Convert to save format
+	saveConfig := config.toSaveFormat()
+
 	encoder := yaml.NewEncoder(w)
 	defer func() {
 		_ = encoder.Close() //nolint:errcheck // Best effort
 	}()
 
-	if err := encoder.Encode(config); err != nil {
+	if err := encoder.Encode(saveConfig); err != nil {
 		return fmt.Errorf("failed to encode config: %w", err)
 	}
 

@@ -6,9 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gifflet/ccmd/internal/fs"
 )
 
 func TestSaveConfig(t *testing.T) {
+	fileSystem := fs.OS{}
+
 	t.Run("ValidConfig", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "ccmd.yaml")
@@ -20,7 +24,7 @@ func TestSaveConfig(t *testing.T) {
 			},
 		}
 
-		err := SaveConfig(config, configPath)
+		err := SaveConfig(config, configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
@@ -31,21 +35,26 @@ func TestSaveConfig(t *testing.T) {
 		}
 
 		// Load and verify
-		loaded, err := LoadConfig(configPath)
+		loaded, err := LoadConfig(configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to load saved config: %v", err)
 		}
 
-		if len(loaded.Commands) != 2 {
-			t.Errorf("expected 2 commands, got %d", len(loaded.Commands))
+		commands, err := loaded.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
 		}
 
-		if loaded.Commands[0].Repo != "owner/repo1" {
-			t.Errorf("expected first repo to be owner/repo1, got %s", loaded.Commands[0].Repo)
+		if len(commands) != 2 {
+			t.Errorf("expected 2 commands, got %d", len(commands))
 		}
 
-		if loaded.Commands[1].Version != "latest" {
-			t.Errorf("expected second version to be latest, got %s", loaded.Commands[1].Version)
+		if commands[0].Repo != "owner/repo1" {
+			t.Errorf("expected first repo to be owner/repo1, got %s", commands[0].Repo)
+		}
+
+		if commands[1].Version != "latest" {
+			t.Errorf("expected second version to be latest, got %s", commands[1].Version)
 		}
 	})
 
@@ -58,7 +67,7 @@ func TestSaveConfig(t *testing.T) {
 			Commands: []ConfigCommand{},
 		}
 
-		err := SaveConfig(config, configPath)
+		err := SaveConfig(config, configPath, fileSystem)
 		if err != nil {
 			t.Errorf("empty config should be valid: %v", err)
 		}
@@ -70,7 +79,7 @@ func TestSaveConfig(t *testing.T) {
 			},
 		}
 
-		err = SaveConfig(config, configPath)
+		err = SaveConfig(config, configPath, fileSystem)
 		if err == nil {
 			t.Error("expected error when saving config with invalid command")
 		}
@@ -87,7 +96,7 @@ func TestSaveConfig(t *testing.T) {
 			},
 		}
 
-		err := SaveConfig(config1, configPath)
+		err := SaveConfig(config1, configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to save initial config: %v", err)
 		}
@@ -99,7 +108,7 @@ func TestSaveConfig(t *testing.T) {
 			},
 		}
 
-		err = SaveConfig(config2, configPath)
+		err = SaveConfig(config2, configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to save updated config: %v", err)
 		}
@@ -111,13 +120,18 @@ func TestSaveConfig(t *testing.T) {
 		}
 
 		// Verify final content
-		loaded, err := LoadConfig(configPath)
+		loaded, err := LoadConfig(configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to load config: %v", err)
 		}
 
-		if loaded.Commands[0].Repo != "owner/repo2" {
-			t.Errorf("expected repo owner/repo2, got %s", loaded.Commands[0].Repo)
+		commands, err := loaded.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+
+		if len(commands) > 0 && commands[0].Repo != "owner/repo2" {
+			t.Errorf("expected repo owner/repo2, got %s", commands[0].Repo)
 		}
 	})
 
@@ -131,7 +145,7 @@ func TestSaveConfig(t *testing.T) {
 			},
 		}
 
-		err := SaveConfig(config, configPath)
+		err := SaveConfig(config, configPath, fileSystem)
 		if err != nil {
 			t.Fatalf("failed to save config: %v", err)
 		}
@@ -225,12 +239,17 @@ func TestWriteConfig(t *testing.T) {
 			t.Fatalf("failed to parse written config: %v", err)
 		}
 
-		if len(parsedConfig.Commands) != 1 {
-			t.Errorf("expected 1 command, got %d", len(parsedConfig.Commands))
+		commands, err := parsedConfig.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
 		}
 
-		if parsedConfig.Commands[0].Repo != "owner/repo" {
-			t.Errorf("expected repo owner/repo, got %s", parsedConfig.Commands[0].Repo)
+		if len(commands) != 1 {
+			t.Errorf("expected 1 command, got %d", len(commands))
+		}
+
+		if commands[0].Repo != "owner/repo" {
+			t.Errorf("expected repo owner/repo, got %s", commands[0].Repo)
 		}
 	})
 

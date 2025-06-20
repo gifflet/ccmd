@@ -10,9 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/lock"
-	"github.com/gifflet/ccmd/internal/models"
-	"github.com/gifflet/ccmd/pkg/commands"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -32,13 +29,22 @@ func TestRunRemove(t *testing.T) {
 			force:       true,
 			save:        false,
 			setupFunc: func(t *testing.T, tmpDir string) {
+				// Create command directory structure
+				require.NoError(t, os.MkdirAll(filepath.Join(".claude", "commands", "test-cmd"), 0755))
+
 				// Setup lock file with command
-				lockManager := lock.NewManagerWithFS(".claude", fs.OS{})
+				lockPath := "ccmd-lock.yaml"
+				lockManager := project.NewLockManagerWithFS(lockPath, fs.OS{})
 				require.NoError(t, lockManager.Load())
-				cmd := &models.Command{
-					Name:     "test-cmd",
-					Version:  "v1.0.0",
-					Metadata: map[string]string{"repository": "test/test-cmd"},
+				cmd := &project.CommandLockInfo{
+					Name:        "test-cmd",
+					Version:     "v1.0.0",
+					Source:      "test/test-cmd",
+					Resolved:    "test/test-cmd@v1.0.0",
+					Commit:      "1234567890abcdef1234567890abcdef12345678",
+					InstalledAt: time.Now(),
+					UpdatedAt:   time.Now(),
+					Metadata:    map[string]string{"repository": "test/test-cmd"},
 				}
 				require.NoError(t, lockManager.AddCommand(cmd))
 				require.NoError(t, lockManager.Save())
@@ -46,7 +52,8 @@ func TestRunRemove(t *testing.T) {
 			wantErr: false,
 			checkFunc: func(t *testing.T, tmpDir string) {
 				// Command should be removed from lock file
-				exists, err := commands.CommandExists("test-cmd", "", nil)
+				manager := project.NewManager(".claude")
+				exists, err := manager.CommandExists("test-cmd")
 				require.NoError(t, err)
 				assert.False(t, exists)
 			},
@@ -57,6 +64,9 @@ func TestRunRemove(t *testing.T) {
 			force:       true,
 			save:        true,
 			setupFunc: func(t *testing.T, tmpDir string) {
+				// Create command directory structure
+				require.NoError(t, os.MkdirAll(filepath.Join(".claude", "commands", "test-cmd"), 0755))
+
 				// Create ccmd.yaml
 				manager := project.NewManager(".")
 				config := &project.Config{
@@ -71,27 +81,32 @@ func TestRunRemove(t *testing.T) {
 
 				// Create ccmd-lock.yaml with command
 				lockFile := project.NewLockFile()
-				cmd := &project.Command{
+				cmd := &project.CommandLockInfo{
 					Name:        "test-cmd",
-					Repository:  "https://github.com/test/test-cmd.git",
+					Source:      "https://github.com/test/test-cmd.git",
 					Version:     "v1.0.0",
-					CommitHash:  "abcdef1234567890abcdef1234567890abcdef12",
+					Resolved:    "https://github.com/test/test-cmd.git@v1.0.0",
+					Commit:      "abcdef1234567890abcdef1234567890abcdef12",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
-					FileSize:    1024,
-					Checksum:    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 					Metadata:    map[string]string{"repository": "test/test-cmd"},
 				}
 				require.NoError(t, lockFile.AddCommand(cmd))
 				require.NoError(t, manager.SaveLockFile(lockFile))
 
 				// Also add to .claude lock file for the command to exist
-				lockManager := lock.NewManagerWithFS(".claude", fs.OS{})
+				lockPath := "ccmd-lock.yaml"
+				lockManager := project.NewLockManagerWithFS(lockPath, fs.OS{})
 				require.NoError(t, lockManager.Load())
-				internalCmd := &models.Command{
-					Name:     "test-cmd",
-					Version:  "v1.0.0",
-					Metadata: map[string]string{"repository": "test/test-cmd"},
+				internalCmd := &project.CommandLockInfo{
+					Name:        "test-cmd",
+					Version:     "v1.0.0",
+					Source:      "https://github.com/test/test-cmd.git",
+					Resolved:    "https://github.com/test/test-cmd.git@v1.0.0",
+					Commit:      "abcdef1234567890abcdef1234567890abcdef12",
+					InstalledAt: time.Now(),
+					UpdatedAt:   time.Now(),
+					Metadata:    map[string]string{"repository": "test/test-cmd"},
 				}
 				require.NoError(t, lockManager.AddCommand(internalCmd))
 				require.NoError(t, lockManager.Save())
@@ -141,8 +156,10 @@ func TestRunRemove(t *testing.T) {
 			require.NoError(t, os.MkdirAll(filepath.Join(".claude", "commands"), 0755))
 
 			// Create initial lock file
-			lockContent := `commands: {}`
-			require.NoError(t, os.WriteFile(filepath.Join(".claude", "ccmd-lock.yaml"), []byte(lockContent), 0644))
+			lockContent := `version: "1.0"
+lockfileVersion: 1
+commands: {}`
+			require.NoError(t, os.WriteFile("ccmd-lock.yaml", []byte(lockContent), 0644))
 
 			// Run setup
 			tt.setupFunc(t, tmpDir)
@@ -167,7 +184,7 @@ func TestUpdateProjectFiles(t *testing.T) {
 	tests := []struct {
 		name        string
 		commandName string
-		cmdInfo     *models.Command
+		cmdInfo     *project.CommandLockInfo
 		setupFunc   func(t *testing.T, tmpDir string)
 		wantErr     bool
 		checkFunc   func(t *testing.T, tmpDir string)
@@ -175,10 +192,15 @@ func TestUpdateProjectFiles(t *testing.T) {
 		{
 			name:        "update both ccmd.yaml and ccmd-lock.yaml",
 			commandName: "test-cmd",
-			cmdInfo: &models.Command{
-				Name:     "test-cmd",
-				Version:  "v1.0.0",
-				Metadata: map[string]string{"repository": "test/test-cmd"},
+			cmdInfo: &project.CommandLockInfo{
+				Name:        "test-cmd",
+				Version:     "v1.0.0",
+				Source:      "test/test-cmd",
+				Resolved:    "test/test-cmd@v1.0.0",
+				Commit:      "1234567890abcdef1234567890abcdef12345678",
+				InstalledAt: time.Now(),
+				UpdatedAt:   time.Now(),
+				Metadata:    map[string]string{"repository": "test/test-cmd"},
 			},
 			setupFunc: func(t *testing.T, tmpDir string) {
 				manager := project.NewManager(".")
@@ -202,23 +224,21 @@ func TestUpdateProjectFiles(t *testing.T) {
 				lockFile := project.NewLockFile()
 				cmd1 := &project.Command{
 					Name:        "test-cmd",
-					Repository:  "https://github.com/test/test-cmd.git",
+					Source:      "https://github.com/test/test-cmd.git",
+					Resolved:    "https://github.com/test/test-cmd.git@v1.0.0",
 					Version:     "v1.0.0",
-					CommitHash:  "abcdef1234567890abcdef1234567890abcdef12",
+					Commit:      "abcdef1234567890abcdef1234567890abcdef12",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
-					FileSize:    1024,
-					Checksum:    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 				}
 				cmd2 := &project.Command{
 					Name:        "other-cmd",
-					Repository:  "https://github.com/test/other-cmd.git",
+					Source:      "https://github.com/test/other-cmd.git",
+					Resolved:    "https://github.com/test/other-cmd.git@v2.0.0",
 					Version:     "v2.0.0",
-					CommitHash:  "def4567890abcdef1234567890abcdef12345678",
+					Commit:      "def4567890abcdef1234567890abcdef12345678",
 					InstalledAt: time.Now(),
 					UpdatedAt:   time.Now(),
-					FileSize:    2048,
-					Checksum:    "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
 				}
 				require.NoError(t, lockFile.AddCommand(cmd1))
 				require.NoError(t, lockFile.AddCommand(cmd2))
@@ -231,8 +251,10 @@ func TestUpdateProjectFiles(t *testing.T) {
 				// Check ccmd.yaml - only other-cmd should remain
 				config, err := manager.LoadConfig()
 				require.NoError(t, err)
-				assert.Len(t, config.Commands, 1)
-				assert.Equal(t, "test/other-cmd", config.Commands[0].Repo)
+				commands, err := config.GetCommands()
+				require.NoError(t, err)
+				assert.Len(t, commands, 1)
+				assert.Equal(t, "test/other-cmd", commands[0].Repo)
 
 				// Check ccmd-lock.yaml - only other-cmd should remain
 				lockFile, err := manager.LoadLockFile()
@@ -247,7 +269,7 @@ func TestUpdateProjectFiles(t *testing.T) {
 		{
 			name:        "command info without repository metadata",
 			commandName: "test-cmd",
-			cmdInfo: &models.Command{
+			cmdInfo: &project.CommandLockInfo{
 				Name:    "test-cmd",
 				Version: "v1.0.0",
 			},
@@ -258,10 +280,15 @@ func TestUpdateProjectFiles(t *testing.T) {
 		{
 			name:        "no project files exist",
 			commandName: "test-cmd",
-			cmdInfo: &models.Command{
-				Name:     "test-cmd",
-				Version:  "v1.0.0",
-				Metadata: map[string]string{"repository": "test/test-cmd"},
+			cmdInfo: &project.CommandLockInfo{
+				Name:        "test-cmd",
+				Version:     "v1.0.0",
+				Source:      "test/test-cmd",
+				Resolved:    "test/test-cmd@v1.0.0",
+				Commit:      "fedcba0987654321fedcba0987654321fedcba09",
+				InstalledAt: time.Now(),
+				UpdatedAt:   time.Now(),
+				Metadata:    map[string]string{"repository": "test/test-cmd"},
 			},
 			setupFunc: func(t *testing.T, tmpDir string) {},
 			wantErr:   false,

@@ -42,6 +42,8 @@ func safeReadFile(path string) ([]byte, error) {
 
 // GetClaudeCommandsDir returns the path to .claude/commands/ directory
 // Creates the directory if it doesn't exist
+// Deprecated: This function uses the home directory instead of project directory.
+// Use project-relative paths (.claude) instead.
 func GetClaudeCommandsDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

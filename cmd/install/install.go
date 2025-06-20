@@ -140,6 +140,19 @@ func runInstall(repository, version, name string, force bool) error {
 
 	if err := installer.InstallCommand(ctx, opts, true); err != nil {
 		spinner.Stop()
+
+		// Check if command already exists
+		if errors.IsAlreadyExists(err) {
+			commandName := name
+			if commandName == "" {
+				parts := strings.Split(strings.TrimSuffix(repo, ".git"), "/")
+				commandName = parts[len(parts)-1]
+			}
+			output.PrintInfof("Command '%s' is already installed", commandName)
+			output.PrintInfof("Use --force to reinstall")
+			return nil
+		}
+
 		log.WithError(err).Error("installation failed")
 		return err
 	}
@@ -165,8 +178,10 @@ func runInstall(repository, version, name string, force bool) error {
 			if repoPath != "" {
 				// Try to add the command to ccmd.yaml
 				if err := pm.AddCommand(repoPath, version); err != nil {
-					// Don't fail the installation, just warn
-					log.WithError(err).Warn("failed to add command to ccmd.yaml")
+					// Don't warn if command already exists in config
+					if !strings.Contains(err.Error(), "already exists in configuration") {
+						log.WithError(err).Warn("failed to add command to ccmd.yaml")
+					}
 				} else {
 					output.PrintInfof("Added to ccmd.yaml")
 
@@ -217,13 +232,12 @@ func updateProjectLockFile(pm *project.Manager, commandName, repository, version
 	// Create command entry
 	cmd := &project.Command{
 		Name:         commandName,
-		Repository:   repository,
+		Source:       repository,
 		Version:      version,
-		CommitHash:   commitHash,
+		Resolved:     repository + "@" + version,
+		Commit:       commitHash,
 		InstalledAt:  time.Now(),
 		UpdatedAt:    time.Now(),
-		FileSize:     1024,                    // Placeholder
-		Checksum:     strings.Repeat("0", 64), // Placeholder SHA256
 		Dependencies: []string{},
 		Metadata:     map[string]string{},
 	}

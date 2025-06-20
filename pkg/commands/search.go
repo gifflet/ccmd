@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/lock"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // SearchOptions contains options for searching commands.
@@ -38,14 +40,11 @@ func Search(opts SearchOptions) ([]SearchResult, error) {
 	}
 
 	if opts.BaseDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		opts.BaseDir = filepath.Join(homeDir, ".claude")
+		opts.BaseDir = "."
 	}
 
-	lockManager := lock.NewManagerWithFS(opts.BaseDir, opts.FileSystem)
+	lockPath := filepath.Join(opts.BaseDir, "ccmd-lock.yaml")
+	lockManager := project.NewLockManagerWithFS(lockPath, opts.FileSystem)
 	if err := lockManager.Load(); err != nil {
 		if os.IsNotExist(err) {
 			return []SearchResult{}, nil
@@ -60,8 +59,10 @@ func Search(opts SearchOptions) ([]SearchResult, error) {
 
 	var results []SearchResult
 	for _, cmd := range cmds {
-		if matches(cmd, opts) {
-			results = append(results, toSearchResult(cmd))
+		// Load metadata for each command
+		metadata := loadCommandMetadata(cmd.Name, opts.BaseDir, opts.FileSystem)
+		if matches(cmd, metadata, opts) {
+			results = append(results, toSearchResult(cmd, metadata))
 		}
 	}
 
@@ -69,7 +70,7 @@ func Search(opts SearchOptions) ([]SearchResult, error) {
 }
 
 // matches checks if a command matches the search criteria.
-func matches(cmd *models.Command, opts SearchOptions) bool {
+func matches(cmd *project.CommandLockInfo, metadata *models.CommandMetadata, opts SearchOptions) bool {
 	// If ShowAll is true and no other filters, return all
 	if opts.ShowAll && opts.Keyword == "" && len(opts.Tags) == 0 && opts.Author == "" {
 		return true
@@ -92,21 +93,17 @@ func matches(cmd *models.Command, opts SearchOptions) bool {
 			keywordMatch = true
 		}
 
-		// Check description
+		// Check source
 		if !keywordMatch {
-			if desc, ok := cmd.Metadata["description"]; ok {
-				if strings.Contains(strings.ToLower(desc), keyword) {
-					keywordMatch = true
-				}
+			if strings.Contains(strings.ToLower(cmd.Source), keyword) {
+				keywordMatch = true
 			}
 		}
 
-		// Check tags
-		if !keywordMatch {
-			if tagsStr, ok := cmd.Metadata["tags"]; ok {
-				if strings.Contains(strings.ToLower(tagsStr), keyword) {
-					keywordMatch = true
-				}
+		// Check description if metadata available
+		if !keywordMatch && metadata != nil {
+			if strings.Contains(strings.ToLower(metadata.Description), keyword) {
+				keywordMatch = true
 			}
 		}
 
@@ -118,23 +115,21 @@ func matches(cmd *models.Command, opts SearchOptions) bool {
 
 	// Check author match if specified
 	if opts.Author != "" {
-		author, ok := cmd.Metadata["author"]
-		if !ok || !strings.EqualFold(author, opts.Author) {
+		if metadata == nil || !strings.Contains(strings.ToLower(metadata.Author), strings.ToLower(opts.Author)) {
 			return false
 		}
 	}
 
 	// Check tags match if specified
 	if len(opts.Tags) > 0 {
-		tagsStr, ok := cmd.Metadata["tags"]
-		if !ok {
+		if metadata == nil || len(metadata.Tags) == 0 {
 			return false
 		}
 
-		cmdTags := parseTags(tagsStr)
+		// Check if all requested tags are present
 		for _, searchTag := range opts.Tags {
 			found := false
-			for _, cmdTag := range cmdTags {
+			for _, cmdTag := range metadata.Tags {
 				if strings.EqualFold(cmdTag, searchTag) {
 					found = true
 					break
@@ -149,43 +144,37 @@ func matches(cmd *models.Command, opts SearchOptions) bool {
 	return true
 }
 
-// parseTags parses a comma-separated string of tags.
-func parseTags(tagsStr string) []string {
-	if tagsStr == "" {
-		return []string{}
-	}
-
-	parts := strings.Split(tagsStr, ",")
-	tags := make([]string, 0, len(parts))
-	for _, part := range parts {
-		tag := strings.TrimSpace(part)
-		if tag != "" {
-			tags = append(tags, tag)
-		}
-	}
-	return tags
-}
-
 // toSearchResult converts a Command to a SearchResult.
-func toSearchResult(cmd *models.Command) SearchResult {
+func toSearchResult(cmd *project.CommandLockInfo, metadata *models.CommandMetadata) SearchResult {
 	result := SearchResult{
 		Name:    cmd.Name,
 		Version: cmd.Version,
 		Source:  cmd.Source,
 	}
 
-	// Extract metadata
-	if desc, ok := cmd.Metadata["description"]; ok {
-		result.Description = desc
-	}
-
-	if author, ok := cmd.Metadata["author"]; ok {
-		result.Author = author
-	}
-
-	if tagsStr, ok := cmd.Metadata["tags"]; ok {
-		result.Tags = parseTags(tagsStr)
+	if metadata != nil {
+		result.Description = metadata.Description
+		result.Author = metadata.Author
+		result.Tags = metadata.Tags
 	}
 
 	return result
+}
+
+// loadCommandMetadata loads metadata from a command's ccmd.yaml file
+func loadCommandMetadata(name, baseDir string, filesystem fs.FileSystem) *models.CommandMetadata {
+	commandDir := filepath.Join(baseDir, ".claude", "commands", name)
+	metadataPath := filepath.Join(commandDir, "ccmd.yaml")
+
+	data, err := filesystem.ReadFile(metadataPath)
+	if err != nil {
+		return nil
+	}
+
+	var metadata models.CommandMetadata
+	if err := yaml.Unmarshal(data, &metadata); err != nil {
+		return nil
+	}
+
+	return &metadata
 }

@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/git"
-	"github.com/gifflet/ccmd/internal/lock"
 	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/internal/validation"
 	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // Options represents configuration for the installer
@@ -26,6 +27,7 @@ type Options struct {
 	FileSystem    fs.FileSystem // File system interface (for testing)
 	GitClient     GitClient     // Git client interface (for testing)
 	TempDirPrefix string        // Prefix for temporary directories
+	ProjectPath   string        // Path to project root (where ccmd.yaml lives)
 }
 
 // GitClient defines the interface for git operations
@@ -44,7 +46,7 @@ type Installer struct {
 	gitClient   GitClient
 	fileSystem  fs.FileSystem
 	metaManager *metadataManager
-	lockManager *lock.Manager
+	lockManager *project.LockManager
 	validator   *validation.Validator
 }
 
@@ -70,7 +72,12 @@ func New(opts Options) (*Installer, error) {
 	}
 
 	// Create managers
-	lockManager := lock.NewManagerWithFS(filepath.Dir(opts.InstallDir), opts.FileSystem)
+	projectPath := opts.ProjectPath
+	if projectPath == "" {
+		projectPath = "." // Use current directory as default
+	}
+	lockPath := filepath.Join(projectPath, "ccmd-lock.yaml")
+	lockManager := project.NewLockManagerWithFS(lockPath, opts.FileSystem)
 
 	return &Installer{
 		opts:        opts,
@@ -107,6 +114,12 @@ func (i *Installer) Install(_ context.Context) error {
 	// Step 3: Clone repository to temporary location
 	if err := i.cloneRepository(tempDir); err != nil {
 		return errors.Wrap(err, errors.CodeGitClone, "failed to clone repository")
+	}
+
+	// Get commit hash while we still have the git repository
+	commitHash, err := i.gitClient.GetCurrentCommit(tempDir)
+	if err != nil {
+		commitHash = strings.Repeat("0", 40)
 	}
 
 	// Step 4: Validate repository structure
@@ -150,7 +163,7 @@ func (i *Installer) Install(_ context.Context) error {
 	}
 
 	// Step 10: Update lock file
-	if err := i.updateLockFile(commandName, version, metadata); err != nil {
+	if err := i.updateLockFile(commandName, version, metadata, commitHash); err != nil {
 		// Rollback on failure with metadata to remove standalone file
 		i.rollbackInstallationWithMetadata(commandDir, metadata)
 		return errors.Wrap(err, errors.CodeLockConflict, "failed to update lock file")
@@ -288,22 +301,24 @@ func (i *Installer) determineVersion(repoPath string) (string, error) {
 // checkExistingCommand checks if command already exists
 func (i *Installer) checkExistingCommand(commandName string) error {
 	commandDir := filepath.Join(i.opts.InstallDir, commandName)
+	dirExists := false
 
 	if _, err := i.fileSystem.Stat(commandDir); err == nil {
-		// Command exists
-		if !i.opts.Force {
-			return errors.New(errors.CodeAlreadyExists, "command already exists").
-				WithDetail("command", commandName).
-				WithDetail("use", "--force to reinstall")
-		}
+		dirExists = true
+	}
 
-		// Remove existing command for force install
+	if dirExists && !i.opts.Force {
+		return errors.New(errors.CodeAlreadyExists, "command is already installed").
+			WithDetail("command", commandName).
+			WithDetail("use", "--force to reinstall")
+	}
+
+	if dirExists && i.opts.Force {
 		i.logger.WithField("command", commandName).Debug("removing existing command for force install")
 		if err := i.fileSystem.RemoveAll(commandDir); err != nil {
 			return errors.Wrap(err, errors.CodeFileIO, "failed to remove existing command")
 		}
 
-		// Also remove standalone file if it exists
 		standaloneFile := filepath.Join(i.opts.InstallDir, fmt.Sprintf("%s.md", commandName))
 		if err := i.fileSystem.Remove(standaloneFile); err != nil && !os.IsNotExist(err) {
 			i.logger.WithError(err).Warn("failed to remove existing standalone file")
@@ -386,37 +401,37 @@ func (i *Installer) updateCommandMetadata(commandDir string, metadata *models.Co
 }
 
 // updateLockFile updates the lock file with installed command info
-func (i *Installer) updateLockFile(commandName, version string, metadata *models.CommandMetadata) error {
+func (i *Installer) updateLockFile(commandName, version string,
+	metadata *models.CommandMetadata, commitHash string) error {
 	i.logger.WithFields(logger.Fields{
 		"command": commandName,
 		"version": version,
 	}).Debug("updating lock file")
 
-	// Load lock file
 	if err := i.lockManager.Load(); err != nil {
 		return err
 	}
 
-	// Create command entry
-	cmd := &models.Command{
-		Name:        commandName,
-		Version:     version,
-		Source:      i.opts.Repository,
-		InstalledAt: time.Now(),
-		UpdatedAt:   time.Now(),
-		Metadata: map[string]string{
-			"description": metadata.Description,
-			"author":      metadata.Author,
-			"repository":  metadata.Repository,
-		},
+	// Determinar versão final: priorizar metadata.Version se existir
+	finalVersion := version
+	if metadata != nil && metadata.Version != "" {
+		finalVersion = metadata.Version
 	}
 
-	// Add command to lock file
-	if err := i.lockManager.AddCommand(cmd); err != nil {
+	cmdInfo := &project.CommandLockInfo{
+		Name:        commandName,
+		Version:     finalVersion,
+		Source:      i.opts.Repository,
+		Resolved:    i.opts.Repository + "@" + version,
+		Commit:      commitHash,
+		InstalledAt: time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if err := i.lockManager.AddCommand(cmdInfo); err != nil {
 		return err
 	}
 
-	// Save lock file
 	return i.lockManager.Save()
 }
 

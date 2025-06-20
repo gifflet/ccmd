@@ -2,14 +2,17 @@ package commands
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 func TestSearch(t *testing.T) {
@@ -23,12 +26,14 @@ func TestSearch(t *testing.T) {
 		{
 			name: "search by keyword in name",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
-					Version: "1.0",
-					Commands: map[string]*models.Command{
+				lockFile := &project.LockFile{
+					Version:         "1.0",
+					LockfileVersion: 1,
+					Commands: map[string]*project.CommandLockInfo{
 						"test-command": {
 							Name:        "test-command",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "github.com/example/test",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
@@ -41,6 +46,7 @@ func TestSearch(t *testing.T) {
 						"another-tool": {
 							Name:        "another-tool",
 							Version:     "2.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "github.com/example/another",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
@@ -53,6 +59,7 @@ func TestSearch(t *testing.T) {
 					},
 				}
 				writeTestLockFile(t, mockFS, baseDir, lockFile)
+				writeTestCommandMetadata(t, mockFS, baseDir, lockFile)
 			},
 			opts: SearchOptions{
 				Keyword: "test",
@@ -79,13 +86,16 @@ func TestSearch(t *testing.T) {
 		{
 			name: "search by author",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
-					Version: "1.0",
-					Commands: map[string]*models.Command{
+				lockFile := &project.LockFile{
+					Version:         "1.0",
+					LockfileVersion: 1,
+					Commands: map[string]*project.CommandLockInfo{
 						"cmd1": {
 							Name:        "cmd1",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source1",
+							Resolved:    "source1@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -95,7 +105,9 @@ func TestSearch(t *testing.T) {
 						"cmd2": {
 							Name:        "cmd2",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source2",
+							Resolved:    "source2@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -105,6 +117,7 @@ func TestSearch(t *testing.T) {
 					},
 				}
 				writeTestLockFile(t, mockFS, baseDir, lockFile)
+				writeTestCommandMetadata(t, mockFS, baseDir, lockFile)
 			},
 			opts: SearchOptions{
 				Author: "John Doe",
@@ -121,13 +134,16 @@ func TestSearch(t *testing.T) {
 		{
 			name: "search by tags",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
-					Version: "1.0",
-					Commands: map[string]*models.Command{
+				lockFile := &project.LockFile{
+					Version:         "1.0",
+					LockfileVersion: 1,
+					Commands: map[string]*project.CommandLockInfo{
 						"cmd1": {
 							Name:        "cmd1",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source1",
+							Resolved:    "source1@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -137,7 +153,9 @@ func TestSearch(t *testing.T) {
 						"cmd2": {
 							Name:        "cmd2",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source2",
+							Resolved:    "source2@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -147,7 +165,9 @@ func TestSearch(t *testing.T) {
 						"cmd3": {
 							Name:        "cmd3",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source3",
+							Resolved:    "source3@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -157,6 +177,7 @@ func TestSearch(t *testing.T) {
 					},
 				}
 				writeTestLockFile(t, mockFS, baseDir, lockFile)
+				writeTestCommandMetadata(t, mockFS, baseDir, lockFile)
 			},
 			opts: SearchOptions{
 				Tags: []string{"cli"},
@@ -179,13 +200,16 @@ func TestSearch(t *testing.T) {
 		{
 			name: "search with multiple filters",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
-					Version: "1.0",
-					Commands: map[string]*models.Command{
+				lockFile := &project.LockFile{
+					Version:         "1.0",
+					LockfileVersion: 1,
+					Commands: map[string]*project.CommandLockInfo{
 						"test-cli": {
 							Name:        "test-cli",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source1",
+							Resolved:    "source1@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -197,7 +221,9 @@ func TestSearch(t *testing.T) {
 						"another-cli": {
 							Name:        "another-cli",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source2",
+							Resolved:    "source2@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -209,7 +235,9 @@ func TestSearch(t *testing.T) {
 						"test-web": {
 							Name:        "test-web",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source3",
+							Resolved:    "source3@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 							Metadata: map[string]string{
@@ -221,6 +249,7 @@ func TestSearch(t *testing.T) {
 					},
 				}
 				writeTestLockFile(t, mockFS, baseDir, lockFile)
+				writeTestCommandMetadata(t, mockFS, baseDir, lockFile)
 			},
 			opts: SearchOptions{
 				Keyword: "test",
@@ -240,26 +269,32 @@ func TestSearch(t *testing.T) {
 		{
 			name: "show all commands",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
-					Version: "1.0",
-					Commands: map[string]*models.Command{
+				lockFile := &project.LockFile{
+					Version:         "1.0",
+					LockfileVersion: 1,
+					Commands: map[string]*project.CommandLockInfo{
 						"cmd1": {
 							Name:        "cmd1",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source1",
+							Resolved:    "source1@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 						},
 						"cmd2": {
 							Name:        "cmd2",
 							Version:     "2.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source2",
+							Resolved:    "source2@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 						},
 					},
 				}
 				writeTestLockFile(t, mockFS, baseDir, lockFile)
+				writeTestCommandMetadata(t, mockFS, baseDir, lockFile)
 			},
 			opts: SearchOptions{
 				ShowAll: true,
@@ -280,13 +315,16 @@ func TestSearch(t *testing.T) {
 		{
 			name: "no results found",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
-					Version: "1.0",
-					Commands: map[string]*models.Command{
+				lockFile := &project.LockFile{
+					Version:         "1.0",
+					LockfileVersion: 1,
+					Commands: map[string]*project.CommandLockInfo{
 						"cmd1": {
 							Name:        "cmd1",
 							Version:     "1.0.0",
+							Commit:      "1234567890abcdef1234567890abcdef12345678",
 							Source:      "source1",
+							Resolved:    "source1@1.0.0",
 							InstalledAt: time.Now(),
 							UpdatedAt:   time.Now(),
 						},
@@ -302,11 +340,12 @@ func TestSearch(t *testing.T) {
 		{
 			name: "empty lock file",
 			setupFunc: func(mockFS fs.FileSystem, baseDir string) {
-				lockFile := &models.LockFile{
+				lockFile := &project.LockFile{
 					Version:  "1.0",
-					Commands: map[string]*models.Command{},
+					Commands: map[string]*project.CommandLockInfo{},
 				}
 				writeTestLockFile(t, mockFS, baseDir, lockFile)
+				writeTestCommandMetadata(t, mockFS, baseDir, lockFile)
 			},
 			opts: SearchOptions{
 				ShowAll: true,
@@ -367,6 +406,23 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+// parseTags parses a comma-separated string of tags.
+func parseTags(tagsStr string) []string {
+	if tagsStr == "" {
+		return []string{}
+	}
+
+	parts := strings.Split(tagsStr, ",")
+	tags := make([]string, 0, len(parts))
+	for _, part := range parts {
+		tag := strings.TrimSpace(part)
+		if tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+	return tags
+}
+
 func TestParseTags(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -411,15 +467,18 @@ func TestParseTags(t *testing.T) {
 func TestMatches(t *testing.T) {
 	tests := []struct {
 		name     string
-		cmd      *models.Command
+		cmd      *project.CommandLockInfo
+		metadata *models.CommandMetadata
 		opts     SearchOptions
 		expected bool
 	}{
 		{
 			name: "match by name substring",
-			cmd: &models.Command{
-				Name: "test-command",
+			cmd: &project.CommandLockInfo{
+				Name:   "test-command",
+				Commit: "1234567890abcdef1234567890abcdef12345678",
 			},
+			metadata: nil,
 			opts: SearchOptions{
 				Keyword: "test",
 			},
@@ -427,11 +486,12 @@ func TestMatches(t *testing.T) {
 		},
 		{
 			name: "match by description",
-			cmd: &models.Command{
-				Name: "cmd",
-				Metadata: map[string]string{
-					"description": "This is a test tool",
-				},
+			cmd: &project.CommandLockInfo{
+				Name:   "cmd",
+				Commit: "1234567890abcdef1234567890abcdef12345678",
+			},
+			metadata: &models.CommandMetadata{
+				Description: "This is a test tool",
 			},
 			opts: SearchOptions{
 				Keyword: "test",
@@ -440,9 +500,11 @@ func TestMatches(t *testing.T) {
 		},
 		{
 			name: "case insensitive match",
-			cmd: &models.Command{
-				Name: "TEST-COMMAND",
+			cmd: &project.CommandLockInfo{
+				Name:   "TEST-COMMAND",
+				Commit: "1234567890abcdef1234567890abcdef12345678",
 			},
+			metadata: nil,
 			opts: SearchOptions{
 				Keyword: "test",
 			},
@@ -450,17 +512,21 @@ func TestMatches(t *testing.T) {
 		},
 		{
 			name: "no match when no criteria",
-			cmd: &models.Command{
-				Name: "command",
+			cmd: &project.CommandLockInfo{
+				Name:   "command",
+				Commit: "1234567890abcdef1234567890abcdef12345678",
 			},
+			metadata: nil,
 			opts:     SearchOptions{},
 			expected: false,
 		},
 		{
 			name: "match with show all",
-			cmd: &models.Command{
-				Name: "command",
+			cmd: &project.CommandLockInfo{
+				Name:   "command",
+				Commit: "1234567890abcdef1234567890abcdef12345678",
 			},
+			metadata: nil,
 			opts: SearchOptions{
 				ShowAll: true,
 			},
@@ -470,17 +536,49 @@ func TestMatches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matches(tt.cmd, tt.opts)
+			result := matches(tt.cmd, tt.metadata, tt.opts)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func writeTestLockFile(t *testing.T, mockFS fs.FileSystem, baseDir string, lockFile *models.LockFile) {
-	data, err := lockFile.ToJSON()
+func writeTestLockFile(t *testing.T, mockFS fs.FileSystem, baseDir string, lockFile *project.LockFile) {
+	data, err := yaml.Marshal(lockFile)
 	require.NoError(t, err)
 
-	lockPath := filepath.Join(baseDir, "commands.lock")
+	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
 	err = mockFS.WriteFile(lockPath, data, 0o644)
 	require.NoError(t, err)
+}
+
+// writeTestCommandMetadata creates ccmd.yaml files for commands based on lock file metadata
+func writeTestCommandMetadata(t *testing.T, mockFS fs.FileSystem, baseDir string, lockFile *project.LockFile) {
+	commandsDir := filepath.Join(baseDir, ".claude", "commands")
+	require.NoError(t, mockFS.MkdirAll(commandsDir, 0o755))
+
+	for name, cmd := range lockFile.Commands {
+		cmdDir := filepath.Join(commandsDir, name)
+		require.NoError(t, mockFS.MkdirAll(cmdDir, 0o755))
+
+		// Create metadata from lock file info
+		metadata := &models.CommandMetadata{
+			Name:        name,
+			Version:     cmd.Version,
+			Description: cmd.Metadata["description"],
+			Author:      cmd.Metadata["author"],
+			Repository:  cmd.Source,
+		}
+
+		// Parse tags from comma-separated string
+		if tagsStr, ok := cmd.Metadata["tags"]; ok && tagsStr != "" {
+			metadata.Tags = parseTags(tagsStr)
+		}
+
+		yamlData, err := yaml.Marshal(metadata)
+		require.NoError(t, err)
+
+		metadataPath := filepath.Join(cmdDir, "ccmd.yaml")
+		err = mockFS.WriteFile(metadataPath, yamlData, 0o644)
+		require.NoError(t, err)
+	}
 }

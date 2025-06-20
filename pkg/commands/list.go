@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/lock"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // ListOptions contains options for listing commands.
@@ -18,7 +18,7 @@ type ListOptions struct {
 
 // CommandDetail contains detailed information about a command including structure validation.
 type CommandDetail struct {
-	*models.Command
+	*project.CommandLockInfo
 	HasDirectory     bool
 	HasMarkdownFile  bool
 	StructureValid   bool
@@ -34,11 +34,12 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 	}
 
 	if opts.BaseDir == "" {
-		opts.BaseDir = ".claude"
+		opts.BaseDir = "."
 	}
 
-	// Load lock file
-	lockManager := lock.NewManagerWithFS(opts.BaseDir, opts.FileSystem)
+	// Load lock file from project root
+	lockPath := filepath.Join(opts.BaseDir, "ccmd-lock.yaml")
+	lockManager := project.NewLockManagerWithFS(lockPath, opts.FileSystem)
 	if err := lockManager.Load(); err != nil {
 		if os.IsNotExist(err) {
 			return []*CommandDetail{}, nil
@@ -56,11 +57,11 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 	details := make([]*CommandDetail, 0, len(commands))
 	for _, cmd := range commands {
 		detail := &CommandDetail{
-			Command: cmd,
+			CommandLockInfo: cmd,
 		}
 
 		// Check directory existence
-		commandDir := filepath.Join(opts.BaseDir, "commands", cmd.Name)
+		commandDir := filepath.Join(opts.BaseDir, ".claude", "commands", cmd.Name)
 		if stat, err := opts.FileSystem.Stat(commandDir); err == nil && stat.IsDir() {
 			detail.HasDirectory = true
 
@@ -78,7 +79,7 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 		}
 
 		// Check markdown file existence
-		markdownFile := filepath.Join(opts.BaseDir, "commands", cmd.Name+".md")
+		markdownFile := filepath.Join(opts.BaseDir, ".claude", "commands", cmd.Name+".md")
 		if stat, err := opts.FileSystem.Stat(markdownFile); err == nil && !stat.IsDir() {
 			detail.HasMarkdownFile = true
 		}
@@ -109,11 +110,12 @@ func VerifyCommandStructure(name, baseDir string, filesystem fs.FileSystem) (val
 	}
 
 	if baseDir == "" {
-		baseDir = ".claude"
+		baseDir = "."
 	}
 
 	// Check if command exists in lock file
-	lockManager := lock.NewManagerWithFS(baseDir, filesystem)
+	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
+	lockManager := project.NewLockManagerWithFS(lockPath, filesystem)
 	if err := lockManager.Load(); err != nil {
 		return false, "", fmt.Errorf("failed to load lock file: %w", err)
 	}
@@ -124,14 +126,14 @@ func VerifyCommandStructure(name, baseDir string, filesystem fs.FileSystem) (val
 
 	// Check directory
 	hasDir := false
-	commandDir := filepath.Join(baseDir, "commands", name)
+	commandDir := filepath.Join(baseDir, ".claude", "commands", name)
 	if stat, err := filesystem.Stat(commandDir); err == nil && stat.IsDir() {
 		hasDir = true
 	}
 
 	// Check markdown file
 	hasMarkdown := false
-	markdownFile := filepath.Join(baseDir, "commands", name+".md")
+	markdownFile := filepath.Join(baseDir, ".claude", "commands", name+".md")
 	if stat, err := filesystem.Stat(markdownFile); err == nil && !stat.IsDir() {
 		hasMarkdown = true
 	}

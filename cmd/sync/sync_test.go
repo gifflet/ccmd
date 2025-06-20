@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/pkg/commands"
 	"github.com/gifflet/ccmd/pkg/project"
 )
@@ -43,8 +42,8 @@ func TestAnalyzeSync(t *testing.T) {
 				"tool2": {Repo: "owner/tool2", Version: "v2.0.0"},
 			},
 			installedMap: map[string]*commands.CommandDetail{
-				"tool1": {Command: &models.Command{Name: "tool1"}},
-				"tool2": {Command: &models.Command{Name: "tool2"}},
+				"tool1": {CommandLockInfo: &project.CommandLockInfo{Name: "tool1"}},
+				"tool2": {CommandLockInfo: &project.CommandLockInfo{Name: "tool2"}},
 			},
 			wantToInstall: []string{},
 			wantToRemove:  []string{},
@@ -56,7 +55,7 @@ func TestAnalyzeSync(t *testing.T) {
 				"tool2": {Repo: "owner/tool2", Version: "v2.0.0"},
 			},
 			installedMap: map[string]*commands.CommandDetail{
-				"tool1": {Command: &models.Command{Name: "tool1"}},
+				"tool1": {CommandLockInfo: &project.CommandLockInfo{Name: "tool1"}},
 			},
 			wantToInstall: []string{"tool2"},
 			wantToRemove:  []string{},
@@ -67,8 +66,8 @@ func TestAnalyzeSync(t *testing.T) {
 				"tool1": {Repo: "owner/tool1", Version: "v1.0.0"},
 			},
 			installedMap: map[string]*commands.CommandDetail{
-				"tool1": {Command: &models.Command{Name: "tool1"}},
-				"tool2": {Command: &models.Command{Name: "tool2"}},
+				"tool1": {CommandLockInfo: &project.CommandLockInfo{Name: "tool1"}},
+				"tool2": {CommandLockInfo: &project.CommandLockInfo{Name: "tool2"}},
 			},
 			wantToInstall: []string{},
 			wantToRemove:  []string{"tool2"},
@@ -80,8 +79,8 @@ func TestAnalyzeSync(t *testing.T) {
 				"tool3": {Repo: "owner/tool3", Version: "v3.0.0"},
 			},
 			installedMap: map[string]*commands.CommandDetail{
-				"tool1": {Command: &models.Command{Name: "tool1"}},
-				"tool2": {Command: &models.Command{Name: "tool2"}},
+				"tool1": {CommandLockInfo: &project.CommandLockInfo{Name: "tool1"}},
+				"tool2": {CommandLockInfo: &project.CommandLockInfo{Name: "tool2"}},
 			},
 			wantToInstall: []string{"tool3"},
 			wantToRemove:  []string{"tool2"},
@@ -90,8 +89,8 @@ func TestAnalyzeSync(t *testing.T) {
 			name:           "empty config",
 			configCommands: map[string]project.ConfigCommand{},
 			installedMap: map[string]*commands.CommandDetail{
-				"tool1": {Command: &models.Command{Name: "tool1"}},
-				"tool2": {Command: &models.Command{Name: "tool2"}},
+				"tool1": {CommandLockInfo: &project.CommandLockInfo{Name: "tool1"}},
+				"tool2": {CommandLockInfo: &project.CommandLockInfo{Name: "tool2"}},
 			},
 			wantToInstall: []string{},
 			wantToRemove:  []string{"tool1", "tool2"},

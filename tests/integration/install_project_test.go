@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -52,7 +53,8 @@ func TestInstallFromProjectConfig(t *testing.T) {
 	}
 
 	// Save config
-	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName)); err != nil {
+	fileSystem := fs.OS{}
+	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName), fileSystem); err != nil {
 		t.Fatal(err)
 	}
 
@@ -120,7 +122,8 @@ func TestInstallWithArgsUpdatesProject(t *testing.T) {
 	}
 
 	// Save config
-	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName)); err != nil {
+	fileSystem := fs.OS{}
+	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName), fileSystem); err != nil {
 		t.Fatal(err)
 	}
 

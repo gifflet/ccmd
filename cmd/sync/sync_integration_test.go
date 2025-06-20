@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -194,7 +193,7 @@ func TestSyncIntegration(t *testing.T) {
 		name              string
 		setupFunc         func(fs *mockFileSystem)
 		configCommands    []project.ConfigCommand
-		installedCommands []*models.Command
+		installedCommands []*project.CommandLockInfo
 		dryRun            bool
 		force             bool
 		wantInstalled     []string
@@ -208,9 +207,9 @@ func TestSyncIntegration(t *testing.T) {
 				fs.MkdirAll(".claude", 0755)
 			},
 			configCommands: []project.ConfigCommand{},
-			installedCommands: []*models.Command{
-				{Name: "tool1", Source: "https://github.com/owner/tool1.git", Version: "v1.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
-				{Name: "tool2", Source: "https://github.com/owner/tool2.git", Version: "v2.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
+			installedCommands: []*project.CommandLockInfo{
+				{Name: "tool1", Source: "https://github.com/owner/tool1.git", Version: "v1.0.0", Resolved: "https://github.com/owner/tool1.git@v1.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
+				{Name: "tool2", Source: "https://github.com/owner/tool2.git", Version: "v2.0.0", Resolved: "https://github.com/owner/tool2.git@v2.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
 			},
 			force:         true,
 			wantInstalled: []string{},
@@ -225,7 +224,7 @@ func TestSyncIntegration(t *testing.T) {
 				{Repo: "owner/tool1", Version: "v1.0.0"},
 				{Repo: "owner/tool2", Version: "v2.0.0"},
 			},
-			installedCommands: []*models.Command{},
+			installedCommands: []*project.CommandLockInfo{},
 			wantInstalled:     []string{"tool1", "tool2"},
 			wantRemoved:       []string{},
 		},
@@ -237,8 +236,8 @@ func TestSyncIntegration(t *testing.T) {
 			configCommands: []project.ConfigCommand{
 				{Repo: "owner/tool1", Version: "v1.0.0"},
 			},
-			installedCommands: []*models.Command{
-				{Name: "tool2", Source: "https://github.com/owner/tool2.git", Version: "v2.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
+			installedCommands: []*project.CommandLockInfo{
+				{Name: "tool2", Source: "https://github.com/owner/tool2.git", Version: "v2.0.0", Resolved: "https://github.com/owner/tool2.git@v2.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
 			},
 			dryRun:        true,
 			wantInstalled: []string{},
@@ -253,9 +252,9 @@ func TestSyncIntegration(t *testing.T) {
 				{Repo: "owner/tool1", Version: "v1.0.0"},
 				{Repo: "owner/tool3", Version: "v3.0.0"},
 			},
-			installedCommands: []*models.Command{
-				{Name: "tool1", Source: "https://github.com/owner/tool1.git", Version: "v1.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
-				{Name: "tool2", Source: "https://github.com/owner/tool2.git", Version: "v2.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
+			installedCommands: []*project.CommandLockInfo{
+				{Name: "tool1", Source: "https://github.com/owner/tool1.git", Version: "v1.0.0", Resolved: "https://github.com/owner/tool1.git@v1.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
+				{Name: "tool2", Source: "https://github.com/owner/tool2.git", Version: "v2.0.0", Resolved: "https://github.com/owner/tool2.git@v2.0.0", InstalledAt: time.Now(), UpdatedAt: time.Now()},
 			},
 			force:         true,
 			wantInstalled: []string{"tool3"},

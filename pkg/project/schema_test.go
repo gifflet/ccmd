@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/gifflet/ccmd/internal/fs"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -328,7 +330,8 @@ func TestValidateVersion(t *testing.T) {
 
 func TestLoadConfig(t *testing.T) {
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := LoadConfig("/non/existent/file.yaml")
+		fileSystem := fs.OS{}
+		_, err := LoadConfig("/non/existent/file.yaml", fileSystem)
 		if err == nil {
 			t.Error("LoadConfig() should fail for non-existent file")
 		}
@@ -352,15 +355,20 @@ func TestLoadConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		config, err := LoadConfig(tmpfile.Name())
+		fileSystem := fs.OS{}
+		config, err := LoadConfig(tmpfile.Name(), fileSystem)
 		if err != nil {
 			t.Errorf("LoadConfig() error = %v, want nil", err)
 		}
 		if config == nil {
 			t.Error("LoadConfig() returned nil config")
 		}
-		if len(config.Commands) != 1 {
-			t.Errorf("LoadConfig() got %d commands, want 1", len(config.Commands))
+		commands, err := config.GetCommands()
+		if err != nil {
+			t.Errorf("GetCommands() error = %v, want nil", err)
+		}
+		if len(commands) != 1 {
+			t.Errorf("LoadConfig() got %d commands, want 1", len(commands))
 		}
 	})
 }
@@ -382,7 +390,7 @@ func TestParseConfigWithInvalidYAML(t *testing.T) {
 			name:    "wrong type for commands",
 			yaml:    `commands: "not a list"`,
 			wantErr: true,
-			errMsg:  "failed to parse YAML",
+			errMsg:  "invalid configuration: commands must be an array",
 		},
 	}
 

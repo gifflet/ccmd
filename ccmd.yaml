@@ -1,0 +1,3 @@
+commands:
+  - repo: gifflet/hello-world
+    version: v1.0.0

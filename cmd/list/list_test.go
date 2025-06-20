@@ -6,6 +6,7 @@ import (
 
 	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/pkg/commands"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 func TestPrintSimpleList(t *testing.T) {
@@ -16,7 +17,7 @@ func TestPrintSimpleList(t *testing.T) {
 	now := time.Now()
 	commands := []*commands.CommandDetail{
 		{
-			Command: &models.Command{
+			CommandLockInfo: &project.CommandLockInfo{
 				Name:      "test-cmd",
 				Version:   "1.0.0",
 				Source:    "github.com/user/repo",
@@ -35,7 +36,7 @@ func TestPrintSimpleList(t *testing.T) {
 			},
 		},
 		{
-			Command: &models.Command{
+			CommandLockInfo: &project.CommandLockInfo{
 				Name:      "broken-cmd",
 				Version:   "0.5.0",
 				Source:    "github.com/user/broken",
@@ -58,7 +59,7 @@ func TestPrintLongList(t *testing.T) {
 	now := time.Now()
 	commands := []*commands.CommandDetail{
 		{
-			Command: &models.Command{
+			CommandLockInfo: &project.CommandLockInfo{
 				Name:         "full-cmd",
 				Version:      "1.0.0",
 				Source:       "github.com/user/repo",

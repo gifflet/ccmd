@@ -46,10 +46,11 @@ func TestInstallationProcess(t *testing.T) {
 	t.Run("InstallSingleCommand", func(t *testing.T) {
 		// Create installer options
 		opts := installer.Options{
-			Repository: "https://github.com/test/example.git",
-			Version:    "v1.0.0",
-			InstallDir: filepath.Join(ccmdDir, "commands"),
-			FileSystem: memFS,
+			Repository:  "https://github.com/test/example.git",
+			Version:     "v1.0.0",
+			InstallDir:  filepath.Join(ccmdDir, "commands"),
+			ProjectPath: projectDir,
+			FileSystem:  memFS,
 			GitClient: &mockGitClient{
 				cloneFunc: func(opts git.CloneOptions) error {
 					// Simulate successful clone with valid metadata
@@ -82,8 +83,8 @@ func TestInstallationProcess(t *testing.T) {
 		assert.True(t, memFS.DirExists(commandPath))
 		assert.True(t, memFS.FileExists(filepath.Join(commandPath, "ccmd.yaml")))
 
-		// Verify lock file
-		lockPath := filepath.Join(ccmdDir, "commands.lock")
+		// Verify lock file (in project root)
+		lockPath := filepath.Join(projectDir, "ccmd-lock.yaml")
 		assert.True(t, memFS.FileExists(lockPath))
 	})
 
@@ -105,11 +106,12 @@ func TestInstallationProcess(t *testing.T) {
 
 		// Install with force
 		opts := installer.Options{
-			Repository: "https://github.com/test/example.git",
-			Version:    "v2.0.0",
-			Force:      true,
-			InstallDir: filepath.Join(ccmdDir, "commands"),
-			FileSystem: memFS,
+			Repository:  "https://github.com/test/example.git",
+			Version:     "v2.0.0",
+			Force:       true,
+			InstallDir:  filepath.Join(ccmdDir, "commands"),
+			ProjectPath: projectDir,
+			FileSystem:  memFS,
 			GitClient: &mockGitClient{
 				cloneFunc: func(opts git.CloneOptions) error {
 					metadata := &models.CommandMetadata{
@@ -310,7 +312,7 @@ func (m *mockGitClient) GetLatestTag(path string) (string, error) {
 }
 
 func (m *mockGitClient) GetCurrentCommit(path string) (string, error) {
-	return "abc123def456", nil
+	return "1234567890abcdef1234567890abcdef12345678", nil
 }
 
 func (m *mockGitClient) IsGitRepository(path string) bool {

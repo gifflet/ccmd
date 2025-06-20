@@ -10,10 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/lock"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 func TestNewCommand(t *testing.T) {
@@ -81,13 +82,20 @@ test-command --help
 	// Create standalone .md file
 	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("Test content"), 0o644))
 
-	// Create lock file
-	lockManager := lock.NewManagerWithFS(baseDir, memfs)
+	// Create lock file in the root (not in .claude)
+	lockFile := project.NewLockFile()
+	data, err := yaml.Marshal(lockFile)
+	require.NoError(t, err)
+	require.NoError(t, memfs.WriteFile("ccmd-lock.yaml", data, 0o644))
+
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", memfs)
 	require.NoError(t, lockManager.Load())
-	cmd := &models.Command{
+	cmd := &project.CommandLockInfo{
 		Name:        commandName,
 		Version:     "1.0.0",
 		Source:      "https://github.com/test/test-command",
+		Resolved:    "https://github.com/test/test-command@1.0.0",
+		Commit:      "1234567890abcdef1234567890abcdef12345678",
 		InstalledAt: time.Now().Add(-24 * time.Hour),
 		UpdatedAt:   time.Now(),
 		Metadata: map[string]string{
@@ -160,13 +168,20 @@ func TestRunInfoJSON(t *testing.T) {
 	// Create standalone .md file
 	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("JSON test"), 0o644))
 
-	// Create lock file
-	lockManager := lock.NewManagerWithFS(baseDir, memfs)
+	// Create lock file in the root (not in .claude)
+	lockFile := project.NewLockFile()
+	data, err := yaml.Marshal(lockFile)
+	require.NoError(t, err)
+	require.NoError(t, memfs.WriteFile("ccmd-lock.yaml", data, 0o644))
+
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", memfs)
 	require.NoError(t, lockManager.Load())
-	cmd := &models.Command{
+	cmd := &project.CommandLockInfo{
 		Name:        commandName,
 		Version:     "2.0.0",
 		Source:      "https://github.com/test/json-test",
+		Resolved:    "https://github.com/test/json-test@2.0.0",
+		Commit:      "abcdef1234567890abcdef1234567890abcdef12",
 		InstalledAt: time.Now().Add(-48 * time.Hour),
 		UpdatedAt:   time.Now().Add(-24 * time.Hour),
 	}
@@ -211,18 +226,11 @@ func TestRunInfoJSON(t *testing.T) {
 }
 
 func TestRunInfoCommandNotFound(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	oldHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", oldHome)
-	os.Setenv("HOME", tempDir)
-
-	// Create empty lock file
-	baseDir := filepath.Join(tempDir, ".claude")
+	// Setup test filesystem
 	memfs := fs.NewMemFS()
-	require.NoError(t, memfs.MkdirAll(baseDir, 0o755))
 
-	lockManager := lock.NewManagerWithFS(baseDir, memfs)
+	// Create empty lock file in the root
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", memfs)
 	require.NoError(t, lockManager.Load())
 	require.NoError(t, lockManager.Save())
 
@@ -332,12 +340,12 @@ func TestCheckCommandStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tempDir := t.TempDir()
 			memfs := fs.NewMemFS()
+			baseDir := ".claude"
 
-			tt.setupFunc(memfs, tempDir)
+			tt.setupFunc(memfs, baseDir)
 
-			info, metadata := checkCommandStructure("test", tempDir, memfs)
+			info, metadata := checkCommandStructure("test", baseDir, memfs)
 
 			assert.Equal(t, tt.expectedInfo.DirectoryExists, info.DirectoryExists)
 			assert.Equal(t, tt.expectedInfo.MarkdownExists, info.MarkdownExists)
@@ -479,13 +487,20 @@ func TestInfoWithIncompleteStructure(t *testing.T) {
 	// Only create the markdown file, not the directory
 	require.NoError(t, memfs.WriteFile(filepath.Join(baseDir, "commands", commandName+".md"), []byte("Incomplete"), 0o644))
 
-	// Create lock file
-	lockManager := lock.NewManagerWithFS(baseDir, memfs)
+	// Create lock file in the root (not in .claude)
+	lockFile := project.NewLockFile()
+	data, err := yaml.Marshal(lockFile)
+	require.NoError(t, err)
+	require.NoError(t, memfs.WriteFile("ccmd-lock.yaml", data, 0o644))
+
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", memfs)
 	require.NoError(t, lockManager.Load())
-	cmd := &models.Command{
+	cmd := &project.CommandLockInfo{
 		Name:        commandName,
 		Version:     "0.1.0",
 		Source:      "manual",
+		Resolved:    "manual@0.1.0",
+		Commit:      "fedcba0987654321fedcba0987654321fedcba09",
 		InstalledAt: time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -498,7 +513,7 @@ func TestInfoWithIncompleteStructure(t *testing.T) {
 	os.Stdout = w
 
 	// Run the command
-	err := runInfoWithFS(commandName, false, memfs)
+	err = runInfoWithFS(commandName, false, memfs)
 
 	// Restore stdout
 	w.Close()
@@ -519,18 +534,11 @@ func TestInfoWithIncompleteStructure(t *testing.T) {
 }
 
 func TestRunInfoWithJSONError(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	oldHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", oldHome)
-	os.Setenv("HOME", tempDir)
-
-	// Create empty lock file
-	baseDir := filepath.Join(tempDir, ".claude")
+	// Setup test filesystem
 	memfs := fs.NewMemFS()
-	require.NoError(t, memfs.MkdirAll(baseDir, 0o755))
 
-	lockManager := lock.NewManagerWithFS(baseDir, memfs)
+	// Create empty lock file in the root
+	lockManager := project.NewLockManagerWithFS("ccmd-lock.yaml", memfs)
 	require.NoError(t, lockManager.Load())
 	require.NoError(t, lockManager.Save())
 

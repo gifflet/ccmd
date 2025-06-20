@@ -8,10 +8,10 @@ import (
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/git"
-	"github.com/gifflet/ccmd/internal/lock"
 	"github.com/gifflet/ccmd/internal/metadata"
 	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/internal/validation"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // BenchmarkInstallCommand benchmarks the full installation process
@@ -108,15 +108,16 @@ func BenchmarkLockFileOperations(b *testing.B) {
 			_ = memFS.MkdirAll(".claude", 0o755)
 
 			// Create lock manager
-			lockManager := lock.NewManagerWithFS(".claude", memFS)
+			lockManager := project.NewLockManagerWithFS(".claude", memFS)
 			_ = lockManager.Load()
 
 			// Add commands
 			for i := 0; i < count; i++ {
-				cmd := &models.Command{
-					Name:    fmt.Sprintf("cmd%d", i),
-					Version: "v1.0.0",
-					Source:  fmt.Sprintf("https://github.com/test/cmd%d.git", i),
+				cmd := &project.CommandLockInfo{
+					Name:     fmt.Sprintf("cmd%d", i),
+					Version:  "v1.0.0",
+					Source:   fmt.Sprintf("https://github.com/test/cmd%d.git", i),
+					Resolved: fmt.Sprintf("https://github.com/test/cmd%d.git@v1.0.0", i),
 				}
 				_ = lockManager.AddCommand(cmd)
 			}

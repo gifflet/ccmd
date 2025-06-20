@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -15,15 +16,14 @@ func Example() {
 	lockFile := project.NewLockFile()
 
 	// Add a command entry
-	ghCmd := &project.Command{
+	ghCmd := &project.CommandLockInfo{
 		Name:         "gh",
-		Repository:   "github.com/cli/cli",
+		Source:       "github.com/cli/cli",
 		Version:      "v2.40.0",
-		CommitHash:   strings.Repeat("a", 40), // Example SHA
+		Commit:       strings.Repeat("a", 40), // Example SHA
+		Resolved:     "github.com/cli/cli@v2.40.0",
 		InstalledAt:  time.Now(),
 		UpdatedAt:    time.Now(),
-		FileSize:     45678901,
-		Checksum:     strings.Repeat("b", 64), // Example SHA256
 		Dependencies: []string{"git"},
 		Metadata: map[string]string{
 			"arch": "amd64",
@@ -37,12 +37,13 @@ func Example() {
 
 	// Save to file
 	lockFilePath := filepath.Join("/tmp", "ccmd-lock.yaml")
-	if err := lockFile.SaveToFile(lockFilePath); err != nil {
+	fileSystem := fs.OS{}
+	if err := lockFile.SaveToFile(lockFilePath, fileSystem); err != nil {
 		log.Fatal(err)
 	}
 
 	// Load from file
-	loaded, err := project.LoadFromFile(lockFilePath)
+	loaded, err := project.LoadFromFile(lockFilePath, fileSystem)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func Example() {
 	if cmd, exists := loaded.GetCommand("gh"); exists {
 		fmt.Printf("Command: %s\n", cmd.Name)
 		fmt.Printf("Version: %s\n", cmd.Version)
-		fmt.Printf("Repository: %s\n", cmd.Repository)
+		fmt.Printf("Repository: %s\n", cmd.Source)
 	}
 
 	// Output:
@@ -64,26 +65,24 @@ func ExampleLockFile_AddCommand() {
 	lockFile := project.NewLockFile()
 
 	// Add multiple commands
-	commands := []*project.Command{
+	commands := []*project.CommandLockInfo{
 		{
 			Name:        "cobra-cli",
-			Repository:  "github.com/spf13/cobra-cli",
+			Source:      "github.com/spf13/cobra-cli",
 			Version:     "v1.3.0",
-			CommitHash:  strings.Repeat("c", 40),
+			Commit:      strings.Repeat("c", 40),
+			Resolved:    "github.com/spf13/cobra-cli@v1.3.0",
 			InstalledAt: time.Now(),
 			UpdatedAt:   time.Now(),
-			FileSize:    12345678,
-			Checksum:    strings.Repeat("d", 64),
 		},
 		{
 			Name:        "golangci-lint",
-			Repository:  "github.com/golangci/golangci-lint",
+			Source:      "github.com/golangci/golangci-lint",
 			Version:     "v1.55.0",
-			CommitHash:  strings.Repeat("e", 40),
+			Commit:      strings.Repeat("e", 40),
+			Resolved:    "github.com/golangci/golangci-lint@v1.55.0",
 			InstalledAt: time.Now(),
 			UpdatedAt:   time.Now(),
-			FileSize:    87654321,
-			Checksum:    strings.Repeat("f", 64),
 		},
 	}
 

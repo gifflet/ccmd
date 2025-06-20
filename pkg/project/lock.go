@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/gifflet/ccmd/internal/fs"
 )
 
 // LockFileVersion represents the current version of the lock file format
@@ -17,31 +19,33 @@ const LockFileVersion = "1.0"
 
 // LockFile represents the ccmd-lock.yaml file structure
 type LockFile struct {
-	Version   string              `yaml:"version"`
-	UpdatedAt time.Time           `yaml:"updated_at"`
-	Commands  map[string]*Command `yaml:"commands"`
+	Version         string                      `yaml:"version"`
+	LockfileVersion int                         `yaml:"lockfileVersion"`
+	Commands        map[string]*CommandLockInfo `yaml:"commands"`
 }
 
-// Command represents a locked command entry
-type Command struct {
+// CommandLockInfo represents a locked command entry according to PRD
+type CommandLockInfo struct {
 	Name         string            `yaml:"name"`
-	Repository   string            `yaml:"repository"`
-	Version      string            `yaml:"version"`     // Tag, branch, or commit
-	CommitHash   string            `yaml:"commit_hash"` // Exact commit SHA
+	Version      string            `yaml:"version"`
+	Source       string            `yaml:"source"`
+	Resolved     string            `yaml:"resolved"`
+	Commit       string            `yaml:"commit,omitempty"`
 	InstalledAt  time.Time         `yaml:"installed_at"`
 	UpdatedAt    time.Time         `yaml:"updated_at"`
-	FileSize     int64             `yaml:"file_size"`
-	Checksum     string            `yaml:"checksum"` // SHA256 of the binary
 	Dependencies []string          `yaml:"dependencies,omitempty"`
 	Metadata     map[string]string `yaml:"metadata,omitempty"`
 }
 
+// Command is kept for compatibility during migration
+type Command = CommandLockInfo
+
 // NewLockFile creates a new lock file with the current version
 func NewLockFile() *LockFile {
 	return &LockFile{
-		Version:   LockFileVersion,
-		UpdatedAt: time.Now(),
-		Commands:  make(map[string]*Command),
+		Version:         LockFileVersion,
+		LockfileVersion: 1,
+		Commands:        make(map[string]*CommandLockInfo),
 	}
 }
 
@@ -52,11 +56,10 @@ func (lf *LockFile) AddCommand(cmd *Command) error {
 	}
 
 	if lf.Commands == nil {
-		lf.Commands = make(map[string]*Command)
+		lf.Commands = make(map[string]*CommandLockInfo)
 	}
 
 	lf.Commands[cmd.Name] = cmd
-	lf.UpdatedAt = time.Now()
 	return nil
 }
 
@@ -64,7 +67,6 @@ func (lf *LockFile) AddCommand(cmd *Command) error {
 func (lf *LockFile) RemoveCommand(name string) bool {
 	if _, exists := lf.Commands[name]; exists {
 		delete(lf.Commands, name)
-		lf.UpdatedAt = time.Now()
 		return true
 	}
 	return false
@@ -83,7 +85,7 @@ func (lf *LockFile) Validate() error {
 	}
 
 	if lf.Commands == nil {
-		lf.Commands = make(map[string]*Command)
+		lf.Commands = make(map[string]*CommandLockInfo)
 	}
 
 	for name, cmd := range lf.Commands {
@@ -99,36 +101,27 @@ func (lf *LockFile) Validate() error {
 }
 
 // Validate validates a command entry
-func (c *Command) Validate() error {
+func (c *CommandLockInfo) Validate() error {
 	if c.Name == "" {
 		return fmt.Errorf("name is required")
 	}
-	if c.Repository == "" {
-		return fmt.Errorf("repository is required")
+	if c.Source == "" {
+		return fmt.Errorf("source is required")
 	}
 	if c.Version == "" {
 		return fmt.Errorf("version is required")
 	}
-	if c.CommitHash == "" {
-		return fmt.Errorf("commit_hash is required")
+	if c.Commit == "" {
+		return fmt.Errorf("commit is required")
 	}
-	if len(c.CommitHash) != 40 {
-		return fmt.Errorf("commit_hash must be a 40-character SHA")
+	if len(c.Commit) != 40 {
+		return fmt.Errorf("commit must be a 40-character SHA")
 	}
 	if c.InstalledAt.IsZero() {
 		return fmt.Errorf("installed_at is required")
 	}
 	if c.UpdatedAt.IsZero() {
 		return fmt.Errorf("updated_at is required")
-	}
-	if c.FileSize <= 0 {
-		return fmt.Errorf("file_size must be positive")
-	}
-	if c.Checksum == "" {
-		return fmt.Errorf("checksum is required")
-	}
-	if len(c.Checksum) != 64 {
-		return fmt.Errorf("checksum must be a 64-character SHA256 hash")
 	}
 
 	return nil
@@ -157,9 +150,8 @@ func CalculateChecksum(filepath string) (string, error) {
 }
 
 // LoadFromFile loads a lock file from disk
-func LoadFromFile(filepath string) (*LockFile, error) {
-	// #nosec G304 -- filepath is provided by the application, not user input
-	data, err := os.ReadFile(filepath)
+func LoadFromFile(filepath string, fileSystem fs.FileSystem) (*LockFile, error) {
+	data, err := fileSystem.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read lock file: %w", err)
 	}
@@ -177,11 +169,32 @@ func LoadFromFile(filepath string) (*LockFile, error) {
 }
 
 // SaveToFile saves the lock file to disk
-func (lf *LockFile) SaveToFile(filepath string) error {
+func (lf *LockFile) SaveToFile(filepath string, fileSystem fs.FileSystem) error {
 	if err := lf.Validate(); err != nil {
 		return fmt.Errorf("invalid lock file: %w", err)
 	}
 
 	// Lock files should be owner-readable only (0600)
-	return writeYAMLFile(filepath, lf, 0o600)
+	return writeYAMLFile(filepath, lf, 0o600, fileSystem)
+}
+
+// ListCommands returns a list of all commands in the lock file
+func (lf *LockFile) ListCommands() ([]*CommandLockInfo, error) {
+	if lf.Commands == nil {
+		return []*CommandLockInfo{}, nil
+	}
+
+	commands := make([]*CommandLockInfo, 0, len(lf.Commands))
+	for _, cmd := range lf.Commands {
+		commands = append(commands, cmd)
+	}
+	return commands, nil
+}
+
+// SetCommand sets or updates a command in the lock file (compatibility method)
+func (lf *LockFile) SetCommand(name string, cmd *CommandLockInfo) {
+	if lf.Commands == nil {
+		lf.Commands = make(map[string]*CommandLockInfo)
+	}
+	lf.Commands[name] = cmd
 }
