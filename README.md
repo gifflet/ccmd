@@ -315,15 +315,16 @@ When user says "setup automation", you should...
 
 See our [Command Creation Guide](docs/command-structure.md) for detailed instructions.
 
-## Configuration
+## Command Structure
 
 ccmd stores all data in your project's `.claude` directory:
 
 ```
 your-project/
 ├── .claude/
-│   ├── commands/          # Installed command files
-│   ├── {command}.md       # Command metadata
+│   └── commands/         # Installed commands
+│      ├── {command}/     # Command directory
+│      └── {command}.md   # Command file
 ├── src/
 └── ...
 ```
