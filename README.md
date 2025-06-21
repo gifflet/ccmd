@@ -81,7 +81,7 @@ cd your-project
 ccmd init
 ```
 
-This creates a `.claude` directory in your project for storing commands.
+This interactive command guides you through creating a `ccmd.yaml` file for your Claude Code Command project. It will prompt you for metadata about your command and create the necessary `.claude/commands` directory structure.
 
 ### 2. Install a command
 
@@ -121,10 +121,52 @@ ccmd remove my-command
 ## Commands
 
 ### `ccmd init`
-Initialize ccmd in the current project. Creates the `.claude` directory structure.
+Initialize a new Claude Code Command project by creating the necessary configuration files and directory structure.
 
 ```bash
 ccmd init
+```
+
+This interactive command guides you through setting up a new ccmd project:
+
+- Prompts for command metadata (name, version, description, author, repository, etc.)
+- Uses sensible defaults (current directory name for `name`, `1.0.0` for version, `index.md` for entry)
+- Shows a preview of the generated `ccmd.yaml` before creating it
+- Creates the `.claude/commands` directory structure
+- All fields except `name` and `version` are optional
+
+Example session:
+```
+$ ccmd init
+This utility will walk you through creating a ccmd.yaml file.
+Press ^C at any time to quit.
+
+name: (my-project) my-command
+version: (1.0.0) 
+description: A command to automate tasks
+author: John Doe
+repository: https://github.com/johndoe/my-command
+entry: (index.md) 
+tags (comma-separated): automation, productivity
+
+About to write to /path/to/ccmd.yaml:
+
+name: my-command
+version: 1.0.0
+description: A command to automate tasks
+author: John Doe
+repository: https://github.com/johndoe/my-command
+entry: index.md
+tags:
+  - automation
+  - productivity
+
+Is this OK? (yes) 
+
+✓ Created .claude/commands directory
+✓ Created ccmd.yaml
+
+Your ccmd project has been initialized!
 ```
 
 ### `ccmd install`
@@ -212,9 +254,9 @@ ccmd run <command-name> [args...]
 
 ## Creating Commands
 
-Creating a command for ccmd is simple. Your repository needs:
+Creating a command for ccmd is simple. Start by running `ccmd init` in your command directory to interactively create the configuration file. Your repository needs:
 
-1. **ccmd.yaml** - Command metadata
+1. **ccmd.yaml** - Command metadata (created by `ccmd init`)
 2. **index.md** - Command instructions for Claude
 3. **README.md** - Documentation for users
 
@@ -237,15 +279,13 @@ name: my-awesome-command
 version: 1.0.0
 description: Automates awesome tasks in Claude Code
 author: Your Name
-email: your.email@example.com
 repository: https://github.com/username/my-awesome-command
-license: MIT
 entry: index.md  # Optional, defaults to index.md
 tags:
   - automation
   - productivity
   - testing
-dependencies:  # Optional
+commands:  # Optional
   - other-command@^1.0.0
 ```
 
@@ -275,36 +315,18 @@ When user says "setup automation", you should...
 
 See our [Command Creation Guide](docs/command-structure.md) for detailed instructions.
 
-## Configuration
+## Command Structure
 
 ccmd stores all data in your project's `.claude` directory:
 
 ```
 your-project/
 ├── .claude/
-│   ├── commands/          # Installed command files
-│   ├── commands.lock      # Lock file for reproducible installs
-│   └── config.yaml        # Project configuration (optional)
+│   └── commands/         # Installed commands
+│      ├── {command}/     # Command directory
+│      └── {command}.md   # Command file
 ├── src/
 └── ...
-```
-
-### Project Configuration (Optional)
-
-Create `.claude/config.yaml` for project-specific settings:
-
-```yaml
-# Registry to use for searches
-registry: https://registry.ccmd.dev
-
-# Default author for installs
-preferred_authors:
-  - gifflet
-  - trusted-org
-
-# Auto-update check
-auto_update: true
-update_check_interval: 24h
 ```
 
 ## Development
@@ -378,6 +400,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - [x] Git repository support
 - [x] Version management
 - [x] Lock file support
+- [x] Interactive project initialization (`ccmd init`)
 - [ ] Official command registry
 - [ ] Command dependencies
 - [ ] Command signing and verification
