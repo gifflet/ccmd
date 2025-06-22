@@ -5,18 +5,29 @@ This guide explains how to create commands for ccmd, covering the required struc
 ## Table of Contents
 
 - [Overview](#overview)
+- [Project vs Command Configuration](#project-vs-command-configuration)
 - [Required Files](#required-files)
 - [File Structure](#file-structure)
-- [ccmd.yaml Reference](#ccmdyaml-reference)
+- [Command ccmd.yaml Reference](#command-ccmdyaml-reference)
+- [Project ccmd.yaml Reference](#project-ccmdyaml-reference)
+- [ccmd-lock.yaml Reference](#ccmd-lockyaml-reference)
 - [Writing Command Instructions](#writing-command-instructions)
 - [Best Practices](#best-practices)
 - [Examples](#examples)
 - [Testing Your Command](#testing-your-command)
-- [Publishing](#publishing)
 
 ## Overview
 
 A ccmd command is a Git repository containing instructions for Claude Code. Commands help automate tasks, provide specialized knowledge, or enhance Claude's capabilities in specific domains.
+
+## Project vs Command Configuration
+
+It's important to understand that ccmd uses two different types of `ccmd.yaml` files:
+
+1. **Project ccmd.yaml** - Located in your project root, lists commands to install
+2. **Command ccmd.yaml** - Located in each command's repository, defines command metadata
+
+These files have completely different structures and purposes.
 
 ## Required Files
 
@@ -38,89 +49,80 @@ Additional recommended files:
 my-command/
 ├── ccmd.yaml          # Required: Command metadata
 ├── index.md           # Required: Claude instructions
-├── README.md          # Recommended: User documentation
-└── LICENSE            # Recommended: License file
+└── README.md          # Recommended: User documentation
 ```
 
-### Advanced Command Structure
+### Installed Command Structure
+
+When installed, commands are stored in your project:
 
 ```
-my-advanced-command/
-├── ccmd.yaml          # Metadata
-├── index.md           # Main instructions
-├── README.md          # User docs
-├── LICENSE            # License
-├── examples/          # Usage examples
-│   ├── basic.md
-│   ├── advanced.md
-│   └── troubleshooting.md
-├── prompts/           # Additional prompts
-│   ├── setup.md
-│   └── cleanup.md
-└── templates/         # File templates
-    ├── config.yaml
-    └── Dockerfile
+your-project/
+├── ccmd.yaml          # Project configuration
+├── ccmd-lock.yaml     # Lock file (auto-generated)
+└── .claude/
+    └── commands/
+        ├── my-command.md      # Standalone file (copy of index.md)
+        └── my-command/        # Full command directory
+            ├── ccmd.yaml
+            ├── index.md
+            └── README.md
 ```
 
-## ccmd.yaml Reference
+## Command ccmd.yaml Reference
 
-The `ccmd.yaml` file defines your command's metadata:
+The `ccmd.yaml` file in a command repository defines the command's metadata:
 
 ```yaml
 # Required fields
 name: my-awesome-command          # Command name (lowercase, hyphens allowed)
 version: 1.0.0                    # Semantic version (major.minor.patch)
-description: Short description    # One-line description (max 100 chars)
-
-# Recommended fields
-author: Your Name                 # Command author
-email: your.email@example.com    # Contact email
-repository: https://github.com/user/repo  # Source repository
-license: MIT                      # License type
+entry: index.md                   # Entry file (default: index.md)
 
 # Optional fields
-entry: index.md                   # Entry file (default: index.md)
-homepage: https://example.com     # Project homepage
-documentation: https://docs.example.com  # Documentation URL
-issues: https://github.com/user/repo/issues  # Issue tracker
-
-# Command categorization
-tags:                            # Tags for discovery
+description: Short description            # One-line description
+author: Your Name                         # Command author
+repository: https://github.com/user/repo  # Source repository
+tags:                                     # Tags for discovery
   - automation
   - testing
   - development
-  
-categories:                      # Main categories
-  - development
-  - productivity
-
-# Advanced features
-dependencies:                    # Other commands this depends on
-  - other-command@^1.0.0
-  - helper-command@~2.1.0
-
-requirements:                    # System requirements
-  - nodejs>=18.0.0
-  - python>=3.8
-
-config:                         # Configuration options
-  default_timeout: 30
-  allow_network: true
-  
-# Experimental features  
-includes:                       # Additional files to include
-  - prompts/*.md
-  - templates/*
 ```
 
-### Version Constraints
+All fields except `tags` are required for a valid command.
 
-Dependencies use semantic versioning constraints:
-- `^1.0.0` - Compatible with 1.x.x (>=1.0.0 <2.0.0)
-- `~1.2.0` - Approximately 1.2.x (>=1.2.0 <1.3.0)
-- `1.2.3` - Exact version
-- `>=1.0.0` - Minimum version
-- `*` or `latest` - Any version
+## Project ccmd.yaml Reference
+
+The `ccmd.yaml` file in your project root lists commands to install:
+
+```yaml
+commands:
+  - owner/repo             # Install latest version
+  - owner/repo@1.0.0       # Install specific version
+  - owner/repo@branch      # Install from branch
+```
+
+This is a simple list format - no other fields are used in the project's ccmd.yaml.
+
+## ccmd-lock.yaml Reference
+
+The `ccmd-lock.yaml` file tracks installed command versions:
+
+```yaml
+version: "1.0"
+lockfileVersion: 1
+commands:
+  command-name:
+    name: command-name
+    version: 1.0.0
+    source: https://github.com/owner/repo.git
+    resolved: https://github.com/owner/repo.git@1.0.0
+    commit: abc123def456...
+    installed_at: 2025-06-22T01:07:51.524358-03:00
+    updated_at: 2025-06-22T01:07:51.524358-03:00
+```
+
+This file is automatically managed by ccmd and should not be edited manually.
 
 ## Writing Command Instructions
 
@@ -347,15 +349,16 @@ Or use the --language flag to specify manually."
 
 ## Examples
 
-### Simple Command
+### Simple Command Example
 
+**Command's ccmd.yaml:**
 ```yaml
-# ccmd.yaml
 name: format-json
 version: 1.0.0
 description: Format and validate JSON files
 author: Jane Doe
 repository: https://github.com/janedoe/format-json
+entry: index.md
 tags:
   - json
   - formatting
@@ -393,39 +396,31 @@ Response:
 - Report: "Formatted 5 JSON files. Found and fixed 2 syntax errors."
 ```
 
-### Advanced Command
+### Project Configuration Example
 
+**Project's ccmd.yaml:**
 ```yaml
-# ccmd.yaml
+commands:
+  - janedoe/format-json
+  - apitools/api-generator@2.1.0
+  - myorg/internal-tool@main
+```
+
+### Complete Command Example
+
+**Command's ccmd.yaml:**
+```yaml
 name: api-generator
 version: 2.1.0
 description: Generate REST API boilerplate with tests and documentation
 author: API Tools Team
-email: team@apitools.dev
 repository: https://github.com/apitools/api-generator
-homepage: https://apitools.dev
-license: MIT
-
+entry: index.md
 tags:
   - api
   - rest
   - boilerplate
   - testing
-
-categories:
-  - development
-  - automation
-
-dependencies:
-  - openapi-validator@^1.0.0
-
-requirements:
-  - nodejs>=16.0.0
-
-config:
-  default_framework: express
-  include_tests: true
-  include_docs: true
 ```
 
 ```markdown
@@ -530,17 +525,13 @@ cd your-command
 
 # Validate structure
 ls ccmd.yaml index.md  # Should exist
-
-# Test with ccmd
-ccmd install file:///path/to/your-command
-ccmd run your-command
 ```
 
 ### 2. Validation Checklist
 
 - [ ] ccmd.yaml is valid YAML
-- [ ] All required fields are present
-- [ ] Version follows semver
+- [ ] All required fields are present (name, version, description, author, repository, entry)
+- [ ] Version follows semantic versioning (e.g., 1.0.0)
 - [ ] index.md exists and is readable
 - [ ] Instructions are clear and specific
 - [ ] Examples work as documented
@@ -553,17 +544,17 @@ Test your command in different scenarios:
 ```bash
 # Test in empty directory
 mkdir test-empty && cd test-empty
-ccmd run your-command
+/your-command
 
 # Test in existing project
 cd ~/my-project
-ccmd run your-command
+/your-command --resource users
 
 # Test with parameters
-ccmd run your-command --option value
+/your-command --resource products --no-tests
 ```
 
-## Publishing
+## Publishing Your Command
 
 ### 1. Prepare Repository
 
@@ -577,97 +568,33 @@ git tag -a v1.0.0 -m "Initial release"
 git push origin main --tags
 ```
 
-### 2. Documentation
+### 2. Share Your Command
 
-Create a comprehensive README.md:
-
-```markdown
-# My Command
-
-## Installation
-
-\```bash
-ccmd install github.com/username/my-command
-\```
-
-## Usage
-
-\```bash
-ccmd run my-command [options]
-\```
-
-## Options
-
-- `--option`: Description
-
-## Examples
-
-[Include practical examples]
-
-## License
-
-MIT
-```
-
-### 3. Submit to Registry (Coming Soon)
-
-Once the official registry is available:
+Once published, others can install your command:
 
 ```bash
-ccmd publish
+ccmd install github.com/username/my-command
 ```
 
-## Advanced Features
+### 3. Documentation
 
-### Multiple Entry Points
+Create a clear README.md with:
+- Installation instructions
+- Usage examples
+- Parameter documentation
+- Common use cases
 
-```yaml
-# ccmd.yaml
-entry: main.md
+## How Commands Are Installed
 
-commands:
-  setup:
-    entry: commands/setup.md
-    description: Initial setup
-  
-  cleanup:
-    entry: commands/cleanup.md
-    description: Clean up resources
-```
+When you run `ccmd install`, the following happens:
 
-### Conditional Logic
+1. **Repository is cloned** to a temporary directory
+2. **Validation** ensures ccmd.yaml and index.md exist
+3. **Files are copied** to `.claude/commands/[command-name]/`
+4. **Standalone file** is created at `.claude/commands/[command-name].md`
+5. **Lock file** is updated with version information
 
-```markdown
-## Platform-Specific Instructions
-
-Check the operating system and adjust:
-
-- **macOS**: Use `brew install`
-- **Linux**: Use `apt-get` or `yum`
-- **Windows**: Use `choco` or download manually
-```
-
-### Templates and Snippets
-
-Include reusable templates:
-
-```
-templates/
-├── docker/
-│   ├── Dockerfile.node
-│   └── Dockerfile.python
-└── ci/
-    ├── github-actions.yml
-    └── gitlab-ci.yml
-```
-
-Reference in instructions:
-
-```markdown
-Use the appropriate Dockerfile template:
-- For Node.js: Use templates/docker/Dockerfile.node
-- For Python: Use templates/docker/Dockerfile.python
-```
+The standalone `.md` file is what Claude Code uses when you invoke the command.
 
 ## Troubleshooting
 
