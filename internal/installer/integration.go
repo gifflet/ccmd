@@ -249,6 +249,13 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		return nil
 	}
 
+	// Load existing lock file to preserve original URLs
+	lockFile, lockErr := pm.LoadLockFile()
+	if lockErr != nil && !os.IsNotExist(lockErr) {
+		log.WithError(lockErr).Warn("failed to load lock file")
+		lockFile = nil
+	}
+
 	log.WithField("count", len(configCommands)).Info("installing commands from ccmd.yaml")
 	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(configCommands))
 
@@ -274,7 +281,27 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 			continue
 		}
 
-		repository := fmt.Sprintf("https://github.com/%s.git", cmd.Repo)
+		// Determine repository URL - prefer lock file URL if available
+		var repository string
+		if lockFile != nil {
+			if cmdLock, found := lockFile.GetCommand(repoName); found && cmdLock.Source != "" {
+				// Use original source URL from lock file
+				repository = cmdLock.Source
+				log.WithFields(logger.Fields{
+					"command": repoName,
+					"source":  repository,
+				}).Debug("using repository URL from lock file")
+			}
+		}
+
+		// If not found in lock file, normalize the repository URL
+		if repository == "" {
+			repository = NormalizeRepositoryURL(fmt.Sprintf("github.com/%s", cmd.Repo))
+			log.WithFields(logger.Fields{
+				"command": repoName,
+				"source":  repository,
+			}).Debug("using normalized repository URL")
+		}
 
 		log.WithFields(logger.Fields{
 			"repository": cmd.Repo,
