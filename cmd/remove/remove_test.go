@@ -39,7 +39,7 @@ func TestRunRemove(t *testing.T) {
 				cmd := &project.CommandLockInfo{
 					Name:        "test-cmd",
 					Version:     "v1.0.0",
-					Source:      "test/test-cmd",
+					Source:      "git@github.com:test/test-cmd.git",
 					Resolved:    "test/test-cmd@v1.0.0",
 					Commit:      "1234567890abcdef1234567890abcdef12345678",
 					InstalledAt: time.Now(),
@@ -70,11 +70,8 @@ func TestRunRemove(t *testing.T) {
 				// Create ccmd.yaml
 				manager := project.NewManager(".")
 				config := &project.Config{
-					Commands: []project.ConfigCommand{
-						{
-							Repo:    "test/test-cmd",
-							Version: "v1.0.0",
-						},
+					Commands: []string{
+						"test/test-cmd@v1.0.0",
 					},
 				}
 				require.NoError(t, manager.SaveConfig(config))
@@ -195,27 +192,20 @@ func TestUpdateProjectFiles(t *testing.T) {
 			cmdInfo: &project.CommandLockInfo{
 				Name:        "test-cmd",
 				Version:     "v1.0.0",
-				Source:      "test/test-cmd",
-				Resolved:    "test/test-cmd@v1.0.0",
+				Source:      "git@github.com:test/test-cmd.git",
+				Resolved:    "git@github.com:test/test-cmd.git@v1.0.0",
 				Commit:      "1234567890abcdef1234567890abcdef12345678",
 				InstalledAt: time.Now(),
 				UpdatedAt:   time.Now(),
-				Metadata:    map[string]string{"repository": "test/test-cmd"},
 			},
 			setupFunc: func(t *testing.T, tmpDir string) {
 				manager := project.NewManager(".")
 
 				// Create ccmd.yaml with the command
 				config := &project.Config{
-					Commands: []project.ConfigCommand{
-						{
-							Repo:    "test/test-cmd",
-							Version: "v1.0.0",
-						},
-						{
-							Repo:    "test/other-cmd",
-							Version: "v2.0.0",
-						},
+					Commands: []string{
+						"test/test-cmd@v1.0.0",
+						"test/other-cmd@v2.0.0",
 					},
 				}
 				require.NoError(t, manager.SaveConfig(config))
@@ -283,7 +273,7 @@ func TestUpdateProjectFiles(t *testing.T) {
 			cmdInfo: &project.CommandLockInfo{
 				Name:        "test-cmd",
 				Version:     "v1.0.0",
-				Source:      "test/test-cmd",
+				Source:      "git@github.com:test/test-cmd.git",
 				Resolved:    "test/test-cmd@v1.0.0",
 				Commit:      "fedcba0987654321fedcba0987654321fedcba09",
 				InstalledAt: time.Now(),
@@ -328,6 +318,88 @@ func TestUpdateProjectFiles(t *testing.T) {
 
 			// Run checks
 			tt.checkFunc(t, tmpDir)
+		})
+	}
+}
+
+func TestExtractRepoFromSource(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "git SSH URL",
+			source:  "git@github.com:gifflet/hello-world.git",
+			want:    "gifflet/hello-world",
+			wantErr: false,
+		},
+		{
+			name:    "git SSH URL without .git suffix",
+			source:  "git@github.com:owner/repo",
+			want:    "owner/repo",
+			wantErr: false,
+		},
+		{
+			name:    "HTTPS URL",
+			source:  "https://github.com/gifflet/hello-world.git",
+			want:    "gifflet/hello-world",
+			wantErr: false,
+		},
+		{
+			name:    "HTTPS URL without .git suffix",
+			source:  "https://github.com/owner/repo",
+			want:    "owner/repo",
+			wantErr: false,
+		},
+		{
+			name:    "HTTP URL",
+			source:  "http://github.com/owner/repo.git",
+			want:    "owner/repo",
+			wantErr: false,
+		},
+		{
+			name:    "empty source",
+			source:  "",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "invalid git URL format",
+			source:  "git@github.com",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "invalid HTTPS URL format",
+			source:  "https://github.com/",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "unsupported URL format",
+			source:  "ftp://example.com/repo.git",
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "git URL with spaces (trimmed)",
+			source:  "  git@github.com:owner/repo.git  ",
+			want:    "owner/repo",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := extractRepoFromSource(tt.source)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }

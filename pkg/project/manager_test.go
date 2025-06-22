@@ -261,9 +261,9 @@ func TestManager(t *testing.T) {
 
 		// Test Config operations
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo1", Version: "v1.0.0"},
-				{Repo: "owner/repo2", Version: "latest"},
+			Commands: []string{
+				"owner/repo1@v1.0.0",
+				"owner/repo2@latest",
 			},
 		}
 
@@ -342,11 +342,39 @@ func TestManager(t *testing.T) {
 		}
 
 		// Test operations on non-existent config
+		// AddCommand should create a minimal config when it doesn't exist
 		err = m.AddCommand("owner/repo", "v1.0.0")
-		if err == nil {
-			t.Error("expected error when adding to non-existent config")
+		if err != nil {
+			t.Errorf("unexpected error when adding to non-existent config: %v", err)
 		}
 
+		// Verify the config was created with minimal structure
+		config, err := m.LoadConfig()
+		if err != nil {
+			t.Fatalf("failed to load created config: %v", err)
+		}
+
+		// Check that only commands field is present
+		commands, err := config.GetCommands()
+		if err != nil {
+			t.Fatalf("failed to get commands: %v", err)
+		}
+		if len(commands) != 1 {
+			t.Errorf("expected 1 command, got %d", len(commands))
+		}
+
+		// RemoveCommand should now work since config exists
+		err = m.RemoveCommand("owner/repo")
+		if err != nil {
+			t.Errorf("unexpected error when removing from config: %v", err)
+		}
+
+		// Clean up for next test
+		if err := m.fs.Remove(m.ConfigPath()); err != nil {
+			t.Fatalf("failed to remove config: %v", err)
+		}
+
+		// Now test RemoveCommand on non-existent config
 		err = m.RemoveCommand("owner/repo")
 		if err == nil {
 			t.Error("expected error when removing from non-existent config")

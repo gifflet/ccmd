@@ -18,9 +18,9 @@ func TestSaveConfig(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "ccmd.yaml")
 
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo1", Version: "v1.0.0"},
-				{Repo: "owner/repo2", Version: "latest"},
+			Commands: []string{
+				"owner/repo1@v1.0.0",
+				"owner/repo2@latest",
 			},
 		}
 
@@ -64,7 +64,7 @@ func TestSaveConfig(t *testing.T) {
 
 		// Empty commands is now valid
 		config := &Config{
-			Commands: []ConfigCommand{},
+			Commands: []string{},
 		}
 
 		err := SaveConfig(config, configPath, fileSystem)
@@ -74,8 +74,8 @@ func TestSaveConfig(t *testing.T) {
 
 		// Invalid command
 		config = &Config{
-			Commands: []ConfigCommand{
-				{Repo: "", Version: "v1.0.0"},
+			Commands: []string{
+				"@v1.0.0",
 			},
 		}
 
@@ -91,8 +91,8 @@ func TestSaveConfig(t *testing.T) {
 
 		// Create initial config
 		config1 := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo1", Version: "v1.0.0"},
+			Commands: []string{
+				"owner/repo1@v1.0.0",
 			},
 		}
 
@@ -103,8 +103,8 @@ func TestSaveConfig(t *testing.T) {
 
 		// Save new config
 		config2 := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo2", Version: "v2.0.0"},
+			Commands: []string{
+				"owner/repo2@v2.0.0",
 			},
 		}
 
@@ -140,8 +140,8 @@ func TestSaveConfig(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "ccmd.yaml")
 
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo", Version: "v1.0.0"},
+			Commands: []string{
+				"owner/repo@v1.0.0",
 			},
 		}
 
@@ -167,9 +167,9 @@ func TestSaveConfig(t *testing.T) {
 func TestWriteConfig(t *testing.T) {
 	t.Run("ValidConfig", func(t *testing.T) {
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo1", Version: "v1.0.0"},
-				{Repo: "owner/repo2", Version: "latest"},
+			Commands: []string{
+				"owner/repo1@v1.0.0",
+				"owner/repo2@latest",
 			},
 		}
 
@@ -197,7 +197,7 @@ func TestWriteConfig(t *testing.T) {
 	t.Run("InvalidConfig", func(t *testing.T) {
 		// Empty commands is now valid
 		config := &Config{
-			Commands: []ConfigCommand{},
+			Commands: []string{},
 		}
 
 		var buf bytes.Buffer
@@ -208,8 +208,8 @@ func TestWriteConfig(t *testing.T) {
 
 		// Invalid command
 		config = &Config{
-			Commands: []ConfigCommand{
-				{Repo: "invalid", Version: "v1.0.0"},
+			Commands: []string{
+				"invalid@v1.0.0",
 			},
 		}
 
@@ -222,8 +222,8 @@ func TestWriteConfig(t *testing.T) {
 
 	t.Run("YAMLFormat", func(t *testing.T) {
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo", Version: "v1.0.0"},
+			Commands: []string{
+				"owner/repo@v1.0.0",
 			},
 		}
 
@@ -255,8 +255,8 @@ func TestWriteConfig(t *testing.T) {
 
 	t.Run("EmptyVersion", func(t *testing.T) {
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo", Version: ""},
+			Commands: []string{
+				"owner/repo@",
 			},
 		}
 

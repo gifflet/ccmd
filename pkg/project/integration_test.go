@@ -161,9 +161,7 @@ func TestIntegration(t *testing.T) {
 
 		// Create initial config
 		config := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo1", Version: "v1.0.0"},
-			},
+			Commands: []string{"owner/repo1@v1.0.0"},
 		}
 
 		configPath := filepath.Join(tmpDir, ConfigFileName)
@@ -207,9 +205,7 @@ func TestIntegration(t *testing.T) {
 		go func() {
 			defer func() { done <- true }()
 			for i := 0; i < 5; i++ {
-				if cmds, ok := config.Commands.([]ConfigCommand); ok && len(cmds) > 0 {
-					cmds[0].Version = "v1.0." + string(rune('0'+i))
-				}
+				config.Commands = []string{"owner/repo1@v1.0." + string(rune('0'+i))}
 				err := SaveConfig(config, configPath, fileSystem)
 				if err != nil {
 					errors <- err
@@ -265,9 +261,7 @@ func TestIntegration(t *testing.T) {
 
 		// Overwrite with valid config
 		validConfig := &Config{
-			Commands: []ConfigCommand{
-				{Repo: "owner/repo", Version: "v1.0.0"},
-			},
+			Commands: []string{"owner/repo@v1.0.0"},
 		}
 
 		err = manager.SaveConfig(validConfig)
