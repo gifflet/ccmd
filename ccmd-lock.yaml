@@ -1,0 +1,11 @@
+version: "1.0"
+lockfileVersion: 1
+commands:
+    parallel-dev:
+        name: parallel-dev
+        version: 1.0.0
+        source: git@github.com:gifflet/parallel-dev.git
+        resolved: git@github.com:gifflet/parallel-dev.git@single_file
+        commit: 151213c3e25a85f8a5ca12ce8cc79d3b80f5850e
+        installed_at: 2025-06-22T01:07:51.524358-03:00
+        updated_at: 2025-06-22T01:07:51.524358-03:00

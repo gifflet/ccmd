@@ -1,3 +1,2 @@
 commands:
-  - repo: gifflet/hello-world
-    version: v1.0.0
+    - gifflet/parallel-dev@single_file
