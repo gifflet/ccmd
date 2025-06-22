@@ -11,8 +11,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/internal/output"
+	"github.com/gifflet/ccmd/pkg/project"
 )
 
 // NewCommand creates a new init command.
@@ -52,39 +52,92 @@ func runInit() error {
 	}
 	dirName := filepath.Base(currentDir)
 
-	// Prompt for each field
-	name := promptUser(scanner, "name", dirName)
-	version := promptUser(scanner, "version", "1.0.0")
-	description := promptUser(scanner, "description", "")
-	author := promptUser(scanner, "author", "")
-	repository := promptUser(scanner, "repository", "")
-	entry := promptUser(scanner, "entry", "index.md")
-	tagsStr := promptUser(scanner, "tags (comma-separated)", "")
+	// Set defaults
+	nameDefault := dirName
+	versionDefault := "1.0.0"
+	descriptionDefault := ""
+	authorDefault := ""
+	repositoryDefault := ""
+	entryDefault := "index.md"
 
-	// Parse tags
-	var tags []string
-	if tagsStr != "" {
-		for _, tag := range strings.Split(tagsStr, ",") {
-			trimmed := strings.TrimSpace(tag)
-			if trimmed != "" {
-				tags = append(tags, trimmed)
+	// Try to load existing ccmd.yaml
+	ccmdPath := filepath.Join(currentDir, "ccmd.yaml")
+	var existingCommands interface{}
+
+	if _, err := os.Stat(ccmdPath); err == nil {
+		// File exists, try to load it using raw YAML to preserve structure
+		data, err := os.ReadFile(ccmdPath) //nolint:gosec // ccmdPath is constructed from known safe values
+		if err == nil {
+			var rawConfig map[string]interface{}
+			if err := yaml.Unmarshal(data, &rawConfig); err == nil {
+				// Extract basic fields for defaults
+				if name, ok := rawConfig["name"].(string); ok && name != "" {
+					nameDefault = name
+				}
+				if version, ok := rawConfig["version"].(string); ok && version != "" {
+					versionDefault = version
+				}
+				if desc, ok := rawConfig["description"].(string); ok {
+					descriptionDefault = desc
+				}
+				if author, ok := rawConfig["author"].(string); ok {
+					authorDefault = author
+				}
+				if repo, ok := rawConfig["repository"].(string); ok {
+					repositoryDefault = repo
+				}
+				if entry, ok := rawConfig["entry"].(string); ok && entry != "" {
+					entryDefault = entry
+				}
+				// Preserve commands field as-is
+				existingCommands = rawConfig["commands"]
+				output.Printf("Loaded existing ccmd.yaml file.")
 			}
 		}
 	}
 
-	// Create metadata structure
-	metadata := models.CommandMetadata{
+	// Prompt for each field
+	name := promptUser(scanner, "name", nameDefault)
+	version := promptUser(scanner, "version", versionDefault)
+	description := promptUser(scanner, "description", descriptionDefault)
+	author := promptUser(scanner, "author", authorDefault)
+	repository := promptUser(scanner, "repository", repositoryDefault)
+	entry := promptUser(scanner, "entry", entryDefault)
+
+	// Create config structure
+	config := project.Config{
 		Name:        name,
 		Version:     version,
 		Description: description,
 		Author:      author,
 		Repository:  repository,
 		Entry:       entry,
-		Tags:        tags,
+		Commands:    existingCommands, // Preserve existing commands
+	}
+
+	// Create a custom structure to ensure commands comes last
+	type orderedConfig struct {
+		Name        string      `yaml:"name,omitempty"`
+		Version     string      `yaml:"version,omitempty"`
+		Description string      `yaml:"description,omitempty"`
+		Author      string      `yaml:"author,omitempty"`
+		Repository  string      `yaml:"repository,omitempty"`
+		Entry       string      `yaml:"entry,omitempty"`
+		Commands    interface{} `yaml:"commands,omitempty"`
 	}
 
 	// Show preview
-	yamlData, err := yaml.Marshal(&metadata)
+	preview := orderedConfig{
+		Name:        config.Name,
+		Version:     config.Version,
+		Description: config.Description,
+		Author:      config.Author,
+		Repository:  config.Repository,
+		Entry:       config.Entry,
+		Commands:    config.Commands,
+	}
+
+	yamlData, err := yaml.Marshal(&preview)
 	if err != nil {
 		return fmt.Errorf("failed to marshal YAML: %w", err)
 	}
@@ -105,9 +158,8 @@ func runInit() error {
 		return fmt.Errorf("failed to create .claude directory: %w", err)
 	}
 
-	// Write ccmd.yaml
-	ccmdPath := filepath.Join(currentDir, "ccmd.yaml")
-	if err := fs.WriteYAMLFile(ccmdPath, &metadata); err != nil {
+	// Write ccmd.yaml using the ordered structure
+	if err := fs.WriteYAMLFile(ccmdPath, &preview); err != nil {
 		return fmt.Errorf("failed to write ccmd.yaml: %w", err)
 	}
 
@@ -117,31 +169,31 @@ func runInit() error {
 	output.Printf("\n🎉 ccmd project initialized!")
 
 	// Create the entry file if it doesn't exist
-	entryPath := filepath.Join(currentDir, metadata.Entry)
+	entryPath := filepath.Join(currentDir, config.Entry)
 	if _, err := os.Stat(entryPath); os.IsNotExist(err) {
-		output.Printf("\n📝 Create %s with your command instructions:", metadata.Entry)
+		output.Printf("\n📝 Create %s with your command instructions:", config.Entry)
 		output.Printf("```markdown")
-		output.Printf("# %s", metadata.Name)
+		output.Printf("# %s", config.Name)
 		output.Printf("")
 		output.Printf("You are an AI assistant. When invoked, you should...")
 		output.Printf("```")
 	}
 
 	output.Printf("\n🚀 Publish your command:")
-	output.Printf("  1. git add ccmd.yaml %s  # add ccmd-lock.yaml if you installed commands", metadata.Entry)
-	output.Printf("  2. git commit -m \"feat: add %s command\"", metadata.Name)
+	output.Printf("  1. git add ccmd.yaml %s  # add ccmd-lock.yaml if you installed commands", config.Entry)
+	output.Printf("  2. git commit -m \"feat: add %s command\"", config.Name)
 	output.Printf("  3. git push origin main")
 
 	// Use the actual repository if provided, otherwise show placeholder
 	installCmd := "ccmd install "
-	if metadata.Repository != "" {
+	if config.Repository != "" {
 		// Extract GitHub path from full URL
-		if strings.HasPrefix(metadata.Repository, "https://github.com/") {
-			repoPath := strings.TrimPrefix(metadata.Repository, "https://github.com/")
+		if strings.HasPrefix(config.Repository, "https://github.com/") {
+			repoPath := strings.TrimPrefix(config.Repository, "https://github.com/")
 			repoPath = strings.TrimSuffix(repoPath, ".git")
 			installCmd += repoPath
 		} else {
-			installCmd += metadata.Repository
+			installCmd += config.Repository
 		}
 	} else {
 		installCmd += "github.com/your-username/your-repo"

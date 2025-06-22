@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/gifflet/ccmd/internal/fs"
 )
 
@@ -105,86 +107,65 @@ func (m *Manager) InitializeLock() error {
 
 // AddCommand adds a new command to the configuration
 func (m *Manager) AddCommand(repo, version string) error {
-	config, err := m.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+	// Validate repo format first
+	if err := validateRepoFormat(repo); err != nil {
+		return fmt.Errorf("invalid repo format: %w", err)
 	}
 
-	// Get current commands
-	commands, err := config.GetCommands()
-	if err != nil {
-		return fmt.Errorf("failed to get commands: %w", err)
-	}
-
-	// Check if command already exists
-	for _, existing := range commands {
-		if existing.Repo == repo {
-			return fmt.Errorf("command %s already exists in configuration", repo)
+	// If config doesn't exist, create minimal config with just commands
+	if !m.ConfigExists() {
+		var newCmd string
+		if version != "" {
+			newCmd = repo + "@" + version
+		} else {
+			newCmd = repo
 		}
-	}
 
-	// Create command string or object based on version
-	var newCmd string
-	if version != "" {
-		newCmd = repo + "@" + version
-	} else {
-		newCmd = repo
-	}
-
-	// Add to commands as string array
-	if config.Commands == nil {
-		config.Commands = []string{newCmd}
-	} else {
-		switch v := config.Commands.(type) {
-		case []string:
-			v = append(v, newCmd)
-			config.Commands = v
-		case []interface{}:
-			v = append(v, newCmd)
-			config.Commands = v
-		default:
-			// Convert to string array
-			config.Commands = []string{newCmd}
+		config := &Config{
+			Commands: []string{newCmd},
 		}
+		return m.SaveConfig(config)
 	}
 
-	return m.SaveConfig(config)
+	// If config exists, preserve existing structure
+	return m.preserveAndUpdateCommands(func(commands []ConfigCommand) ([]ConfigCommand, error) {
+		// Check if command already exists
+		for _, existing := range commands {
+			if existing.Repo == repo {
+				return nil, fmt.Errorf("command %s already exists in configuration", repo)
+			}
+		}
+
+		// Add new command
+		commands = append(commands, ConfigCommand{
+			Repo:    repo,
+			Version: version,
+		})
+		return commands, nil
+	})
 }
 
 // RemoveCommand removes a command from the configuration
 func (m *Manager) RemoveCommand(repo string) error {
-	config, err := m.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+	// Use preserve and update to maintain existing structure
+	return m.preserveAndUpdateCommands(func(commands []ConfigCommand) ([]ConfigCommand, error) {
+		found := false
+		newCommands := make([]ConfigCommand, 0, len(commands))
 
-	// Get current commands
-	commands, err := config.GetCommands()
-	if err != nil {
-		return fmt.Errorf("failed to get commands: %w", err)
-	}
-
-	found := false
-	newCommands := make([]string, 0, len(commands))
-	for _, cmd := range commands {
-		if cmd.Repo != repo {
-			// Preserve format
-			if cmd.Version != "" {
-				newCommands = append(newCommands, cmd.Repo+"@"+cmd.Version)
+		for _, cmd := range commands {
+			if cmd.Repo != repo {
+				newCommands = append(newCommands, cmd)
 			} else {
-				newCommands = append(newCommands, cmd.Repo)
+				found = true
 			}
-		} else {
-			found = true
 		}
-	}
 
-	if !found {
-		return fmt.Errorf("command %s not found in configuration", repo)
-	}
+		if !found {
+			return nil, fmt.Errorf("command %s not found in configuration", repo)
+		}
 
-	config.Commands = newCommands
-	return m.SaveConfig(config)
+		return newCommands, nil
+	})
 }
 
 // UpdateCommandInLockFile updates command information in the lock file
@@ -203,43 +184,29 @@ func (m *Manager) UpdateCommandInLockFile(cmd *Command) error {
 
 // UpdateCommand updates a command's version in the configuration
 func (m *Manager) UpdateCommand(repo, newVersion string) error {
-	config, err := m.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+	// Use preserve and update to maintain existing structure
+	return m.preserveAndUpdateCommands(func(commands []ConfigCommand) ([]ConfigCommand, error) {
+		found := false
+		updatedCommands := make([]ConfigCommand, len(commands))
 
-	// Get current commands
-	commands, err := config.GetCommands()
-	if err != nil {
-		return fmt.Errorf("failed to get commands: %w", err)
-	}
-
-	found := false
-	newCommands := make([]string, 0, len(commands))
-	for _, cmd := range commands {
-		if cmd.Repo == repo {
-			found = true
-			if newVersion != "" {
-				newCommands = append(newCommands, repo+"@"+newVersion)
+		for i, cmd := range commands {
+			if cmd.Repo == repo {
+				found = true
+				updatedCommands[i] = ConfigCommand{
+					Repo:    repo,
+					Version: newVersion,
+				}
 			} else {
-				newCommands = append(newCommands, repo)
-			}
-		} else {
-			// Preserve format
-			if cmd.Version != "" {
-				newCommands = append(newCommands, cmd.Repo+"@"+cmd.Version)
-			} else {
-				newCommands = append(newCommands, cmd.Repo)
+				updatedCommands[i] = cmd
 			}
 		}
-	}
 
-	if !found {
-		return fmt.Errorf("command %s not found in configuration", repo)
-	}
+		if !found {
+			return nil, fmt.Errorf("command %s not found in configuration", repo)
+		}
 
-	config.Commands = newCommands
-	return m.SaveConfig(config)
+		return updatedCommands, nil
+	})
 }
 
 // CommandExists checks if a command is installed in the project
@@ -368,6 +335,109 @@ func (m *Manager) MigrateLegacyLockFile() error {
 		return nil
 	}
 
+	return nil
+}
+
+// preserveAndUpdateCommands preserves the existing YAML structure while updating only commands
+func (m *Manager) preserveAndUpdateCommands(updateFunc func([]ConfigCommand) ([]ConfigCommand, error)) error {
+	// Read the raw YAML data
+	rawData, err := m.fs.ReadFile(m.ConfigPath())
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	// Parse YAML into a Node to preserve structure and order
+	var doc yaml.Node
+	if err := yaml.Unmarshal(rawData, &doc); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+
+	// Load the config normally to get current commands
+	config, err := m.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Get current commands
+	commands, err := config.GetCommands()
+	if err != nil {
+		return fmt.Errorf("failed to get commands: %w", err)
+	}
+
+	// Apply the update function
+	updatedCommands, err := updateFunc(commands)
+	if err != nil {
+		return err
+	}
+
+	// Convert updated commands to string format
+	stringCommands := make([]string, len(updatedCommands))
+	for i, cmd := range updatedCommands {
+		if cmd.Version != "" {
+			stringCommands[i] = cmd.Repo + "@" + cmd.Version
+		} else {
+			stringCommands[i] = cmd.Repo
+		}
+	}
+	commandsValue := stringCommands
+
+	// Update the commands field in the YAML node
+	if err := updateYAMLNodeField(&doc, "commands", commandsValue); err != nil {
+		return fmt.Errorf("failed to update commands field: %w", err)
+	}
+
+	// Marshal back to YAML preserving order
+	updatedData, err := yaml.Marshal(&doc)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated config: %w", err)
+	}
+
+	// Write the file
+	return m.fs.WriteFile(m.ConfigPath(), updatedData, 0o644)
+}
+
+// updateYAMLNodeField updates or adds a field in a YAML node preserving order
+func updateYAMLNodeField(node *yaml.Node, fieldName string, value interface{}) error {
+	// Ensure we have a document node
+	if node.Kind != yaml.DocumentNode || len(node.Content) == 0 {
+		return fmt.Errorf("invalid YAML document structure")
+	}
+
+	// Get the root mapping node
+	root := node.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return fmt.Errorf("root node is not a mapping")
+	}
+
+	// Look for existing field
+	for i := 0; i < len(root.Content); i += 2 {
+		keyNode := root.Content[i]
+		if keyNode.Value == fieldName {
+			// Field exists, update its value
+			// Create new value node
+			newValueNode := &yaml.Node{}
+			if err := newValueNode.Encode(value); err != nil {
+				return fmt.Errorf("failed to encode value: %w", err)
+			}
+
+			// Replace the value node
+			root.Content[i+1] = newValueNode
+			return nil
+		}
+	}
+
+	// Field doesn't exist, add it at the end
+	keyNode := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: fieldName,
+	}
+
+	valueNode := &yaml.Node{}
+	if err := valueNode.Encode(value); err != nil {
+		return fmt.Errorf("failed to encode value: %w", err)
+	}
+
+	root.Content = append(root.Content, keyNode, valueNode)
 	return nil
 }
 

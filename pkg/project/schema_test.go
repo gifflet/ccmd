@@ -18,25 +18,21 @@ func TestParseConfig(t *testing.T) {
 		{
 			name: "valid config with single command",
 			yaml: `commands:
-  - repo: owner/repo
-    version: v1.0.0`,
+  - owner/repo@v1.0.0`,
 			wantErr: false,
 		},
 		{
 			name: "valid config with multiple commands",
 			yaml: `commands:
-  - repo: owner/repo1
-    version: v1.0.0
-  - repo: owner/repo2
-    version: latest
-  - repo: owner/repo3`,
+  - owner/repo1@v1.0.0
+  - owner/repo2@latest
+  - owner/repo3`,
 			wantErr: false,
 		},
 		{
 			name: "valid config with branch version",
 			yaml: `commands:
-  - repo: owner/repo
-    version: main`,
+  - owner/repo@main`,
 			wantErr: false,
 		},
 		{
@@ -52,72 +48,64 @@ func TestParseConfig(t *testing.T) {
 		{
 			name: "missing repo",
 			yaml: `commands:
-  - version: v1.0.0`,
+  - ""`,
 			wantErr: true,
 			errMsg:  "repo is required",
 		},
 		{
 			name: "invalid repo format - no slash",
 			yaml: `commands:
-  - repo: invalidrepo
-    version: v1.0.0`,
+  - invalidrepo`,
 			wantErr: true,
 			errMsg:  "invalid repo format",
 		},
 		{
 			name: "invalid repo format - multiple slashes",
 			yaml: `commands:
-  - repo: owner/repo/extra
-    version: v1.0.0`,
+  - owner/repo/extra`,
 			wantErr: true,
 			errMsg:  "invalid repo format",
 		},
 		{
 			name: "invalid repo format - empty owner",
 			yaml: `commands:
-  - repo: /repo
-    version: v1.0.0`,
+  - /repo`,
 			wantErr: true,
 			errMsg:  "owner and repo name cannot be empty",
 		},
 		{
 			name: "invalid repo format - empty repo name",
 			yaml: `commands:
-  - repo: owner/
-    version: v1.0.0`,
+  - owner/`,
 			wantErr: true,
 			errMsg:  "owner and repo name cannot be empty",
 		},
 		{
 			name: "invalid owner name - starts with dash",
 			yaml: `commands:
-  - repo: -owner/repo
-    version: v1.0.0`,
+  - -owner/repo`,
 			wantErr: true,
 			errMsg:  "invalid owner name",
 		},
 		{
 			name: "invalid repo name - invalid chars",
 			yaml: `commands:
-  - repo: owner/repo@123
-    version: v1.0.0`,
+  - owner/repo!@v1.0.0`,
 			wantErr: true,
 			errMsg:  "invalid repo name",
 		},
 		{
-			name: "unknown field",
+			name: "object format not supported",
 			yaml: `commands:
   - repo: owner/repo
-    version: v1.0.0
-    unknown: field`,
+    version: v1.0.0`,
 			wantErr: true,
-			errMsg:  "field unknown not found",
+			errMsg:  "must be a string",
 		},
 		{
 			name: "invalid version format",
 			yaml: `commands:
-  - repo: owner/repo
-    version: ..invalid`,
+  - owner/repo@..invalid`,
 			wantErr: true,
 			errMsg:  "invalid version format",
 		},
@@ -346,8 +334,7 @@ func TestLoadConfig(t *testing.T) {
 		defer os.Remove(tmpfile.Name())
 
 		content := `commands:
-  - repo: test/repo
-    version: v1.0.0`
+  - test/repo@v1.0.0`
 		if _, err := tmpfile.Write([]byte(content)); err != nil {
 			t.Fatal(err)
 		}

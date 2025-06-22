@@ -14,9 +14,13 @@ import (
 
 // Config represents the ccmd.yaml configuration file structure
 type Config struct {
-	// Optional project metadata
+	// Project metadata
 	Name        string `yaml:"name,omitempty"`
+	Version     string `yaml:"version,omitempty"`
 	Description string `yaml:"description,omitempty"`
+	Author      string `yaml:"author,omitempty"`
+	Repository  string `yaml:"repository,omitempty"`
+	Entry       string `yaml:"entry,omitempty"`
 
 	// Commands can be either strings or ConfigCommand objects
 	Commands interface{} `yaml:"commands"`
@@ -38,61 +42,33 @@ func (c *Config) GetCommands() ([]ConfigCommand, error) {
 
 	switch v := c.Commands.(type) {
 	case []interface{}:
-		// Handle mixed array (strings or objects)
+		// Handle array of strings only
 		for i, item := range v {
-			cmd, err := parseCommandItem(item)
-			if err != nil {
-				return nil, fmt.Errorf("command %d: %w", i, err)
+			str, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("command %d: must be a string (e.g., \"owner/repo@version\")", i)
 			}
+			cmd := parseCommandString(str)
 			commands = append(commands, cmd)
 		}
 	case []string:
 		// Handle pure string array
-		for i, str := range v {
-			cmd, err := parseCommandString(str)
-			if err != nil {
-				return nil, fmt.Errorf("command %d: %w", i, err)
-			}
+		for _, str := range v {
+			cmd := parseCommandString(str)
 			commands = append(commands, cmd)
 		}
 	case []ConfigCommand:
 		// Already in correct format
 		commands = v
 	default:
-		return nil, fmt.Errorf("commands must be an array")
+		return nil, fmt.Errorf("commands must be an array of strings")
 	}
 
 	return commands, nil
 }
 
-// parseCommandItem parses a single command item (string or map)
-func parseCommandItem(item interface{}) (ConfigCommand, error) {
-	switch v := item.(type) {
-	case string:
-		return parseCommandString(v)
-	case map[string]interface{}:
-		// Convert map to ConfigCommand
-		cmd := ConfigCommand{}
-		if repo, ok := v["repo"].(string); ok {
-			cmd.Repo = repo
-		}
-		if version, ok := v["version"].(string); ok {
-			cmd.Version = version
-		}
-		// Check for unknown fields
-		for key := range v {
-			if key != "repo" && key != "version" {
-				return ConfigCommand{}, fmt.Errorf("field %s not found in type ConfigCommand", key)
-			}
-		}
-		return cmd, nil
-	default:
-		return ConfigCommand{}, fmt.Errorf("command must be a string or object")
-	}
-}
-
 // parseCommandString parses a command string in format "repo" or "repo@version"
-func parseCommandString(s string) (ConfigCommand, error) {
+func parseCommandString(s string) ConfigCommand {
 	parts := strings.SplitN(s, "@", 2)
 	cmd := ConfigCommand{
 		Repo: parts[0],
@@ -100,7 +76,7 @@ func parseCommandString(s string) (ConfigCommand, error) {
 	if len(parts) > 1 {
 		cmd.Version = parts[1]
 	}
-	return cmd, nil
+	return cmd
 }
 
 // Validate performs validation on the Config
@@ -285,12 +261,20 @@ func (c *Config) toSaveFormat() interface{} {
 		// Return a simplified structure
 		type simpleConfig struct {
 			Name        string   `yaml:"name,omitempty"`
+			Version     string   `yaml:"version,omitempty"`
 			Description string   `yaml:"description,omitempty"`
+			Author      string   `yaml:"author,omitempty"`
+			Repository  string   `yaml:"repository,omitempty"`
+			Entry       string   `yaml:"entry,omitempty"`
 			Commands    []string `yaml:"commands"`
 		}
 		return &simpleConfig{
 			Name:        c.Name,
+			Version:     c.Version,
 			Description: c.Description,
+			Author:      c.Author,
+			Repository:  c.Repository,
+			Entry:       c.Entry,
 			Commands:    stringCommands,
 		}
 	}

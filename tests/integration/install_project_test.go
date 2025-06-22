@@ -44,11 +44,8 @@ func TestInstallFromProjectConfig(t *testing.T) {
 
 	// Create a test ccmd.yaml
 	config := &project.Config{
-		Commands: []project.ConfigCommand{
-			{
-				Repo:    "gifflet/hello-world",
-				Version: "v1.0.0",
-			},
+		Commands: []string{
+			"gifflet/hello-world@v1.0.0",
 		},
 	}
 

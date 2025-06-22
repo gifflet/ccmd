@@ -12,22 +12,25 @@
 // The ccmd.yaml file has a simple structure:
 //
 //	commands:
-//	  - repo: owner/repository
-//	    version: v1.0.0  # optional, defaults to latest
+//	  - owner/repository@v1.0.0
+//	  - owner/repository        # version defaults to latest
 //
 // Example ccmd.yaml:
 //
 //	commands:
-//	  - repo: example/claude-command
-//	    version: v1.2.3
-//	  - repo: another/command
-//	    version: latest
-//	  - repo: org/tool
-//	    # version omitted, defaults to latest
+//	  - example/claude-command@v1.2.3
+//	  - another/command@latest
+//	  - org/tool                      # version omitted, defaults to latest
+//
+// Command Format:
+//
+// Commands are specified as strings in the format "owner/repository@version" where:
+//   - owner/repository: GitHub repository path
+//   - @version: Optional version specifier (defaults to latest if omitted)
 //
 // Version Specification:
 //
-// The version field supports:
+// The version after @ supports:
 //   - Semantic versions: v1.0.0, 1.2.3, v2.0.0-beta.1
 //   - Branch names: main, develop, feature/xyz
 //   - Tag names: release-1.0, stable
@@ -35,7 +38,7 @@
 //
 // Repository Format:
 //
-// Repositories must be in the format "owner/repository" where:
+// The repository part must be in the format "owner/repository" where:
 //   - owner: GitHub username or organization
 //   - repository: Repository name
 //

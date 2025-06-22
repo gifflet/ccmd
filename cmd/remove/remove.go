@@ -109,11 +109,13 @@ func isConfirmation(response string) bool {
 }
 
 func updateProjectFiles(commandName string, cmdInfo *project.CommandLockInfo) error {
-	// Get the repository from command info
+	// Extract repository from source URL
 	repo := ""
-	if cmdInfo != nil && cmdInfo.Metadata != nil {
-		if r, ok := cmdInfo.Metadata["repository"]; ok {
-			repo = r
+	if cmdInfo != nil && cmdInfo.Source != "" {
+		var err error
+		repo, err = extractRepoFromSource(cmdInfo.Source)
+		if err != nil {
+			return fmt.Errorf("cannot extract repository from source: %w", err)
 		}
 	}
 
@@ -151,4 +153,49 @@ func updateProjectFiles(commandName string, cmdInfo *project.CommandLockInfo) er
 	}
 
 	return nil
+}
+
+// extractRepoFromSource extracts owner/repo from git URL
+// Examples:
+// - git@github.com:gifflet/hello-world.git -> gifflet/hello-world
+// - https://github.com/gifflet/hello-world.git -> gifflet/hello-world
+func extractRepoFromSource(source string) (string, error) {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return "", fmt.Errorf("empty source URL")
+	}
+
+	// Handle git@ URLs
+	if strings.HasPrefix(source, "git@") {
+		// git@github.com:gifflet/hello-world.git
+		parts := strings.Split(source, ":")
+		if len(parts) < 2 {
+			return "", fmt.Errorf("invalid git URL format: %s", source)
+		}
+		// Take everything after the colon
+		path := parts[1]
+		// Remove .git suffix
+		path = strings.TrimSuffix(path, ".git")
+		return path, nil
+	}
+
+	// Handle https URLs
+	if strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "http://") {
+		// https://github.com/gifflet/hello-world.git
+		// Remove protocol
+		path := strings.TrimPrefix(source, "https://")
+		path = strings.TrimPrefix(path, "http://")
+
+		// Remove domain (github.com/)
+		parts := strings.SplitN(path, "/", 2)
+		if len(parts) < 2 || parts[1] == "" {
+			return "", fmt.Errorf("invalid HTTPS URL format: %s", source)
+		}
+
+		// Take the path part and remove .git suffix
+		repoPath := strings.TrimSuffix(parts[1], ".git")
+		return repoPath, nil
+	}
+
+	return "", fmt.Errorf("unsupported source URL format: %s", source)
 }
