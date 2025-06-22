@@ -6,6 +6,18 @@
 
 Simple command-line tool for managing custom commands in Claude Code. Install and share commands from Git repositories with the ease of a package manager.
 
+## Why ccmd?
+
+Managing custom Claude Code commands across multiple projects can be challenging. ccmd solves this by treating commands as versioned, reusable packages:
+
+- **Keep commands out of your codebase**: Store command definitions (.md files and AI context) in separate repositories, keeping your project repositories clean
+- **Version control**: Each command has its own version, allowing you to use different versions in different projects
+- **Reusability**: Install the same command in multiple projects without duplication
+- **Easy sharing**: Share commands with your team or the community through Git repositories
+- **Simple management**: Install, update, and remove commands with familiar package manager semantics
+
+Think of ccmd as "npm for Claude Code commands" - centralize your AI tooling configurations and use them anywhere.
+
 ## Installation
 
 ### Using Homebrew (macOS/Linux)
