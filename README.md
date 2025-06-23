@@ -20,18 +20,9 @@ Think of ccmd as "npm for Claude Code commands" - centralize your AI tooling con
 
 ## Installation
 
-### Using Homebrew (macOS/Linux)
-```bash
-brew tap gifflet/ccmd
-brew install ccmd
-```
-
-### Using Go
 ```bash
 go install github.com/gifflet/ccmd/cmd/ccmd@latest
 ```
-
-> For other installation methods, see [Installation Guide](docs/installation.md)
 
 ## Quick Start
 
