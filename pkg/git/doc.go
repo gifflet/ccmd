@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Guilherme Silva Sousa
+// Licensed under the MIT License
+// See LICENSE file in the project root for full license information.
 // Package git provides a simple wrapper around go-git for common Git operations.
 // It supports cloning repositories, fetching updates, checking out specific versions,
 // and listing tags. The package handles various Git URL formats including GitHub

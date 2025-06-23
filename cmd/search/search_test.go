@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Guilherme Silva Sousa
+// Licensed under the MIT License
+// See LICENSE file in the project root for full license information.
 package search
 
 import (

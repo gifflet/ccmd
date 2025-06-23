@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Guilherme Silva Sousa
+// Licensed under the MIT License
+// See LICENSE file in the project root for full license information.
 // Package repository provides interfaces and implementations for managing command repositories.
 //
 // The repository package defines a flexible system for discovering, loading, and managing
