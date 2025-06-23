@@ -66,7 +66,7 @@ func NormalizeRepositoryURL(url string) string {
 		parts := strings.Split(url, "/")
 		if len(parts) == 2 && !strings.Contains(parts[0], ".") {
 			// Assume GitHub shorthand
-			url = fmt.Sprintf("https://github.com/%s.git", url)
+			url = fmt.Sprintf("https://github.com/%s.git", strings.TrimSuffix(url, ".git"))
 			return url
 		}
 	}

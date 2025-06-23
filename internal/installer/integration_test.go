@@ -116,6 +116,16 @@ func TestNormalizeRepositoryURL(t *testing.T) {
 			input:    "git.company.com/user/repo",
 			expected: "git.company.com/user/repo.git",
 		},
+		{
+			name:     "GitHub shorthand with .git",
+			input:    "user/repo.git",
+			expected: "https://github.com/user/repo.git",
+		},
+		{
+			name:     "GitHub shorthand org/repo.git",
+			input:    "gifflet/hello-world.git",
+			expected: "https://github.com/gifflet/hello-world.git",
+		},
 	}
 
 	for _, tt := range tests {
