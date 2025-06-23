@@ -188,6 +188,7 @@ func TestRunInitCancelled(t *testing.T) {
 
 
 index.md
+
 no
 `
 	oldStdin := os.Stdin

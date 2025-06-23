@@ -59,6 +59,7 @@ func runInit() error {
 	authorDefault := ""
 	repositoryDefault := ""
 	entryDefault := "index.md"
+	tagsDefault := ""
 
 	// Try to load existing ccmd.yaml
 	ccmdPath := filepath.Join(currentDir, "ccmd.yaml")
@@ -89,6 +90,17 @@ func runInit() error {
 				if entry, ok := rawConfig["entry"].(string); ok && entry != "" {
 					entryDefault = entry
 				}
+				if tags, ok := rawConfig["tags"].([]interface{}); ok {
+					var tagStrings []string
+					for _, tag := range tags {
+						if tagStr, ok := tag.(string); ok {
+							tagStrings = append(tagStrings, tagStr)
+						}
+					}
+					if len(tagStrings) > 0 {
+						tagsDefault = strings.Join(tagStrings, ", ")
+					}
+				}
 				// Preserve commands field as-is
 				existingCommands = rawConfig["commands"]
 				output.Printf("Loaded existing ccmd.yaml file.")
@@ -103,6 +115,18 @@ func runInit() error {
 	author := promptUser(scanner, "author", authorDefault)
 	repository := promptUser(scanner, "repository", repositoryDefault)
 	entry := promptUser(scanner, "entry", entryDefault)
+	tagsInput := promptUser(scanner, "tags (comma-separated)", tagsDefault)
+
+	// Parse tags
+	var tags []string
+	if tagsInput != "" {
+		for _, tag := range strings.Split(tagsInput, ",") {
+			trimmed := strings.TrimSpace(tag)
+			if trimmed != "" {
+				tags = append(tags, trimmed)
+			}
+		}
+	}
 
 	// Create config structure
 	config := project.Config{
@@ -112,6 +136,7 @@ func runInit() error {
 		Author:      author,
 		Repository:  repository,
 		Entry:       entry,
+		Tags:        tags,
 		Commands:    existingCommands, // Preserve existing commands
 	}
 
@@ -123,6 +148,7 @@ func runInit() error {
 		Author      string      `yaml:"author,omitempty"`
 		Repository  string      `yaml:"repository,omitempty"`
 		Entry       string      `yaml:"entry,omitempty"`
+		Tags        []string    `yaml:"tags,omitempty"`
 		Commands    interface{} `yaml:"commands,omitempty"`
 	}
 
@@ -134,6 +160,7 @@ func runInit() error {
 		Author:      config.Author,
 		Repository:  config.Repository,
 		Entry:       config.Entry,
+		Tags:        config.Tags,
 		Commands:    config.Commands,
 	}
 

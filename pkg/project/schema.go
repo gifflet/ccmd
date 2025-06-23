@@ -15,12 +15,13 @@ import (
 // Config represents the ccmd.yaml configuration file structure
 type Config struct {
 	// Project metadata
-	Name        string `yaml:"name,omitempty"`
-	Version     string `yaml:"version,omitempty"`
-	Description string `yaml:"description,omitempty"`
-	Author      string `yaml:"author,omitempty"`
-	Repository  string `yaml:"repository,omitempty"`
-	Entry       string `yaml:"entry,omitempty"`
+	Name        string   `yaml:"name,omitempty"`
+	Version     string   `yaml:"version,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Author      string   `yaml:"author,omitempty"`
+	Repository  string   `yaml:"repository,omitempty"`
+	Entry       string   `yaml:"entry,omitempty"`
+	Tags        []string `yaml:"tags,omitempty"`
 
 	// Commands can be either strings or ConfigCommand objects
 	Commands interface{} `yaml:"commands"`
@@ -266,6 +267,7 @@ func (c *Config) toSaveFormat() interface{} {
 			Author      string   `yaml:"author,omitempty"`
 			Repository  string   `yaml:"repository,omitempty"`
 			Entry       string   `yaml:"entry,omitempty"`
+			Tags        []string `yaml:"tags,omitempty"`
 			Commands    []string `yaml:"commands"`
 		}
 		return &simpleConfig{
@@ -275,6 +277,7 @@ func (c *Config) toSaveFormat() interface{} {
 			Author:      c.Author,
 			Repository:  c.Repository,
 			Entry:       c.Entry,
+			Tags:        c.Tags,
 			Commands:    stringCommands,
 		}
 	}
