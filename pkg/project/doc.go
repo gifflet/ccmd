@@ -1,6 +1,12 @@
-// Copyright (c) 2025 Guilherme Silva Sousa
-// Licensed under the MIT License
-// See LICENSE file in the project root for full license information.
+/*
+ * This file is part of ccmd.
+ *
+ * Copyright (c) 2025 Guilherme Silva Sousa
+ *
+ * Licensed under the MIT License
+ * See LICENSE file in the project root for full license information.
+ */
+
 // Package project provides functionality for managing ccmd project files,
 // including parsing and validating ccmd.yaml configuration files and
 // managing the ccmd-lock.yaml lock file format.
