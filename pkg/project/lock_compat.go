@@ -43,10 +43,6 @@ func (m *LockManager) Load() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if err := m.manager.MigrateLegacyLockFile(); err != nil {
-		_ = err
-	}
-
 	if !m.manager.LockExists() {
 		m.lockFile = NewLockFile()
 		m.loaded = true

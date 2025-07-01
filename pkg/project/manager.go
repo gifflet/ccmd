@@ -10,10 +10,8 @@
 package project
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -253,100 +251,6 @@ func (m *Manager) Sync() error {
 	return nil
 }
 
-// LoadLegacyLockFile loads commands.lock JSON file for migration
-func (m *Manager) LoadLegacyLockFile() (*LockFile, error) {
-	lockPath := filepath.Join(filepath.Dir(m.rootDir), ".claude", "commands.lock")
-
-	// Check if legacy file exists
-	exists, err := m.fs.Exists(lockPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check legacy lock file: %w", err)
-	}
-	if !exists {
-		return nil, nil
-	}
-
-	// Read JSON file
-	data, err := m.fs.ReadFile(lockPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read legacy lock file: %w", err)
-	}
-
-	// Parse JSON structure
-	var legacyLock struct {
-		Version  string                 `json:"version"`
-		Commands map[string]interface{} `json:"commands"`
-	}
-
-	if err := json.Unmarshal(data, &legacyLock); err != nil {
-		return nil, fmt.Errorf("failed to parse legacy lock file: %w", err)
-	}
-
-	// Convert to new format
-	lockFile := NewLockFile()
-	for name, cmdData := range legacyLock.Commands {
-		cmdMap, ok := cmdData.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		cmd := &CommandLockInfo{
-			Name:    name,
-			Version: getString(cmdMap, "version"),
-			Source:  getString(cmdMap, "source"),
-		}
-
-		// Parse timestamps
-		if installedAt := getString(cmdMap, "installed_at"); installedAt != "" {
-			if t, err := time.Parse(time.RFC3339, installedAt); err == nil {
-				cmd.InstalledAt = t
-			}
-		}
-		if updatedAt := getString(cmdMap, "updated_at"); updatedAt != "" {
-			if t, err := time.Parse(time.RFC3339, updatedAt); err == nil {
-				cmd.UpdatedAt = t
-			}
-		}
-
-		// Generate resolved field
-		if cmd.Version != "" && cmd.Source != "" {
-			cmd.Resolved = fmt.Sprintf("%s@%s", cmd.Source, cmd.Version)
-		}
-
-		lockFile.Commands[name] = cmd
-	}
-
-	return lockFile, nil
-}
-
-// MigrateLegacyLockFile migrates from commands.lock to ccmd-lock.yaml
-func (m *Manager) MigrateLegacyLockFile() error {
-	// Load legacy lock file
-	lockFile, err := m.LoadLegacyLockFile()
-	if err != nil {
-		return fmt.Errorf("failed to load legacy lock file: %w", err)
-	}
-
-	// No legacy file found
-	if lockFile == nil {
-		return nil
-	}
-
-	// Save as new format
-	if err := m.SaveLockFile(lockFile); err != nil {
-		return fmt.Errorf("failed to save migrated lock file: %w", err)
-	}
-
-	// Remove legacy file
-	lockPath := filepath.Join(filepath.Dir(m.rootDir), ".claude", "commands.lock")
-	if err := m.fs.Remove(lockPath); err != nil {
-		// Not critical if we can't remove
-		return nil
-	}
-
-	return nil
-}
-
 // preserveAndUpdateCommands preserves the existing YAML structure while updating only commands
 func (m *Manager) preserveAndUpdateCommands(updateFunc func([]ConfigCommand) ([]ConfigCommand, error)) error {
 	// Read the raw YAML data
@@ -448,13 +352,4 @@ func updateYAMLNodeField(node *yaml.Node, fieldName string, value interface{}) e
 
 	root.Content = append(root.Content, keyNode, valueNode)
 	return nil
-}
-
-func getString(m map[string]interface{}, key string) string {
-	if v, ok := m[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
 }
