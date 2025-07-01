@@ -64,10 +64,3 @@ func Prompt(prompt string) string {
 	_, _ = fmt.Scanln(&input)
 	return input
 }
-
-// Debugf prints a debug message if debug mode is enabled.
-func Debugf(format string, a ...interface{}) {
-	if os.Getenv("CCMD_DEBUG") == "1" {
-		_, _ = fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", a...)
-	}
-}
