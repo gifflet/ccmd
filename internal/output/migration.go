@@ -48,7 +48,6 @@ func DebugError(err error, context string) {
 	}
 
 	logger.WithError(err).WithField("context", context).Debug("error occurred")
-	Debugf("%s: %v", context, err)
 }
 
 // LogAndPrintf logs at the appropriate level and prints to output

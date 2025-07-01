@@ -11,6 +11,8 @@ package output
 
 import (
 	"fmt"
+
+	"github.com/gifflet/ccmd/pkg/logger"
 )
 
 // UserError represents an error that should be displayed to the user
@@ -59,7 +61,7 @@ func PrintUserError(err error) {
 			PrintErrorf("Details: %s", ue.Details)
 		}
 		if ue.Err != nil {
-			Debugf("Underlying error: %v", ue.Err)
+			logger.Debugf("Underlying error: %v", ue.Err)
 		}
 	} else {
 		PrintErrorf("Error: %v", err)

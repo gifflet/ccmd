@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 )
 
 // Fields represents structured fields for logging
@@ -44,8 +45,18 @@ type logger struct {
 // New creates a new logger instance
 func New() Logger {
 	level := slog.LevelInfo
-	if os.Getenv("CCMD_DEBUG") == "1" || os.Getenv("CCMD_LOG_LEVEL") == "debug" {
-		level = slog.LevelDebug
+
+	if envLevel := os.Getenv("CCMD_LOG_LEVEL"); envLevel != "" {
+		switch strings.ToLower(envLevel) {
+		case "debug":
+			level = slog.LevelDebug
+		case "info":
+			level = slog.LevelInfo
+		case "warn", "warning":
+			level = slog.LevelWarn
+		case "error":
+			level = slog.LevelError
+		}
 	}
 
 	opts := &slog.HandlerOptions{
