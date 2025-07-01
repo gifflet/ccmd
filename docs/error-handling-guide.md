@@ -201,16 +201,4 @@ errors.Handle(err)  // This will log and display user-friendly message
 
 ## Testing
 
-When testing, create a logger with a buffer:
-
-```go
-var buf bytes.Buffer
-log := logger.New(&buf, logger.DebugLevel)
-
-// Test your code
-myFunc(log)
-
-// Check log output
-output := buf.String()
-assert.Contains(t, output, "expected message")
-```
+When testing code that uses logging, note that the logger writes directly to stderr using Go's standard `slog` package. For testing purposes, focus on testing the behavior of your code rather than capturing log output.
