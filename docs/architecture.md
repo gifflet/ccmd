@@ -176,7 +176,7 @@ Features:
 
 ### Lock Manager (`internal/lock/`)
 
-Manages the commands.lock file:
+Manages the ccmd-lock.yaml file:
 
 ```go
 type Manager interface {
@@ -292,8 +292,9 @@ my-project/
 │   │   │   ├── index.md
 │   │   │   └── ...
 │   │   └── command2/
-│   ├── commands.lock         # Lock file
 │   └── config.yaml          # Optional config
+├── ccmd.yaml                # Project configuration
+├── ccmd-lock.yaml           # Lock file
 └── src/                     # Project files
 ```
 

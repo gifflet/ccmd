@@ -91,7 +91,7 @@ func TestCommandExecute(t *testing.T) {
 			} else {
 				// We expect no error, but the command might still fail due to no lock file
 				// which is expected in test environment
-				require.True(t, err == nil || err.Error() == "search failed: failed to load lock file: open test/commands.lock: no such file or directory")
+				require.True(t, err == nil || err.Error() == "search failed: failed to load lock file: open test/ccmd-lock.yaml: no such file or directory")
 			}
 		})
 	}

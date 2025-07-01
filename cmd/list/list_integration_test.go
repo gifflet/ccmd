@@ -28,35 +28,29 @@ func TestListCommandIntegration(t *testing.T) {
 	baseDir := ".claude"
 
 	// Create lock file with test data
-	lockContent := `{
-  "version": "1.0",
-  "commands": {
-    "hello-world": {
-      "name": "hello-world",
-      "version": "1.0.0",
-      "source": "github.com/gifflet/hello-world",
-      "installed_at": "2024-01-01T10:00:00Z",
-      "updated_at": "2024-01-01T10:00:00Z"
-    },
-    "dev-tools": {
-      "name": "dev-tools",
-      "version": "2.5.0",
-      "source": "github.com/user/dev-tools",
-      "installed_at": "2024-01-02T10:00:00Z",
-      "updated_at": "2024-01-03T10:00:00Z",
-      "dependencies": ["git", "curl"],
-      "metadata": {
-        "language": "go"
-      }
-    }
-  }
-}`
+	lockContent := `version: "1.0"
+lockfileVersion: 1
+commands:
+    hello-world:
+        name: hello-world
+        version: 1.0.0
+        source: git@github.com:gifflet/hello-world.git
+        resolved: git@github.com:gifflet/hello-world.git@v1.0.0
+        commit: 05d746d17f6e2235ad9a93acc307b68caa18a281
+        installed_at: 2025-06-22T01:07:51.524358-03:00
+        updated_at: 2025-06-22T01:07:51.524358-03:00
+    dev-tools:
+        name: dev-tools
+        version: 2.5.0
+        source: github.com/user/dev-tools
+        resolved: github.com/user/dev-tools@2.5.0
+		commit: 151213c3e25a85f8a5ca12ce8cc79d3b80f5850e
+        installed_at: 2024-01-02T10:00:00Z
+        updated_at: 2024-01-03T10:00:00Z
+`
 
 	// Setup filesystem
-	lockPath := filepath.Join(baseDir, "commands.lock")
-	if err := mockFS.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
-		t.Fatalf("Failed to create lock directory: %v", err)
-	}
+	lockPath := "ccmd-lock.yaml"
 	if err := mockFS.WriteFile(lockPath, []byte(lockContent), 0o644); err != nil {
 		t.Fatalf("Failed to write lock file: %v", err)
 	}
