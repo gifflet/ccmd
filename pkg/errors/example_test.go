@@ -11,7 +11,6 @@ package errors_test
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
@@ -48,7 +47,7 @@ func ExampleWrap() {
 
 func ExampleHandler() {
 	// Set up a test logger
-	log := logger.New(os.Stdout, logger.InfoLevel)
+	log := logger.New()
 	handler := errors.NewHandler(log)
 
 	// Create an error
