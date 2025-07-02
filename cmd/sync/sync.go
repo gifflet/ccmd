@@ -19,7 +19,6 @@ import (
 
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
-	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
 	"github.com/gifflet/ccmd/pkg/project"
 )
@@ -62,9 +61,9 @@ Examples:
   # Skip confirmation prompts
   ccmd sync --force`,
 		Args: cobra.NoArgs,
-		RunE: errors.WrapCommand("sync", func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSync(dryRun, force)
-		}),
+		},
 	}
 
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview changes without applying them")

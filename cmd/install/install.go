@@ -11,6 +11,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -21,7 +22,7 @@ import (
 	"github.com/gifflet/ccmd/internal/installer"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
-	"github.com/gifflet/ccmd/pkg/errors"
+	ccmderrors "github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/logger"
 	"github.com/gifflet/ccmd/pkg/project"
 )
@@ -58,12 +59,12 @@ Examples:
   # Force reinstall
   ccmd install github.com/user/repo --force`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: errors.WrapCommand("install", func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return runInstallFromConfig(force)
 			}
 			return runInstall(args[0], version, name, force)
-		}),
+		},
 	}
 
 	cmd.Flags().StringVarP(&version, "version", "v", "", "Version/tag to install")
@@ -86,13 +87,8 @@ func runInstallFromConfig(force bool) error {
 	// Use new installer to install from config
 	ctx := context.Background()
 	if err := installer.InstallFromConfig(ctx, cwd, force); err != nil {
-		// Check if it's a partial failure
-		if errors.IsCode(err, errors.CodePartialFailure) {
-			// Some commands failed but not all
-			output.PrintWarningf("Some commands failed to install")
-			// Don't return error for partial failures
-			return nil
-		}
+		// For now, just return the error
+		// In future, we can check error message if needed
 		return err
 	}
 
@@ -151,7 +147,7 @@ func runInstall(repository, version, name string, force bool) error {
 		spinner.Stop()
 
 		// Check if command already exists
-		if errors.IsAlreadyExists(err) {
+		if errors.Is(err, ccmderrors.ErrAlreadyExists) {
 			commandName := name
 			if commandName == "" {
 				parts := strings.Split(strings.TrimSuffix(repo, ".git"), "/")
