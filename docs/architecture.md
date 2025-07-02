@@ -314,48 +314,56 @@ my-project/
 
 ## Error Handling
 
-### Error Types
+### Sentinel Errors
+
+ccmd uses sentinel errors for common error types:
 
 ```go
-// User errors (bad input)
-type UserError struct {
-    Message string
-    Details string
-    Suggestion string
-}
+var (
+    ErrNotFound      = errors.New("not found")
+    ErrAlreadyExists = errors.New("already exists")
+    ErrInvalidInput  = errors.New("invalid input")
+    ErrGitOperation  = errors.New("git operation failed")
+    ErrFileOperation = errors.New("file operation failed")
+)
+```
 
-// System errors (unexpected)
-type SystemError struct {
-    Op string
-    Err error
-}
+### Error Creation Functions
 
-// Validation errors
-type ValidationError struct {
-    Field string
-    Value string
-    Reason string
-}
+Helper functions provide consistent error messages with context:
+
+```go
+// Create specific errors with context
+errors.NotFound("command foo")           // "not found: command foo"
+errors.AlreadyExists("command bar")      // "already exists: command bar"
+errors.InvalidInput("invalid version")    // "invalid input: invalid version"
+errors.GitError("clone", err)            // "git operation failed during clone: ..."
+errors.FileError("read", path, err)      // "file operation failed: read on path: ..."
 ```
 
 ### Error Flow
 
-1. **Capture** - Errors are captured at origin
-2. **Wrap** - Add context with `fmt.Errorf`
-3. **Categorize** - Determine error type
+1. **Capture** - Errors are captured at origin using helper functions
+2. **Wrap** - Add context with error creation functions
+3. **Check** - Use `errors.Is()` to check error types
 4. **Display** - Show appropriate message to user
 
 Example:
 ```go
+// Creating errors
+if !exists {
+    return errors.NotFound(fmt.Sprintf("command %s", name))
+}
+
+// Wrapping Git errors
 if err := git.Clone(repo); err != nil {
-    if errors.Is(err, git.ErrNotFound) {
-        return &UserError{
-            Message: "Repository not found",
-            Details: fmt.Sprintf("Could not access %s", repo),
-            Suggestion: "Check the repository URL and try again",
-        }
-    }
-    return fmt.Errorf("clone repository: %w", err)
+    return errors.GitError("clone repository", err)
+}
+
+// Checking error types
+if errors.Is(err, errors.ErrNotFound) {
+    output.Warning("Command not found. Use 'ccmd search' to find available commands.")
+    return nil
 }
 ```
 
