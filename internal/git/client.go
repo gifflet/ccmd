@@ -20,6 +20,10 @@ import (
 	"github.com/gifflet/ccmd/pkg/logger"
 )
 
+const (
+	errGetAbsolutePath = "get absolute path"
+)
+
 // Client provides git operations
 type Client struct {
 	workDir string
@@ -47,10 +51,10 @@ type CloneOptions struct {
 // Clone clones a repository with the given options
 func (c *Client) Clone(opts CloneOptions) error {
 	if opts.URL == "" {
-		return errors.New(errors.CodeInvalidArgument, "repository URL is required")
+		return errors.InvalidInput("repository URL is required")
 	}
 	if opts.Target == "" {
-		return errors.New(errors.CodeInvalidArgument, "target directory is required")
+		return errors.InvalidInput("target directory is required")
 	}
 
 	args := []string{"clone"}
@@ -75,11 +79,9 @@ func (c *Client) Clone(opts CloneOptions) error {
 	// Use current directory for git clone, not the client's workDir
 	cmd.Dir = "."
 
-	output, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrap(err, errors.CodeGitClone, "git clone failed").
-			WithDetail("repository", opts.URL).
-			WithDetail("output", strings.TrimSpace(string(output)))
+		return errors.GitError("clone", err)
 	}
 
 	return nil
@@ -90,11 +92,9 @@ func (c *Client) CheckoutTag(repoPath, tag string) error {
 	cmd := exec.Command("git", "checkout", tag)
 	cmd.Dir = repoPath
 
-	output, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrap(err, errors.CodeGitInvalidRepo, "git checkout failed").
-			WithDetail("tag", tag).
-			WithDetail("output", strings.TrimSpace(string(output)))
+		return errors.GitError("checkout", err)
 	}
 
 	return nil
@@ -105,8 +105,7 @@ func (c *Client) GetTags(repoPath string) ([]string, error) {
 	// Convert to absolute path to avoid issues
 	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return nil, errors.Wrap(err, errors.CodeFileIO, "failed to get absolute path").
-			WithDetail("path", repoPath)
+		return nil, errors.FileError(errGetAbsolutePath, repoPath, err)
 	}
 
 	cmd := exec.Command("git", "tag", "-l")
@@ -114,9 +113,7 @@ func (c *Client) GetTags(repoPath string) ([]string, error) {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.Wrap(err, errors.CodeGitInvalidRepo, "git tag failed").
-			WithDetail("repo", absPath).
-			WithDetail("output", strings.TrimSpace(string(output)))
+		return nil, errors.GitError("tag", err)
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -135,8 +132,7 @@ func (c *Client) GetLatestTag(repoPath string) (string, error) {
 	// Convert to absolute path to avoid issues
 	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return "", errors.Wrap(err, errors.CodeFileIO, "failed to get absolute path").
-			WithDetail("path", repoPath)
+		return "", errors.FileError(errGetAbsolutePath, repoPath, err)
 	}
 
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
@@ -150,8 +146,7 @@ func (c *Client) GetLatestTag(repoPath string) (string, error) {
 			return "", err
 		}
 		if len(tags) == 0 {
-			return "", errors.New(errors.CodeGitNotFound, "no tags found in repository").
-				WithDetail("repo", absPath)
+			return "", errors.NotFound("no tags found in repository: " + absPath)
 		}
 		return tags[len(tags)-1], nil
 	}
@@ -164,8 +159,7 @@ func (c *Client) GetCurrentCommit(repoPath string) (string, error) {
 	// Convert to absolute path to avoid issues
 	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return "", errors.Wrap(err, errors.CodeFileIO, "failed to get absolute path").
-			WithDetail("path", repoPath)
+		return "", errors.FileError(errGetAbsolutePath, repoPath, err)
 	}
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
@@ -173,9 +167,7 @@ func (c *Client) GetCurrentCommit(repoPath string) (string, error) {
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Wrap(err, errors.CodeGitInvalidRepo, "git rev-parse failed").
-			WithDetail("repo", absPath).
-			WithDetail("output", strings.TrimSpace(string(output)))
+		return "", errors.GitError("rev-parse", err)
 	}
 
 	return strings.TrimSpace(string(output)), nil
@@ -195,15 +187,14 @@ func (c *Client) IsGitRepository(path string) bool {
 func ParseRepositoryURL(url string) (string, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {
-		return "", errors.New(errors.CodeInvalidArgument, "empty repository URL")
+		return "", errors.InvalidInput("empty repository URL")
 	}
 
 	// Handle git@ URLs
 	if strings.HasPrefix(url, "git@") {
 		parts := strings.Split(url, ":")
 		if len(parts) < 2 {
-			return "", errors.New(errors.CodeGitInvalidRepo, "invalid git URL format").
-				WithDetail("url", url)
+			return "", errors.InvalidInput("invalid git URL format: " + url)
 		}
 		url = parts[1]
 	}
@@ -214,8 +205,7 @@ func ParseRepositoryURL(url string) (string, error) {
 	// Extract repository name
 	parts := strings.Split(url, "/")
 	if len(parts) < 2 {
-		return "", errors.New(errors.CodeGitInvalidRepo, "invalid repository URL format").
-			WithDetail("url", url)
+		return "", errors.InvalidInput("invalid repository URL format: " + url)
 	}
 
 	return parts[len(parts)-1], nil
@@ -226,11 +216,9 @@ func (c *Client) ValidateRemoteRepository(url string) error {
 	cmd := exec.Command("git", "ls-remote", "--heads", url)
 	cmd.Dir = c.workDir
 
-	output, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrap(err, errors.CodeGitInvalidRepo, "repository validation failed").
-			WithDetail("repository", url).
-			WithDetail("output", strings.TrimSpace(string(output)))
+		return errors.GitError("ls-remote", err)
 	}
 
 	return nil

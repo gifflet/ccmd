@@ -63,7 +63,7 @@ type Installer struct {
 func New(opts Options) (*Installer, error) {
 	// Validate required options
 	if opts.Repository == "" {
-		return nil, errors.New(errors.CodeInvalidArgument, "repository URL is required")
+		return nil, errors.InvalidInput("repository URL is required")
 	}
 
 	// Set defaults
@@ -110,19 +110,19 @@ func (i *Installer) Install(_ context.Context) error {
 
 	// Step 1: Validate remote repository
 	if err := i.validateRepository(); err != nil {
-		return errors.Wrap(err, errors.CodeGitInvalidRepo, "repository validation failed")
+		return WrapInstallationError(err, i.opts.Repository, "", PhaseValidation)
 	}
 
 	// Step 2: Create temporary directory for cloning
 	tempDir, err := i.createTempDir()
 	if err != nil {
-		return errors.Wrap(err, errors.CodeFileIO, "failed to create temporary directory")
+		return errors.FileError("create temporary directory", tempDir, err)
 	}
 	defer i.cleanupTempDir(tempDir)
 
 	// Step 3: Clone repository to temporary location
 	if err := i.cloneRepository(tempDir); err != nil {
-		return errors.Wrap(err, errors.CodeGitClone, "failed to clone repository")
+		return WrapInstallationError(errors.GitError("clone", err), i.opts.Repository, "", PhaseClone)
 	}
 
 	// Get commit hash while we still have the git repository
@@ -134,14 +134,14 @@ func (i *Installer) Install(_ context.Context) error {
 	// Step 4: Validate repository structure
 	metadata, err := i.validateRepositoryStructure(tempDir)
 	if err != nil {
-		return errors.Wrap(err, errors.CodeValidation, "repository validation failed")
+		return WrapInstallationError(err, i.opts.Repository, "", PhaseVerification)
 	}
 
 	// Step 5: Determine command name and version
 	commandName := i.determineCommandName(metadata)
 	version, err := i.determineVersion(tempDir)
 	if err != nil {
-		return errors.Wrap(err, errors.CodeGitInvalidRepo, "failed to determine version")
+		return WrapInstallationError(err, i.opts.Repository, "", PhaseVerification)
 	}
 
 	// Step 6: Check if command already exists
@@ -154,28 +154,30 @@ func (i *Installer) Install(_ context.Context) error {
 	if err := i.installCommandFiles(tempDir, commandDir); err != nil {
 		// Rollback on failure
 		i.rollbackInstallation(commandDir)
-		return errors.Wrap(err, errors.CodeFileIO, "failed to install command files")
+		return WrapInstallationError(
+			errors.FileError("install command files", commandDir, err),
+			i.opts.Repository, version, PhaseInstall)
 	}
 
 	// Step 8: Create standalone .md file
 	if err := i.createStandaloneFile(commandDir, metadata); err != nil {
 		// Rollback on failure with metadata to remove standalone file
 		i.rollbackInstallationWithMetadata(commandDir, metadata)
-		return errors.Wrap(err, errors.CodeFileIO, "failed to create standalone file")
+		return errors.FileError("create standalone file", commandDir, err)
 	}
 
 	// Step 9: Update metadata with installation info
 	if err := i.updateCommandMetadata(commandDir, metadata, version); err != nil {
 		// Rollback on failure with metadata to remove standalone file
 		i.rollbackInstallationWithMetadata(commandDir, metadata)
-		return errors.Wrap(err, errors.CodeFileIO, "failed to update command metadata")
+		return WrapInstallationError(err, i.opts.Repository, version, PhaseMetadata)
 	}
 
 	// Step 10: Update lock file
 	if err := i.updateLockFile(commandName, version, metadata, commitHash); err != nil {
 		// Rollback on failure with metadata to remove standalone file
 		i.rollbackInstallationWithMetadata(commandDir, metadata)
-		return errors.Wrap(err, errors.CodeLockConflict, "failed to update lock file")
+		return WrapInstallationError(err, i.opts.Repository, version, PhaseLockFile)
 	}
 
 	i.logger.WithFields(logger.Fields{
@@ -251,7 +253,7 @@ func (i *Installer) validateRepositoryStructure(repoPath string) (*models.Comman
 	metadataPath := filepath.Join(repoPath, "ccmd.yaml")
 	if _, err := i.fileSystem.Stat(metadataPath); err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.New(errors.CodeValidation, "ccmd.yaml not found in repository")
+			return nil, errors.NotFound("ccmd.yaml not found in repository")
 		}
 		return nil, err
 	}
@@ -317,15 +319,14 @@ func (i *Installer) checkExistingCommand(commandName string) error {
 	}
 
 	if dirExists && !i.opts.Force {
-		return errors.New(errors.CodeAlreadyExists, "command is already installed").
-			WithDetail("command", commandName).
-			WithDetail("use", "--force to reinstall")
+		return errors.AlreadyExists(
+			fmt.Sprintf("command '%s' is already installed, use --force to reinstall", commandName))
 	}
 
 	if dirExists && i.opts.Force {
 		i.logger.WithField("command", commandName).Debug("removing existing command for force install")
 		if err := i.fileSystem.RemoveAll(commandDir); err != nil {
-			return errors.Wrap(err, errors.CodeFileIO, "failed to remove existing command")
+			return errors.FileError("remove existing command", commandDir, err)
 		}
 
 		standaloneFile := filepath.Join(i.opts.InstallDir, fmt.Sprintf("%s.md", commandName))
@@ -453,12 +454,12 @@ func (i *Installer) createStandaloneFile(commandDir string, metadata *models.Com
 	indexPath := filepath.Join(commandDir, "index.md")
 	indexData, err := i.fileSystem.ReadFile(indexPath)
 	if err != nil {
-		return errors.Wrap(err, errors.CodeFileIO, "failed to read index.md")
+		return errors.FileError("read index.md", indexPath, err)
 	}
 
 	// Write standalone file
 	if err := i.fileSystem.WriteFile(standaloneFile, indexData, 0o644); err != nil {
-		return errors.Wrap(err, errors.CodeFileIO, "failed to create standalone file")
+		return errors.FileError("create standalone file", commandDir, err)
 	}
 
 	i.logger.WithFields(logger.Fields{

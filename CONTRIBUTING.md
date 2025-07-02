@@ -177,7 +177,7 @@ func ExportedFunction() error {
     
     // Handle errors explicitly
     if err := validatePath(configPath); err != nil {
-        return fmt.Errorf("invalid config path: %w", err)
+        return errors.InvalidInput(fmt.Sprintf("config path %s", configPath))
     }
     
     return nil
@@ -187,12 +187,25 @@ func ExportedFunction() error {
 ### Error Handling
 
 - Always check errors
-- Wrap errors with context using `fmt.Errorf`
-- Use custom error types when appropriate
+- Use the `pkg/errors` package for consistent error handling
+- Choose the appropriate error function based on the error type
 
 ```go
-if err := doSomething(); err != nil {
-    return fmt.Errorf("failed to do something: %w", err)
+import "github.com/gifflet/ccmd/pkg/errors"
+
+// For resource not found
+if !exists {
+    return errors.NotFound("command foo")
+}
+
+// For git operations
+if err := git.Clone(repo); err != nil {
+    return errors.GitError("clone", err)
+}
+
+// For file operations
+if err := os.ReadFile(path); err != nil {
+    return errors.FileError("read", path, err)
 }
 ```
 

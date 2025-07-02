@@ -10,6 +10,7 @@
 package installer
 
 import (
+	stderrors "errors"
 	"fmt"
 
 	"github.com/gifflet/ccmd/pkg/errors"
@@ -37,17 +38,15 @@ const (
 // InstallationError represents an error that occurred during installation
 type InstallationError struct {
 	err        error
-	code       errors.ErrorCode
 	repository string
 	version    string
 	phase      string
 }
 
 // NewInstallationError creates a new installation error
-func NewInstallationError(code errors.ErrorCode, message, repository, version, phase string) *InstallationError {
+func NewInstallationError(message, repository, version, phase string) *InstallationError {
 	return &InstallationError{
-		err:        errors.New(code, message),
-		code:       code,
+		err:        fmt.Errorf("installation error: %s", message),
 		repository: repository,
 		version:    version,
 		phase:      phase,
@@ -73,11 +72,6 @@ func (e *InstallationError) Error() string {
 // Unwrap returns the underlying error
 func (e *InstallationError) Unwrap() error {
 	return e.err
-}
-
-// GetCode returns the error code
-func (e *InstallationError) GetCode() errors.ErrorCode {
-	return e.code
 }
 
 // Phase returns the installation phase where the error occurred
@@ -108,7 +102,7 @@ const (
 )
 
 // WrapInstallationError wraps an error with installation context
-func WrapInstallationError(err error, code errors.ErrorCode, repository, version, phase string) error {
+func WrapInstallationError(err error, repository, version, phase string) error {
 	if err == nil {
 		return nil
 	}
@@ -130,7 +124,6 @@ func WrapInstallationError(err error, code errors.ErrorCode, repository, version
 	// Create new installation error
 	return &InstallationError{
 		err:        err,
-		code:       code,
 		repository: repository,
 		version:    version,
 		phase:      phase,
@@ -143,17 +136,9 @@ func IsRetryableError(err error) bool {
 		return false
 	}
 
-	// Check if it's an errors.Error
-	if e, ok := err.(*errors.Error); ok {
-		switch e.Code {
-		case errors.CodeGitClone, errors.CodeGitAuth, errors.CodeTimeout:
-			return true
-		case errors.CodeFileIO:
-			// Check if it's a temporary filesystem error
-			if e.Details != nil && e.Details["temporary"] == "true" {
-				return true
-			}
-		}
+	// Check if it's a git or file error (typically retryable)
+	if stderrors.Is(err, errors.ErrGitOperation) || stderrors.Is(err, errors.ErrFileOperation) {
+		return true
 	}
 
 	// Check if it's an InstallationError

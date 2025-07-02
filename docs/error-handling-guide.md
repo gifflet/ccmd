@@ -1,67 +1,63 @@
 # Error Handling and Logging Guide
 
-This guide explains how to use the comprehensive error handling and logging infrastructure in CCMD.
+This guide explains how to use the error handling and logging infrastructure in CCMD.
 
 ## Error Handling
 
 ### Creating Errors
 
-Use the `errors` package to create structured errors:
+Use the `errors` package to create errors with context:
 
 ```go
-import "github.com/gifflet/ccmd/pkg/errors"
+import (
+    "github.com/gifflet/ccmd/pkg/errors"
+)
 
-// Simple error
-err := errors.New(errors.CodeNotFound, "command not found")
+// Resource not found
+err := errors.NotFound("command foo")
 
-// Error with formatted message
-err := errors.Newf(errors.CodeInvalidArgument, "invalid value: %s", value)
+// Resource already exists  
+err := errors.AlreadyExists("command bar")
 
-// Error with details
-err := errors.New(errors.CodeConfigInvalid, "invalid configuration").
-    WithDetail("file", "ccmd.yaml").
-    WithDetail("line", 42)
+// Invalid input
+err := errors.InvalidInput("version must be semver format")
+
+// Git operation errors
+err := errors.GitError("clone", err)
+
+// File operation errors
+err := errors.FileError("read", configPath, err)
 ```
 
-### Error Codes
+### Sentinel Errors
 
-Use predefined error codes for consistency:
+The package defines the following sentinel errors:
 
-- `CodeNotFound` - Resource not found
-- `CodeAlreadyExists` - Resource already exists
-- `CodeInvalidArgument` - Invalid input
-- `CodePermissionDenied` - Permission denied
-- `CodeGitClone` - Git clone failed
-- `CodeConfigInvalid` - Invalid configuration
-- `CodeNetworkTimeout` - Network timeout
-
-### Wrapping Errors
-
-Wrap lower-level errors with context:
-
-```go
-output, err := cmd.CombinedOutput()
-if err != nil {
-    return errors.Wrap(err, errors.CodeGitClone, "git clone failed").
-        WithDetail("repository", url).
-        WithDetail("output", string(output))
-}
-```
+- `ErrNotFound` - Resource not found
+- `ErrAlreadyExists` - Resource already exists
+- `ErrInvalidInput` - Invalid input
+- `ErrGitOperation` - Git operation failed
+- `ErrFileOperation` - File operation failed
 
 ### Checking Error Types
 
-Use helper functions to check error types:
+Use Go's standard `errors.Is()` to check error types:
 
 ```go
-if errors.IsNotFound(err) {
+import (
+    "errors"
+    errs "github.com/gifflet/ccmd/pkg/errors"
+)
+
+if errors.Is(err, errs.ErrNotFound) {
     // Handle not found error
 }
 
-if errors.IsPermissionDenied(err) {
-    // Handle permission error
+if errors.Is(err, errs.ErrAlreadyExists) {
+    // Handle already exists error
 }
 
-if errors.IsGitError(err) {
+if errors.Is(err, errs.ErrGitOperation) {
     // Handle git-related error
 }
 ```
@@ -118,18 +114,26 @@ if err != nil {
 
 ## Integration with Commands
 
-### Wrapping Commands
+### Error Handling in Commands
 
-Use `WrapCommand` to add automatic error handling and logging:
+Use the `errors.Handler` for consistent error handling:
 
 ```go
+import (
+    "github.com/gifflet/ccmd/pkg/errors"
+    "github.com/spf13/cobra"
+)
+
 cmd := &cobra.Command{
     Use:   "install",
     Short: "Install a command",
-    RunE: errors.WrapCommand("install", func(cmd *cobra.Command, args []string) error {
-        // Command implementation
-        return runInstall(args)
-    }),
+    RunE: func(cmd *cobra.Command, args []string) error {
+        if err := runInstall(args[0]); err != nil {
+            errors.Handle(err)
+            return err
+        }
+        return nil
+    },
 }
 ```
 
@@ -146,7 +150,12 @@ func runInstall(repository string) error {
     // Perform operations
     if err := validateRepository(repository); err != nil {
         log.WithError(err).Error("validation failed")
-        return err  // Error will be handled by WrapCommand
+        return err
+    }
+    
+    // Handle errors with context
+    if err := gitClone(repository); err != nil {
+        return errors.GitError("clone repository", err)
     }
     
     // Log success
@@ -157,8 +166,8 @@ func runInstall(repository string) error {
 
 ## Best Practices
 
-1. **Always use error codes**: Don't create errors with `fmt.Errorf`, use the errors package
-2. **Add context**: Include relevant details using `WithDetail`
+1. **Use the errors package**: Don't create errors with `fmt.Errorf` alone, use the provided error functions
+2. **Add context**: Include relevant information in error messages
 3. **Log at appropriate levels**: Use Debug for detailed info, Info for general messages
 4. **Structure your logs**: Use fields instead of formatting messages
 5. **Handle errors once**: Either log and return, or just return (let caller handle)
@@ -176,9 +185,7 @@ if err != nil {
 ### After:
 ```go
 if err != nil {
-    log.WithError(err).Error("git clone failed")
-    return errors.Wrap(err, errors.CodeGitClone, "git clone failed").
-        WithDetail("repository", url)
+    return errors.GitError("clone", err)
 }
 ```
 
@@ -189,9 +196,22 @@ output.PrintErrorf("Command not found: %s", name)
 
 ### After:
 ```go
-err := errors.New(errors.CodeCommandNotFound, "command not found").
-    WithDetail("command", name)
+err := errors.NotFound(fmt.Sprintf("command %s", name))
 errors.Handle(err)  // This will log and display user-friendly message
+```
+
+### Before:
+```go
+if err := os.ReadFile(path); err != nil {
+    return fmt.Errorf("failed to read %s: %w", path, err)
+}
+```
+
+### After:
+```go
+if err := os.ReadFile(path); err != nil {
+    return errors.FileError("read", path, err)
+}
 ```
 
 ## Environment Variables

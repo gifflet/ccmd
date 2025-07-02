@@ -29,7 +29,7 @@ type InstallOptions struct {
 // Install installs a command from a Git repository
 func Install(opts InstallOptions) error {
 	if opts.Repository == "" {
-		return errors.New(errors.CodeInvalidArgument, "repository URL is required")
+		return errors.InvalidInput("repository URL is required")
 	}
 
 	// Get config directory (project-local)
@@ -48,7 +48,7 @@ func Install(opts InstallOptions) error {
 	// Create installer
 	inst, err := installer.New(installerOpts)
 	if err != nil {
-		return errors.Wrap(err, errors.CodeInternal, "failed to create installer")
+		return fmt.Errorf("failed to create installer: %w", err)
 	}
 
 	// Perform installation

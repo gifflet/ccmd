@@ -33,9 +33,7 @@ func NewWay() error {
 	// After: Structured error with logging
 	if err := someOperation(); err != nil {
 		log.WithError(err).Error("operation failed")
-		return errors.Wrap(err, errors.CodeInternal, "operation failed").
-			WithDetail("operation", "someOperation").
-			WithDetail("context", "example")
+		return fmt.Errorf("operation failed: %w", err)
 	}
 
 	log.Debug("operation completed successfully")
@@ -51,9 +49,7 @@ func ExampleGitError(repoURL string) error {
 		log.WithError(err).WithField("repository", repoURL).Error("git clone failed")
 
 		// Return a structured error with context
-		return errors.Wrap(err, errors.CodeGitClone, "failed to clone repository").
-			WithDetail("repository", repoURL).
-			WithDetail("suggestion", "check your network connection and repository URL")
+		return errors.GitError("clone", err)
 	}
 
 	return nil
@@ -63,19 +59,13 @@ func ExampleGitError(repoURL string) error {
 func ExampleValidationError(config map[string]interface{}) error {
 	// Validate configuration
 	if config["version"] == nil {
-		return errors.New(errors.CodeValidationFailed, "missing required field: version").
-			WithDetail("file", "ccmd.yaml").
-			WithDetail("field", "version").
-			WithDetail("suggestion", "add 'version: 1.0.0' to your ccmd.yaml")
+		return errors.InvalidInput("missing required field: version in ccmd.yaml")
 	}
 
 	// Check version format
 	version, ok := config["version"].(string)
 	if !ok {
-		return errors.New(errors.CodeValidationFailed, "version must be a string").
-			WithDetail("file", "ccmd.yaml").
-			WithDetail("field", "version").
-			WithDetail("actual_type", fmt.Sprintf("%T", config["version"]))
+		return errors.InvalidInput(fmt.Sprintf("version must be a string, got %T", config["version"]))
 	}
 
 	logger.WithField("version", version).Debug("configuration validated")
@@ -87,14 +77,12 @@ func ExampleCommandError(cmdName string) error {
 	// Check if command exists
 	if !commandExists(cmdName) {
 		// This error will be displayed user-friendly by the handler
-		return errors.New(errors.CodeCommandNotFound, "command not found").
-			WithDetail("command", cmdName)
+		return errors.NotFound("command not found: " + cmdName)
 	}
 
 	// Execute command
 	if err := executeCommand(cmdName); err != nil {
-		return errors.Wrap(err, errors.CodeCommandExecute, "command execution failed").
-			WithDetail("command", cmdName)
+		return fmt.Errorf("command execution failed for %s: %w", cmdName, err)
 	}
 
 	return nil

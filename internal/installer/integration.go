@@ -26,6 +26,10 @@ import (
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
+const (
+	configFileName = "ccmd.yaml"
+)
+
 // IntegrationOptions provides options for integrated installation
 type IntegrationOptions struct {
 	Repository    string // Git repository URL or shorthand (e.g., "user/repo")
@@ -149,7 +153,7 @@ func InstallCommand(ctx context.Context, opts IntegrationOptions, addToConfig bo
 	installDir := ".claude/commands"
 	if opts.GlobalInstall {
 		// Global installation path support will be added in a future release
-		return errors.New(errors.CodeNotImplemented, "global installation not yet supported")
+		return fmt.Errorf("global installation not yet supported")
 	}
 
 	// Create installer
@@ -164,7 +168,7 @@ func InstallCommand(ctx context.Context, opts IntegrationOptions, addToConfig bo
 
 	installer, err := New(installerOpts)
 	if err != nil {
-		return errors.Wrap(err, errors.CodeInternal, "failed to create installer")
+		return fmt.Errorf("failed to create installer: %w", err)
 	}
 
 	// Perform installation
@@ -192,19 +196,19 @@ func updateProjectFiles(projectPath, repository, version, _ string) error {
 	// Check if project has ccmd.yaml
 	if !pm.ConfigExists() {
 		if err := pm.InitializeConfig(); err != nil {
-			return errors.Wrap(err, errors.CodeFileIO, "failed to initialize ccmd.yaml")
+			return errors.FileError("initialize "+configFileName, filepath.Join(projectPath, configFileName), err)
 		}
 	}
 
 	// Extract owner/repo from repository URL
 	repoPath := ExtractRepoPath(repository)
 	if repoPath == "" {
-		return errors.New(errors.CodeInvalidArgument, "failed to extract repository path")
+		return errors.InvalidInput("failed to extract repository path")
 	}
 
 	// Add command to ccmd.yaml
 	if err := pm.AddCommand(repoPath, version); err != nil {
-		return errors.Wrap(err, errors.CodeFileIO, "failed to update ccmd.yaml")
+		return errors.FileError("update "+configFileName, filepath.Join(projectPath, configFileName), err)
 	}
 
 	// Update lock file
@@ -214,13 +218,13 @@ func updateProjectFiles(projectPath, repository, version, _ string) error {
 		if os.IsNotExist(err) {
 			lockFile = project.NewLockFile()
 		} else {
-			return errors.Wrap(err, errors.CodeFileIO, "failed to load lock file")
+			return errors.FileError("load lock file", filepath.Join(projectPath, "ccmd-lock.yaml"), err)
 		}
 	}
 
 	// Save the lock file (ensures it exists for future operations)
 	if err := pm.SaveLockFile(lockFile); err != nil {
-		return errors.Wrap(err, errors.CodeFileIO, "failed to save lock file")
+		return errors.FileError("save lock file", filepath.Join(projectPath, "ccmd-lock.yaml"), err)
 	}
 
 	// Note: The actual lock file update is handled by the installer itself
@@ -237,24 +241,24 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 
 	// Check if config exists
 	if !pm.ConfigExists() {
-		return errors.New(errors.CodeNotFound, "no ccmd.yaml found in project")
+		return errors.NotFound("no " + configFileName + " found in project")
 	}
 
 	// Load config
 	config, err := pm.LoadConfig()
 	if err != nil {
-		return errors.Wrap(err, errors.CodeFileIO, "failed to load ccmd.yaml")
+		return errors.FileError("load "+configFileName, filepath.Join(projectPath, configFileName), err)
 	}
 
 	// Get normalized commands
 	configCommands, err := config.GetCommands()
 	if err != nil {
-		return errors.Wrap(err, errors.CodeInvalidArgument, "failed to parse commands")
+		return errors.InvalidInput(fmt.Sprintf("failed to parse commands: %v", err))
 	}
 
 	if len(configCommands) == 0 {
-		log.Info("no commands found in ccmd.yaml")
-		output.PrintInfof("No commands found in ccmd.yaml")
+		log.Info("no commands found in " + configFileName)
+		output.PrintInfof("No commands found in %s", configFileName)
 		return nil
 	}
 
@@ -265,8 +269,8 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		lockFile = nil
 	}
 
-	log.WithField("count", len(configCommands)).Info("installing commands from ccmd.yaml")
-	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(configCommands))
+	log.WithField("count", len(configCommands)).Info("installing commands from " + configFileName)
+	output.PrintInfof("Installing %d command(s) from %s", len(configCommands), configFileName)
 
 	// Install each command
 	var installErrors []error
@@ -277,8 +281,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		if err != nil {
 			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
 			installErrors = append(installErrors,
-				errors.Wrap(err, errors.CodeInvalidArgument, "failed to parse repository").
-					WithDetail("repository", cmd.Repo))
+				errors.InvalidInput(fmt.Sprintf("failed to parse repository %s: %v", cmd.Repo, err)))
 			continue
 		}
 
@@ -333,8 +336,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 			spinner.Stop()
 			output.Error("Failed to parse repository %s: %v", cmd.Repo, err)
 			installErrors = append(installErrors,
-				errors.Wrap(err, errors.CodeInvalidArgument, "failed to parse repository").
-					WithDetail("repository", cmd.Repo))
+				errors.InvalidInput(fmt.Sprintf("failed to parse repository %s: %v", cmd.Repo, err)))
 			continue
 		}
 
@@ -350,8 +352,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		if err := InstallCommand(ctx, opts, false); err != nil {
 			spinner.Stop()
 			output.Error("Failed to install %s: %v", cmd.Repo, err)
-			installErrors = append(installErrors, errors.Wrap(err, errors.CodeInternal, "failed to install command").
-				WithDetail("repository", cmd.Repo))
+			installErrors = append(installErrors, fmt.Errorf("failed to install command %s: %w", cmd.Repo, err))
 			continue
 		}
 
@@ -372,11 +373,8 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 
 	// Return error if any installations failed
 	if len(installErrors) > 0 {
-		// Create a new error with partial failure code
-		multiErr := errors.NewMulti(installErrors...)
-		if multiErr != nil {
-			return errors.Wrap(multiErr, errors.CodePartialFailure, "some commands failed to install")
-		}
+		// Create a combined error message
+		return fmt.Errorf("some commands failed to install: %d errors occurred", len(installErrors))
 	}
 
 	return nil
@@ -425,7 +423,7 @@ func (cm *CommandManager) GetInstalledCommands() ([]InstalledCommand, error) {
 		if os.IsNotExist(err) {
 			return []InstalledCommand{}, nil
 		}
-		return nil, errors.Wrap(err, errors.CodeFileIO, "failed to read commands directory")
+		return nil, errors.FileError("read commands directory", installDir, err)
 	}
 
 	commands := make([]InstalledCommand, 0, len(entries))
@@ -443,7 +441,7 @@ func (cm *CommandManager) GetInstalledCommands() ([]InstalledCommand, error) {
 		seen[entry.Name()] = true
 
 		commandPath := filepath.Join(installDir, entry.Name())
-		metadataPath := filepath.Join(commandPath, "ccmd.yaml")
+		metadataPath := filepath.Join(commandPath, configFileName)
 
 		// Check if metadata exists
 		if _, err := cm.fileSystem.Stat(metadataPath); err != nil {

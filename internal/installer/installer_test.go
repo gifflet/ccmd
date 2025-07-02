@@ -273,7 +273,7 @@ func TestInstall_AlreadyExists(t *testing.T) {
 	err := installer.Install(ctx)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "command is already installed")
+	assert.Contains(t, err.Error(), "already exists")
 }
 
 func TestInstall_ForceReinstall(t *testing.T) {
@@ -313,14 +313,14 @@ func TestInstall_RepositoryValidationFails(t *testing.T) {
 
 	// Setup git client to fail validation
 	gitClient.validateFunc = func(url string) error {
-		return errors.New(errors.CodeGitInvalidRepo, "repository not found")
+		return errors.NotFound("repository not found")
 	}
 
 	ctx := context.Background()
 	err := installer.Install(ctx)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "repository validation failed")
+	assert.Contains(t, err.Error(), "not found")
 }
 
 func TestInstall_CloneFails(t *testing.T) {
@@ -328,14 +328,14 @@ func TestInstall_CloneFails(t *testing.T) {
 
 	// Setup git client to fail clone
 	gitClient.cloneFunc = func(opts git.CloneOptions) error {
-		return errors.New(errors.CodeGitClone, "clone failed")
+		return errors.GitError("clone", fmt.Errorf("clone failed"))
 	}
 
 	ctx := context.Background()
 	err := installer.Install(ctx)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to clone repository")
+	assert.Contains(t, err.Error(), "git operation failed")
 }
 
 func TestInstall_MissingMetadata(t *testing.T) {
@@ -367,7 +367,7 @@ func TestInstall_InvalidMetadata(t *testing.T) {
 	err := installer.Install(ctx)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "repository validation failed")
+	assert.Contains(t, err.Error(), "failed to parse metadata file")
 }
 
 func TestInstall_Rollback(t *testing.T) {
@@ -504,7 +504,7 @@ func TestInstaller_TempDirCleanup(t *testing.T) {
 		tempDirPath = opts.Target
 		// Create a file to verify cleanup
 		require.NoError(t, memFS.WriteFile(filepath.Join(opts.Target, "test.txt"), []byte("test"), 0o644))
-		return errors.New(errors.CodeGitClone, "clone failed")
+		return errors.GitError("clone", fmt.Errorf("clone failed"))
 	}
 
 	ctx := context.Background()
