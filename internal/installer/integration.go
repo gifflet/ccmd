@@ -26,6 +26,10 @@ import (
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
+const (
+	configFileName = "ccmd.yaml"
+)
+
 // IntegrationOptions provides options for integrated installation
 type IntegrationOptions struct {
 	Repository    string // Git repository URL or shorthand (e.g., "user/repo")
@@ -192,7 +196,7 @@ func updateProjectFiles(projectPath, repository, version, _ string) error {
 	// Check if project has ccmd.yaml
 	if !pm.ConfigExists() {
 		if err := pm.InitializeConfig(); err != nil {
-			return errors.FileError("initialize ccmd.yaml", filepath.Join(projectPath, "ccmd.yaml"), err)
+			return errors.FileError("initialize "+configFileName, filepath.Join(projectPath, configFileName), err)
 		}
 	}
 
@@ -204,7 +208,7 @@ func updateProjectFiles(projectPath, repository, version, _ string) error {
 
 	// Add command to ccmd.yaml
 	if err := pm.AddCommand(repoPath, version); err != nil {
-		return errors.FileError("update ccmd.yaml", filepath.Join(projectPath, "ccmd.yaml"), err)
+		return errors.FileError("update "+configFileName, filepath.Join(projectPath, configFileName), err)
 	}
 
 	// Update lock file
@@ -237,13 +241,13 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 
 	// Check if config exists
 	if !pm.ConfigExists() {
-		return errors.NotFound("no ccmd.yaml found in project")
+		return errors.NotFound("no " + configFileName + " found in project")
 	}
 
 	// Load config
 	config, err := pm.LoadConfig()
 	if err != nil {
-		return errors.FileError("load ccmd.yaml", filepath.Join(projectPath, "ccmd.yaml"), err)
+		return errors.FileError("load "+configFileName, filepath.Join(projectPath, configFileName), err)
 	}
 
 	// Get normalized commands
@@ -253,8 +257,8 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 	}
 
 	if len(configCommands) == 0 {
-		log.Info("no commands found in ccmd.yaml")
-		output.PrintInfof("No commands found in ccmd.yaml")
+		log.Info("no commands found in " + configFileName)
+		output.PrintInfof("No commands found in %s", configFileName)
 		return nil
 	}
 
@@ -265,8 +269,8 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		lockFile = nil
 	}
 
-	log.WithField("count", len(configCommands)).Info("installing commands from ccmd.yaml")
-	output.PrintInfof("Installing %d command(s) from ccmd.yaml", len(configCommands))
+	log.WithField("count", len(configCommands)).Info("installing commands from " + configFileName)
+	output.PrintInfof("Installing %d command(s) from %s", len(configCommands), configFileName)
 
 	// Install each command
 	var installErrors []error
@@ -437,7 +441,7 @@ func (cm *CommandManager) GetInstalledCommands() ([]InstalledCommand, error) {
 		seen[entry.Name()] = true
 
 		commandPath := filepath.Join(installDir, entry.Name())
-		metadataPath := filepath.Join(commandPath, "ccmd.yaml")
+		metadataPath := filepath.Join(commandPath, configFileName)
 
 		// Check if metadata exists
 		if _, err := cm.fileSystem.Stat(metadataPath); err != nil {

@@ -24,19 +24,22 @@ var (
 	ErrFileOperation = errors.New("file operation failed")
 )
 
+// errorWithContextFormat is the format string for errors with context
+const errorWithContextFormat = "%w: %s"
+
 // NotFound creates a not found error with context
 func NotFound(resource string) error {
-	return fmt.Errorf("%w: %s", ErrNotFound, resource)
+	return fmt.Errorf(errorWithContextFormat, ErrNotFound, resource)
 }
 
 // AlreadyExists creates an already exists error with context
 func AlreadyExists(resource string) error {
-	return fmt.Errorf("%w: %s", ErrAlreadyExists, resource)
+	return fmt.Errorf(errorWithContextFormat, ErrAlreadyExists, resource)
 }
 
 // InvalidInput creates an invalid input error with context
 func InvalidInput(msg string) error {
-	return fmt.Errorf("%w: %s", ErrInvalidInput, msg)
+	return fmt.Errorf(errorWithContextFormat, ErrInvalidInput, msg)
 }
 
 // GitError creates a git operation error with context

@@ -20,6 +20,10 @@ import (
 	"github.com/gifflet/ccmd/pkg/logger"
 )
 
+const (
+	errGetAbsolutePath = "get absolute path"
+)
+
 // Client provides git operations
 type Client struct {
 	workDir string
@@ -101,7 +105,7 @@ func (c *Client) GetTags(repoPath string) ([]string, error) {
 	// Convert to absolute path to avoid issues
 	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return nil, errors.FileError("get absolute path", repoPath, err)
+		return nil, errors.FileError(errGetAbsolutePath, repoPath, err)
 	}
 
 	cmd := exec.Command("git", "tag", "-l")
@@ -128,7 +132,7 @@ func (c *Client) GetLatestTag(repoPath string) (string, error) {
 	// Convert to absolute path to avoid issues
 	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return "", errors.FileError("get absolute path", repoPath, err)
+		return "", errors.FileError(errGetAbsolutePath, repoPath, err)
 	}
 
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
@@ -155,7 +159,7 @@ func (c *Client) GetCurrentCommit(repoPath string) (string, error) {
 	// Convert to absolute path to avoid issues
 	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
-		return "", errors.FileError("get absolute path", repoPath, err)
+		return "", errors.FileError(errGetAbsolutePath, repoPath, err)
 	}
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
