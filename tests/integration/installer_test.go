@@ -183,7 +183,7 @@ func TestInstallationErrorHandling(t *testing.T) {
 		err = inst.Install(ctx)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "repository not found")
+		assert.Contains(t, err.Error(), "not found: repository")
 	})
 
 	t.Run("InvalidMetadata", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestInstallationErrorHandling(t *testing.T) {
 		err = inst.Install(ctx)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse metadata file")
+		assert.Contains(t, err.Error(), "file operation failed: parse metadata file")
 	})
 
 	t.Run("MissingMetadata", func(t *testing.T) {
