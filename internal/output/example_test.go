@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gifflet/ccmd/internal/output"
+	ccmderrors "github.com/gifflet/ccmd/pkg/errors"
 )
 
 func ExamplePrintf() {
@@ -25,14 +26,14 @@ func ExamplePrintf() {
 	output.PrintErrorf("Something went wrong")
 }
 
-func ExampleUserError() {
-	// Creating user-friendly errors
-	err := output.NewUserError("Failed to load configuration", errors.New("file not found"))
-	output.PrintUserError(err)
+func ExamplePrintError() {
+	// Printing errors with appropriate formatting
+	err := errors.New("file not found")
+	output.PrintError(err)
 
-	// Using formatted error
-	err2 := output.NewUserErrorf("Invalid command: %s", "unknown-cmd")
-	output.PrintUserError(err2)
+	// Using pkg/errors for better error handling
+	err2 := ccmderrors.NotFound("command unknown-cmd")
+	output.PrintError(err2)
 }
 
 func ExampleSpinner() {

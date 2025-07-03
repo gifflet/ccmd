@@ -10,7 +10,6 @@
 package update
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,16 +23,8 @@ import (
 	"github.com/gifflet/ccmd/internal/git"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
+	ccmderrors "github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
-)
-
-var (
-	// ErrCommandNameRequired is returned when no command name is provided and --all is not set.
-	ErrCommandNameRequired = errors.New("command name required (or use --all to update all commands)")
-	// ErrCannotSpecifyWithAll is returned when a command name is provided with --all flag.
-	ErrCannotSpecifyWithAll = errors.New("cannot specify command name with --all flag")
-	// ErrSomeUpdatesFailed is returned when some updates fail in batch update.
-	ErrSomeUpdatesFailed = errors.New("some updates failed")
 )
 
 // Result represents the result of an update operation.
@@ -59,11 +50,11 @@ With --all flag, it updates all installed commands.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 && !updateAll {
-				return ErrCommandNameRequired
+				return ccmderrors.InvalidInput("command name required (or use --all to update all commands)")
 			}
 
 			if len(args) > 0 && updateAll {
-				return ErrCannotSpecifyWithAll
+				return ccmderrors.InvalidInput("cannot specify command name with --all flag")
 			}
 
 			return runUpdate(args, updateAll)
@@ -86,11 +77,11 @@ func runUpdateWithFS(args []string, updateAll bool, filesystem fs.FileSystem) er
 
 	// Validate arguments
 	if len(args) == 0 && !updateAll {
-		return ErrCommandNameRequired
+		return ccmderrors.InvalidInput("command name required (or use --all to update all commands)")
 	}
 
 	if len(args) > 0 && updateAll {
-		return ErrCannotSpecifyWithAll
+		return ccmderrors.InvalidInput("cannot specify command name with --all flag")
 	}
 
 	// Get config directory (project-local)
@@ -180,7 +171,7 @@ func updateAllCommands(baseDir string, filesystem fs.FileSystem) error {
 	}
 	if failedCount > 0 {
 		output.PrintErrorf("%d command(s) failed to update", failedCount)
-		return ErrSomeUpdatesFailed
+		return fmt.Errorf("some updates failed")
 	}
 	if updatedCount == 0 && failedCount == 0 {
 		output.PrintInfof("All commands are up to date")

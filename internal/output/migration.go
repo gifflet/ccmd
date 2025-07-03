@@ -16,8 +16,8 @@ import (
 	"github.com/gifflet/ccmd/pkg/logger"
 )
 
-// ErrorToOutput converts an error to appropriate output format
-func ErrorToOutput(err error) {
+// PrintError prints an error to the user in appropriate format
+func PrintError(err error) {
 	if err == nil {
 		return
 	}
@@ -39,8 +39,8 @@ func ErrorToOutput(err error) {
 	}
 }
 
-// LogAndOutputError logs an error with context and outputs to user
-func LogAndOutputError(log logger.Logger, err error, message string) {
+// LogAndPrintError logs an error with context and outputs to user
+func LogAndPrintError(log logger.Logger, err error, message string) {
 	if err == nil {
 		return
 	}
@@ -49,5 +49,5 @@ func LogAndOutputError(log logger.Logger, err error, message string) {
 	log.WithError(err).Error(message)
 
 	// Output to user
-	ErrorToOutput(err)
+	PrintError(err)
 }

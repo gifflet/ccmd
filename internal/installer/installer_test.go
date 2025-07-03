@@ -367,7 +367,7 @@ func TestInstall_InvalidMetadata(t *testing.T) {
 	err := installer.Install(ctx)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to parse metadata file")
+	assert.Contains(t, err.Error(), "file operation failed: parse metadata file")
 }
 
 func TestInstall_Rollback(t *testing.T) {

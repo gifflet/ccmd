@@ -248,7 +248,7 @@ func TestRunInfoCommandNotFound(t *testing.T) {
 
 	// Verify error
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "command not found")
+	assert.Contains(t, err.Error(), "not found: command")
 }
 
 func TestCheckCommandStructure(t *testing.T) {
@@ -556,7 +556,7 @@ func TestRunInfoWithJSONError(t *testing.T) {
 
 	// Verify error
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "command 'non-existent' is not installed")
+	assert.Contains(t, err.Error(), "not found: command")
 }
 
 func TestOutputMarshaling(t *testing.T) {

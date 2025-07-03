@@ -16,6 +16,7 @@ import (
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -53,13 +54,13 @@ func List(opts ListOptions) ([]*CommandDetail, error) {
 		if os.IsNotExist(err) {
 			return []*CommandDetail{}, nil
 		}
-		return nil, fmt.Errorf("failed to load lock file: %w", err)
+		return nil, errors.FileError("load lock file", lockPath, err)
 	}
 
 	// Get all commands from lock file
 	commands, err := lockManager.ListCommands()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list commands: %w", err)
+		return nil, err
 	}
 
 	// Check structure for each command
@@ -126,7 +127,7 @@ func VerifyCommandStructure(name, baseDir string, filesystem fs.FileSystem) (val
 	lockPath := filepath.Join(baseDir, "ccmd-lock.yaml")
 	lockManager := project.NewLockManagerWithFS(lockPath, filesystem)
 	if err := lockManager.Load(); err != nil {
-		return false, "", fmt.Errorf("failed to load lock file: %w", err)
+		return false, "", errors.FileError("load lock file", lockPath, err)
 	}
 
 	if !lockManager.HasCommand(name) {

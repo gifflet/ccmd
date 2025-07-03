@@ -158,12 +158,6 @@ func Example_errorHandling() {
 			fmt.Println("Installation failed permanently")
 		}
 
-		// Get installation phase where error occurred
-		phase := installer.GetInstallationPhase(err)
-		if phase != "" {
-			fmt.Printf("Error occurred during: %s\n", phase)
-		}
-
 		return
 	}
 

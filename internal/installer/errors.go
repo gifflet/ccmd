@@ -35,60 +35,6 @@ const (
 	ErrMsgConcurrentInstall  = "another installation is in progress"
 )
 
-// InstallationError represents an error that occurred during installation
-type InstallationError struct {
-	err        error
-	repository string
-	version    string
-	phase      string
-}
-
-// NewInstallationError creates a new installation error
-func NewInstallationError(message, repository, version, phase string) *InstallationError {
-	return &InstallationError{
-		err:        fmt.Errorf("installation error: %s", message),
-		repository: repository,
-		version:    version,
-		phase:      phase,
-	}
-}
-
-// Error implements the error interface
-func (e *InstallationError) Error() string {
-	msg := e.err.Error()
-	if e.repository != "" {
-		msg = fmt.Sprintf("%s (repository: %s", msg, e.repository)
-		if e.version != "" {
-			msg += fmt.Sprintf(", version: %s", e.version)
-		}
-		msg += ")"
-	}
-	if e.phase != "" {
-		msg += fmt.Sprintf(" [phase: %s]", e.phase)
-	}
-	return msg
-}
-
-// Unwrap returns the underlying error
-func (e *InstallationError) Unwrap() error {
-	return e.err
-}
-
-// Phase returns the installation phase where the error occurred
-func (e *InstallationError) Phase() string {
-	return e.phase
-}
-
-// Repository returns the repository that was being installed
-func (e *InstallationError) Repository() string {
-	return e.repository
-}
-
-// Version returns the version that was being installed
-func (e *InstallationError) Version() string {
-	return e.version
-}
-
 // Installation phases
 const (
 	PhaseValidation   = "validation"
@@ -101,103 +47,35 @@ const (
 	PhaseRollback     = "rollback"
 )
 
-// WrapInstallationError wraps an error with installation context
+// WrapInstallationError adds installation context to an error
 func WrapInstallationError(err error, repository, version, phase string) error {
 	if err == nil {
 		return nil
 	}
 
-	// If it's already an installation error, update fields
-	if instErr, ok := err.(*InstallationError); ok {
-		if repository != "" {
-			instErr.repository = repository
-		}
+	// Build context message
+	var context string
+	if repository != "" {
+		context = fmt.Sprintf(" (repository: %s", repository)
 		if version != "" {
-			instErr.version = version
+			context += fmt.Sprintf(", version: %s", version)
 		}
-		if phase != "" {
-			instErr.phase = phase
-		}
-		return instErr
+		context += ")"
+	}
+	if phase != "" {
+		context += fmt.Sprintf(" [phase: %s]", phase)
 	}
 
-	// Create new installation error
-	return &InstallationError{
-		err:        err,
-		repository: repository,
-		version:    version,
-		phase:      phase,
-	}
+	// Return error with context appended
+	return fmt.Errorf("%w%s", err, context)
 }
 
-// IsRetryableError checks if an installation error is retryable
+// IsRetryableError checks if an error is retryable
 func IsRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	// Check if it's a git or file error (typically retryable)
-	if stderrors.Is(err, errors.ErrGitOperation) || stderrors.Is(err, errors.ErrFileOperation) {
-		return true
-	}
-
-	// Check if it's an InstallationError
-	if instErr, ok := err.(*InstallationError); ok {
-		return IsRetryableError(instErr.err)
-	}
-
-	return false
-}
-
-// GetInstallationPhase extracts the installation phase from an error
-func GetInstallationPhase(err error) string {
-	if err == nil {
-		return ""
-	}
-
-	if instErr, ok := err.(*InstallationError); ok {
-		return instErr.phase
-	}
-
-	return ""
-}
-
-// ValidationError represents a validation error during installation
-type ValidationError struct {
-	Field   string
-	Message string
-}
-
-// Error implements the error interface
-func (e *ValidationError) Error() string {
-	if e.Field != "" {
-		return fmt.Sprintf("validation error in %s: %s", e.Field, e.Message)
-	}
-	return fmt.Sprintf("validation error: %s", e.Message)
-}
-
-// MultiValidationError represents multiple validation errors
-type MultiValidationError struct {
-	Errors []ValidationError
-}
-
-// Error implements the error interface
-func (e *MultiValidationError) Error() string {
-	if len(e.Errors) == 1 {
-		return e.Errors[0].Error()
-	}
-	return fmt.Sprintf("multiple validation errors: %d issues found", len(e.Errors))
-}
-
-// Add adds a validation error
-func (e *MultiValidationError) Add(field, message string) {
-	e.Errors = append(e.Errors, ValidationError{
-		Field:   field,
-		Message: message,
-	})
-}
-
-// HasErrors returns true if there are any validation errors
-func (e *MultiValidationError) HasErrors() bool {
-	return len(e.Errors) > 0
+	// Git and file errors are typically retryable
+	return stderrors.Is(err, errors.ErrGitOperation) || stderrors.Is(err, errors.ErrFileOperation)
 }

@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 const (
@@ -92,7 +93,7 @@ func (m *Manager) LockExists() bool {
 // InitializeConfig creates a new config file with default values
 func (m *Manager) InitializeConfig() error {
 	if m.ConfigExists() {
-		return fmt.Errorf("config file already exists at %s", m.ConfigPath())
+		return errors.AlreadyExists(fmt.Sprintf("config file at %s", m.ConfigPath()))
 	}
 
 	config := &Config{
@@ -105,7 +106,7 @@ func (m *Manager) InitializeConfig() error {
 // InitializeLock creates a new lock file
 func (m *Manager) InitializeLock() error {
 	if m.LockExists() {
-		return fmt.Errorf("lock file already exists at %s", m.LockPath())
+		return errors.AlreadyExists(fmt.Sprintf("lock file at %s", m.LockPath()))
 	}
 
 	lockFile := NewLockFile()
@@ -116,7 +117,7 @@ func (m *Manager) InitializeLock() error {
 func (m *Manager) AddCommand(repo, version string) error {
 	// Validate repo format first
 	if err := validateRepoFormat(repo); err != nil {
-		return fmt.Errorf("invalid repo format: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("invalid repo format: %v", err))
 	}
 
 	// If config doesn't exist, create minimal config with just commands
@@ -139,7 +140,7 @@ func (m *Manager) AddCommand(repo, version string) error {
 		// Check if command already exists
 		for _, existing := range commands {
 			if existing.Repo == repo {
-				return nil, fmt.Errorf("command %s already exists in configuration", repo)
+				return nil, errors.AlreadyExists(fmt.Sprintf("command %s in configuration", repo))
 			}
 		}
 
@@ -168,7 +169,7 @@ func (m *Manager) RemoveCommand(repo string) error {
 		}
 
 		if !found {
-			return nil, fmt.Errorf("command %s not found in configuration", repo)
+			return nil, errors.NotFound(fmt.Sprintf("command %s in configuration", repo))
 		}
 
 		return newCommands, nil
@@ -179,11 +180,11 @@ func (m *Manager) RemoveCommand(repo string) error {
 func (m *Manager) UpdateCommandInLockFile(cmd *Command) error {
 	lockFile, err := m.LoadLockFile()
 	if err != nil {
-		return fmt.Errorf("failed to load lock file: %w", err)
+		return err
 	}
 
 	if err := lockFile.AddCommand(cmd); err != nil {
-		return fmt.Errorf("failed to add command to lock file: %w", err)
+		return err
 	}
 
 	return m.SaveLockFile(lockFile)
@@ -209,7 +210,7 @@ func (m *Manager) UpdateCommand(repo, newVersion string) error {
 		}
 
 		if !found {
-			return nil, fmt.Errorf("command %s not found in configuration", repo)
+			return nil, errors.NotFound(fmt.Sprintf("command %s in configuration", repo))
 		}
 
 		return updatedCommands, nil
@@ -230,14 +231,14 @@ func (m *Manager) CommandExists(name string) (bool, error) {
 func (m *Manager) Sync() error {
 	config, err := m.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	var lockFile *LockFile
 	if m.LockExists() {
 		lockFile, err = m.LoadLockFile()
 		if err != nil {
-			return fmt.Errorf("failed to load lock file: %w", err)
+			return err
 		}
 	} else {
 		lockFile = NewLockFile()
@@ -256,25 +257,25 @@ func (m *Manager) preserveAndUpdateCommands(updateFunc func([]ConfigCommand) ([]
 	// Read the raw YAML data
 	rawData, err := m.fs.ReadFile(m.ConfigPath())
 	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
+		return errors.FileError("read config file", m.ConfigPath(), err)
 	}
 
 	// Parse YAML into a Node to preserve structure and order
 	var doc yaml.Node
 	if err := yaml.Unmarshal(rawData, &doc); err != nil {
-		return fmt.Errorf("failed to parse YAML: %w", err)
+		return errors.FileError("parse YAML", m.ConfigPath(), err)
 	}
 
 	// Load the config normally to get current commands
 	config, err := m.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	// Get current commands
 	commands, err := config.GetCommands()
 	if err != nil {
-		return fmt.Errorf("failed to get commands: %w", err)
+		return err
 	}
 
 	// Apply the update function
@@ -296,13 +297,13 @@ func (m *Manager) preserveAndUpdateCommands(updateFunc func([]ConfigCommand) ([]
 
 	// Update the commands field in the YAML node
 	if err := updateYAMLNodeField(&doc, "commands", commandsValue); err != nil {
-		return fmt.Errorf("failed to update commands field: %w", err)
+		return err
 	}
 
 	// Marshal back to YAML preserving order
 	updatedData, err := yaml.Marshal(&doc)
 	if err != nil {
-		return fmt.Errorf("failed to marshal updated config: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to marshal updated config: %v", err))
 	}
 
 	// Write the file
@@ -313,13 +314,13 @@ func (m *Manager) preserveAndUpdateCommands(updateFunc func([]ConfigCommand) ([]
 func updateYAMLNodeField(node *yaml.Node, fieldName string, value interface{}) error {
 	// Ensure we have a document node
 	if node.Kind != yaml.DocumentNode || len(node.Content) == 0 {
-		return fmt.Errorf("invalid YAML document structure")
+		return errors.InvalidInput("invalid YAML document structure")
 	}
 
 	// Get the root mapping node
 	root := node.Content[0]
 	if root.Kind != yaml.MappingNode {
-		return fmt.Errorf("root node is not a mapping")
+		return errors.InvalidInput("root node is not a mapping")
 	}
 
 	// Look for existing field
@@ -330,7 +331,7 @@ func updateYAMLNodeField(node *yaml.Node, fieldName string, value interface{}) e
 			// Create new value node
 			newValueNode := &yaml.Node{}
 			if err := newValueNode.Encode(value); err != nil {
-				return fmt.Errorf("failed to encode value: %w", err)
+				return errors.InvalidInput(fmt.Sprintf("failed to encode value: %v", err))
 			}
 
 			// Replace the value node
@@ -347,7 +348,7 @@ func updateYAMLNodeField(node *yaml.Node, fieldName string, value interface{}) e
 
 	valueNode := &yaml.Node{}
 	if err := valueNode.Encode(value); err != nil {
-		return fmt.Errorf("failed to encode value: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to encode value: %v", err))
 	}
 
 	root.Content = append(root.Content, keyNode, valueNode)

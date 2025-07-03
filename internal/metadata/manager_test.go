@@ -62,7 +62,7 @@ homepage: https://example.com`
 			name:        "metadata file not found",
 			setupFunc:   func(t *testing.T, dir string) {},
 			wantErr:     true,
-			errContains: "metadata file not found",
+			errContains: "not found: metadata file at",
 		},
 		{
 			name: "invalid yaml format",
@@ -73,7 +73,7 @@ homepage: https://example.com`
 				require.NoError(t, err)
 			},
 			wantErr:     true,
-			errContains: "failed to parse metadata file",
+			errContains: "file operation failed: parse metadata file",
 		},
 		{
 			name: "missing required fields",
@@ -85,7 +85,7 @@ description: A test command`
 				require.NoError(t, err)
 			},
 			wantErr:     true,
-			errContains: "invalid metadata",
+			errContains: "invalid input:",
 		},
 	}
 
@@ -144,7 +144,7 @@ func TestManager_WriteCommandMetadata(t *testing.T) {
 				Repository:  "https://github.com/test/command",
 			},
 			wantErr:     true,
-			errContains: "invalid metadata",
+			errContains: "invalid input:",
 		},
 	}
 

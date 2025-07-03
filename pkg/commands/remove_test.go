@@ -141,7 +141,7 @@ func TestRemove(t *testing.T) {
 				data, _ := yaml.Marshal(lockFile)
 				_ = fs.WriteFile("ccmd-lock.yaml", data, 0o644)
 			},
-			expectedError: "command 'non-existent' not found",
+			expectedError: "not found: command non-existent",
 		},
 		{
 			name: "missing command name",
@@ -160,7 +160,7 @@ func TestRemove(t *testing.T) {
 			setupFunc: func(fs fs.FileSystem, baseDir string) {
 				// Don't create anything
 			},
-			expectedError: "command 'test-cmd' not found",
+			expectedError: "not found: command test-cmd",
 		},
 	}
 
@@ -362,7 +362,7 @@ func TestGetCommandInfo(t *testing.T) {
 				data, _ := yaml.Marshal(lockFile)
 				_ = fs.WriteFile("ccmd-lock.yaml", data, 0o644)
 			},
-			expectedError: "command \"non-existent\" not found",
+			expectedError: "not found: command non-existent",
 		},
 	}
 

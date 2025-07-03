@@ -429,8 +429,8 @@ func TestLockFile_AddCommand_InvalidCommand(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid command")
 	}
-	if !strings.Contains(err.Error(), "invalid command") {
-		t.Errorf("expected error to contain 'invalid command', got: %v", err)
+	if !strings.Contains(err.Error(), "invalid input") {
+		t.Errorf("expected error to contain 'invalid input', got: %v", err)
 	}
 }
 
@@ -530,8 +530,8 @@ func TestLoadFromFile_InvalidYAML(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid YAML")
 	}
-	if !strings.Contains(err.Error(), "failed to parse lock file") {
-		t.Errorf("expected error to contain 'failed to parse lock file', got: %v", err)
+	if !strings.Contains(err.Error(), "file operation failed") {
+		t.Errorf("expected error to contain 'file operation failed', got: %v", err)
 	}
 }
 
@@ -576,8 +576,8 @@ func TestLockFile_Validate_InvalidCommand(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid command")
 	}
-	if !strings.Contains(err.Error(), "invalid command") {
-		t.Errorf("expected error to contain 'invalid command', got: %v", err)
+	if !strings.Contains(err.Error(), "invalid input") {
+		t.Errorf("expected error to contain 'invalid input', got: %v", err)
 	}
 }
 
@@ -587,8 +587,8 @@ func TestLoadFromFile_NonExistentFile(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for non-existent file")
 	}
-	if !strings.Contains(err.Error(), "failed to read lock file") {
-		t.Errorf("expected error to contain 'failed to read lock file', got: %v", err)
+	if !strings.Contains(err.Error(), "file operation failed") {
+		t.Errorf("expected error to contain 'file operation failed', got: %v", err)
 	}
 }
 

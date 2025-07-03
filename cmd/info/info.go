@@ -11,6 +11,7 @@ package info
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/gifflet/ccmd/internal/models"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
+	ccmderrors "github.com/gifflet/ccmd/pkg/errors"
 )
 
 // Output represents the structured output format for JSON
@@ -86,7 +88,7 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 	// Get command info from lock file (this will check if command exists)
 	cmdInfo, err := commands.GetCommandInfo(commandName, ".claude", filesystem)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("command %q not found", commandName) {
+		if errors.Is(err, ccmderrors.ErrNotFound) {
 			if jsonFormat {
 				return fmt.Errorf("command '%s' is not installed", commandName)
 			}
