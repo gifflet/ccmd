@@ -19,6 +19,8 @@ import (
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
+const errLoadLockFile = "load lock file"
+
 // RemoveOptions contains options for removing a command.
 type RemoveOptions struct {
 	Name       string
@@ -45,7 +47,7 @@ func Remove(opts RemoveOptions) error {
 
 	// Load current lock file
 	if err := lockManager.Load(); err != nil {
-		return errors.FileError("load lock file", lockPath, err)
+		return errors.FileError(errLoadLockFile, lockPath, err)
 	}
 
 	// Check if command exists
@@ -108,7 +110,7 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 		if os.IsNotExist(err) {
 			return []string{}, nil
 		}
-		return nil, errors.FileError("load lock file", lockPath, err)
+		return nil, errors.FileError(errLoadLockFile, lockPath, err)
 	}
 
 	cmds, err := lockManager.ListCommands()
@@ -137,7 +139,7 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*project.Co
 	lockPath := "ccmd-lock.yaml"
 	lockManager := project.NewLockManagerWithFS(lockPath, filesystem)
 	if err := lockManager.Load(); err != nil {
-		return nil, errors.FileError("load lock file", lockPath, err)
+		return nil, errors.FileError(errLoadLockFile, lockPath, err)
 	}
 
 	cmd, err := lockManager.GetCommand(name)

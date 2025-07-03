@@ -22,6 +22,8 @@ import (
 	"github.com/gifflet/ccmd/pkg/errors"
 )
 
+const errInvalidConfig = "invalid configuration: %v"
+
 // Config represents the ccmd.yaml configuration file structure
 type Config struct {
 	// Project metadata
@@ -220,7 +222,7 @@ func ParseConfig(r io.Reader) (*Config, error) {
 	}
 
 	if err := config.Validate(); err != nil {
-		return nil, errors.InvalidInput(fmt.Sprintf("invalid configuration: %v", err))
+		return nil, errors.InvalidInput(fmt.Sprintf(errInvalidConfig, err))
 	}
 
 	return &config, nil
@@ -229,7 +231,7 @@ func ParseConfig(r io.Reader) (*Config, error) {
 // SaveConfig saves a Config to a ccmd.yaml file
 func SaveConfig(config *Config, path string, fileSystem fs.FileSystem) error {
 	if err := config.Validate(); err != nil {
-		return errors.InvalidInput(fmt.Sprintf("invalid configuration: %v", err))
+		return errors.InvalidInput(fmt.Sprintf(errInvalidConfig, err))
 	}
 
 	// Convert to save format
@@ -300,7 +302,7 @@ func (c *Config) toSaveFormat() interface{} {
 // WriteConfig writes a Config to an io.Writer
 func WriteConfig(config *Config, w io.Writer) error {
 	if err := config.Validate(); err != nil {
-		return errors.InvalidInput(fmt.Sprintf("invalid configuration: %v", err))
+		return errors.InvalidInput(fmt.Sprintf(errInvalidConfig, err))
 	}
 
 	// Convert to save format
