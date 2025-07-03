@@ -24,6 +24,9 @@ const (
 	ConfigFileName = "ccmd.yaml"
 	// LockFileName is the default name for the lock file
 	LockFileName = "ccmd-lock.yaml"
+
+	// Error message formats
+	errCommandInConfig = "command %s in configuration"
 )
 
 // Manager provides high-level operations for project file management
@@ -140,7 +143,7 @@ func (m *Manager) AddCommand(repo, version string) error {
 		// Check if command already exists
 		for _, existing := range commands {
 			if existing.Repo == repo {
-				return nil, errors.AlreadyExists(fmt.Sprintf("command %s in configuration", repo))
+				return nil, errors.AlreadyExists(fmt.Sprintf(errCommandInConfig, repo))
 			}
 		}
 
@@ -169,7 +172,7 @@ func (m *Manager) RemoveCommand(repo string) error {
 		}
 
 		if !found {
-			return nil, errors.NotFound(fmt.Sprintf("command %s in configuration", repo))
+			return nil, errors.NotFound(fmt.Sprintf(errCommandInConfig, repo))
 		}
 
 		return newCommands, nil
@@ -210,7 +213,7 @@ func (m *Manager) UpdateCommand(repo, newVersion string) error {
 		}
 
 		if !found {
-			return nil, errors.NotFound(fmt.Sprintf("command %s in configuration", repo))
+			return nil, errors.NotFound(fmt.Sprintf(errCommandInConfig, repo))
 		}
 
 		return updatedCommands, nil
