@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // Config represents the ccmd.yaml configuration file structure
@@ -56,7 +57,8 @@ func (c *Config) GetCommands() ([]ConfigCommand, error) {
 		for i, item := range v {
 			str, ok := item.(string)
 			if !ok {
-				return nil, fmt.Errorf("command %d: must be a string (e.g., \"owner/repo@version\")", i)
+				return nil, errors.InvalidInput(
+					fmt.Sprintf("command %d: must be a string (e.g., \"owner/repo@version\")", i))
 			}
 			cmd := parseCommandString(str)
 			commands = append(commands, cmd)
@@ -71,7 +73,7 @@ func (c *Config) GetCommands() ([]ConfigCommand, error) {
 		// Already in correct format
 		commands = v
 	default:
-		return nil, fmt.Errorf("commands must be an array of strings")
+		return nil, errors.InvalidInput("commands must be an array of strings")
 	}
 
 	return commands, nil
@@ -100,7 +102,7 @@ func (c *Config) Validate() error {
 	// Validate each command
 	for i, cmd := range commands {
 		if err := cmd.Validate(); err != nil {
-			return fmt.Errorf("command %d: %w", i, err)
+			return errors.InvalidInput(fmt.Sprintf("command %d: %v", i, err))
 		}
 	}
 
@@ -110,16 +112,16 @@ func (c *Config) Validate() error {
 // Validate performs validation on a ConfigCommand
 func (c *ConfigCommand) Validate() error {
 	if c.Repo == "" {
-		return fmt.Errorf("repo is required")
+		return errors.InvalidInput("repo is required")
 	}
 
 	if err := validateRepoFormat(c.Repo); err != nil {
-		return fmt.Errorf("invalid repo format: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("invalid repo format: %v", err))
 	}
 
 	if c.Version != "" {
 		if err := validateVersion(c.Version); err != nil {
-			return fmt.Errorf("invalid version: %w", err)
+			return errors.InvalidInput(fmt.Sprintf("invalid version: %v", err))
 		}
 	}
 
@@ -130,7 +132,7 @@ func (c *ConfigCommand) Validate() error {
 func (c *ConfigCommand) ParseOwnerRepo() (owner, repo string, err error) {
 	parts := strings.Split(c.Repo, "/")
 	if len(parts) != 2 {
-		return "", "", fmt.Errorf("invalid repo format: expected owner/repo")
+		return "", "", errors.InvalidInput("invalid repo format: expected owner/repo")
 	}
 	return parts[0], parts[1], nil
 }
@@ -147,26 +149,26 @@ func (c *ConfigCommand) IsSemanticVersion() bool {
 // validateRepoFormat validates the repository format (owner/repo)
 func validateRepoFormat(repo string) error {
 	if repo == "" {
-		return fmt.Errorf("repo cannot be empty")
+		return errors.InvalidInput("repo cannot be empty")
 	}
 
 	parts := strings.Split(repo, "/")
 	if len(parts) != 2 {
-		return fmt.Errorf("expected format: owner/repo")
+		return errors.InvalidInput("expected format: owner/repo")
 	}
 
 	owner, repoName := parts[0], parts[1]
 	if owner == "" || repoName == "" {
-		return fmt.Errorf("owner and repo name cannot be empty")
+		return errors.InvalidInput("owner and repo name cannot be empty")
 	}
 
 	// Basic validation for GitHub username/org and repo name
 	validName := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-_])*[a-zA-Z0-9]?$`)
 	if !validName.MatchString(owner) {
-		return fmt.Errorf("invalid owner name: %s", owner)
+		return errors.InvalidInput(fmt.Sprintf("invalid owner name: %s", owner))
 	}
 	if !validName.MatchString(repoName) {
-		return fmt.Errorf("invalid repo name: %s", repoName)
+		return errors.InvalidInput(fmt.Sprintf("invalid repo name: %s", repoName))
 	}
 
 	return nil
@@ -185,7 +187,7 @@ func validateVersion(version string) error {
 
 	// Basic validation for branch/tag names
 	if strings.Contains(version, "..") || strings.HasPrefix(version, ".") || strings.HasSuffix(version, ".") {
-		return fmt.Errorf("invalid version format")
+		return errors.InvalidInput("invalid version format")
 	}
 
 	return nil
@@ -195,7 +197,7 @@ func validateVersion(version string) error {
 func LoadConfig(path string, fileSystem fs.FileSystem) (*Config, error) {
 	data, err := fileSystem.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, errors.FileError("read config file", path, err)
 	}
 
 	return ParseConfig(strings.NewReader(string(data)))
@@ -214,11 +216,11 @@ func ParseConfig(r io.Reader) (*Config, error) {
 			config.Commands = []ConfigCommand{}
 			return &config, nil
 		}
-		return nil, fmt.Errorf("failed to parse YAML: %w", err)
+		return nil, errors.InvalidInput(fmt.Sprintf("failed to parse YAML: %v", err))
 	}
 
 	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+		return nil, errors.InvalidInput(fmt.Sprintf("invalid configuration: %v", err))
 	}
 
 	return &config, nil
@@ -227,7 +229,7 @@ func ParseConfig(r io.Reader) (*Config, error) {
 // SaveConfig saves a Config to a ccmd.yaml file
 func SaveConfig(config *Config, path string, fileSystem fs.FileSystem) error {
 	if err := config.Validate(); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("invalid configuration: %v", err))
 	}
 
 	// Convert to save format
@@ -298,7 +300,7 @@ func (c *Config) toSaveFormat() interface{} {
 // WriteConfig writes a Config to an io.Writer
 func WriteConfig(config *Config, w io.Writer) error {
 	if err := config.Validate(); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("invalid configuration: %v", err))
 	}
 
 	// Convert to save format
@@ -310,7 +312,7 @@ func WriteConfig(config *Config, w io.Writer) error {
 	}()
 
 	if err := encoder.Encode(saveConfig); err != nil {
-		return fmt.Errorf("failed to encode config: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to encode config: %v", err))
 	}
 
 	return nil

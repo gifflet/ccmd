@@ -88,7 +88,7 @@ func TestIntegration_MetadataLifecycle(t *testing.T) {
 
 	_, err = metadata.ReadCommandMetadata(invalidDir)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to parse metadata file")
+	assert.Contains(t, err.Error(), "file operation failed: parse metadata file")
 }
 
 func TestIntegration_MultipleCommands(t *testing.T) {

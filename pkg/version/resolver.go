@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // Resolver handles version resolution for commands.
@@ -40,7 +42,7 @@ func NewResolver(getTagsFunc func(string) ([]string, error)) *Resolver {
 // - Commit hash (e.g., "abc123def")
 func (r *Resolver) ResolveVersion(repoPath, version string) (string, error) {
 	if version == "" {
-		return "", fmt.Errorf("version cannot be empty")
+		return "", errors.InvalidInput("version cannot be empty")
 	}
 
 	// Handle "latest" keyword
@@ -51,7 +53,7 @@ func (r *Resolver) ResolveVersion(repoPath, version string) (string, error) {
 	// Get all available tags
 	tags, err := r.getTags(repoPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to get tags: %w", err)
+		return "", errors.GitError(fmt.Sprintf("get tags from %s", repoPath), err)
 	}
 
 	// Check if it's a semantic version constraint
@@ -73,11 +75,11 @@ func (r *Resolver) ResolveVersion(repoPath, version string) (string, error) {
 func (r *Resolver) resolveLatest(repoPath string) (string, error) {
 	tags, err := r.getTags(repoPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to get tags: %w", err)
+		return "", errors.GitError(fmt.Sprintf("get tags from %s", repoPath), err)
 	}
 
 	if len(tags) == 0 {
-		return "", fmt.Errorf("no tags found in repository")
+		return "", errors.NotFound("tags in repository")
 	}
 
 	// Extract semantic versions
@@ -93,7 +95,7 @@ func (r *Resolver) resolveLatest(repoPath string) (string, error) {
 	}
 
 	if len(versions) == 0 {
-		return "", fmt.Errorf("no semantic version tags found")
+		return "", errors.NotFound("semantic version tags")
 	}
 
 	// Sort versions in descending order
@@ -107,7 +109,7 @@ func (r *Resolver) resolveLatest(repoPath string) (string, error) {
 func (r *Resolver) resolveSemverConstraint(constraint string, tags []string) (string, error) {
 	c, err := semver.NewConstraint(constraint)
 	if err != nil {
-		return "", fmt.Errorf("invalid semantic version constraint: %w", err)
+		return "", errors.InvalidInput(fmt.Sprintf("invalid semantic version constraint: %v", err))
 	}
 
 	// Extract semantic versions from tags
@@ -125,7 +127,7 @@ func (r *Resolver) resolveSemverConstraint(constraint string, tags []string) (st
 	}
 
 	if len(versions) == 0 {
-		return "", fmt.Errorf("no semantic version tags found")
+		return "", errors.NotFound("semantic version tags")
 	}
 
 	// Sort versions in descending order
@@ -140,7 +142,7 @@ func (r *Resolver) resolveSemverConstraint(constraint string, tags []string) (st
 		}
 	}
 
-	return "", fmt.Errorf("no version found matching constraint: %s", constraint)
+	return "", errors.NotFound(fmt.Sprintf("version matching constraint: %s", constraint))
 }
 
 // findExactTag checks if the version matches any tag exactly.

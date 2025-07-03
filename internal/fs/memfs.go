@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // MemFS is an in-memory implementation of FileSystem for testing
@@ -91,7 +93,7 @@ func (m *MemFS) ReadFile(name string) ([]byte, error) {
 	}
 
 	if file.isDir {
-		return nil, fmt.Errorf("read %s: is a directory", name)
+		return nil, errors.InvalidInput(fmt.Sprintf("read %s: is a directory", name))
 	}
 
 	data := make([]byte, len(file.data))
@@ -343,7 +345,7 @@ func (m *MemFS) mkdirAll(path string, perm os.FileMode) error {
 	// Check if already exists
 	if file, exists := m.files[path]; exists {
 		if !file.isDir {
-			return fmt.Errorf("mkdir %s: not a directory", path)
+			return errors.InvalidInput(fmt.Sprintf("mkdir %s: not a directory", path))
 		}
 		return nil
 	}

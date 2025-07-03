@@ -10,7 +10,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -58,12 +58,12 @@ func Search(opts SearchOptions) ([]SearchResult, error) {
 		if os.IsNotExist(err) {
 			return []SearchResult{}, nil
 		}
-		return nil, fmt.Errorf("failed to load lock file: %w", err)
+		return nil, errors.FileError("load lock file", lockPath, err)
 	}
 
 	cmds, err := lockManager.ListCommands()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list commands: %w", err)
+		return nil, err
 	}
 
 	var results []SearchResult

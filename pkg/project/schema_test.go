@@ -386,7 +386,7 @@ func TestParseConfigWithInvalidYAML(t *testing.T) {
 			name:    "wrong type for commands",
 			yaml:    `commands: "not a list"`,
 			wantErr: true,
-			errMsg:  "invalid configuration: commands must be an array",
+			errMsg:  "commands must be an array of strings",
 		},
 	}
 

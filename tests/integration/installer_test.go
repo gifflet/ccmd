@@ -22,6 +22,7 @@ import (
 	"github.com/gifflet/ccmd/internal/git"
 	"github.com/gifflet/ccmd/internal/installer"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -165,8 +166,8 @@ func TestInstallationErrorHandling(t *testing.T) {
 			FileSystem: memFS,
 			GitClient: &mockGitClient{
 				validateFunc: func(url string) error {
-					return installer.NewInstallationError(
-						"repository not found",
+					return installer.WrapInstallationError(
+						errors.NotFound("repository"),
 						url,
 						"",
 						installer.PhaseValidation,

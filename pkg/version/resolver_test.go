@@ -55,14 +55,14 @@ func TestResolver_ResolveVersion(t *testing.T) {
 			version:     "latest",
 			tags:        []string{},
 			expectError: true,
-			errorMsg:    "no tags found",
+			errorMsg:    "not found: tags in repository",
 		},
 		{
 			name:        "latest with no semver tags",
 			version:     "latest",
 			tags:        []string{"release-1", "feature-xyz"},
 			expectError: true,
-			errorMsg:    "no semantic version tags found",
+			errorMsg:    "not found: semantic version tags",
 		},
 		{
 			name:     "caret constraint",
@@ -93,7 +93,7 @@ func TestResolver_ResolveVersion(t *testing.T) {
 			version:     "^3.0.0",
 			tags:        []string{"v1.0.0", "v2.0.0", "v2.5.0"},
 			expectError: true,
-			errorMsg:    "no version found matching constraint",
+			errorMsg:    "not found: version matching constraint",
 		},
 		{
 			name:     "branch name",
@@ -154,7 +154,7 @@ func TestResolver_ResolveVersion_GetTagsError(t *testing.T) {
 
 	_, err := resolver.ResolveVersion("/fake/repo", "latest")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get tags")
+	assert.Contains(t, err.Error(), "git operation failed during get tags from")
 }
 
 func TestParseSemverTag(t *testing.T) {
