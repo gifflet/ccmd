@@ -22,6 +22,7 @@ import (
 	"github.com/gifflet/ccmd/internal/git"
 	"github.com/gifflet/ccmd/internal/installer"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -165,8 +166,8 @@ func TestInstallationErrorHandling(t *testing.T) {
 			FileSystem: memFS,
 			GitClient: &mockGitClient{
 				validateFunc: func(url string) error {
-					return installer.NewInstallationError(
-						"repository not found",
+					return installer.WrapInstallationError(
+						errors.NotFound("repository"),
 						url,
 						"",
 						installer.PhaseValidation,
@@ -182,7 +183,7 @@ func TestInstallationErrorHandling(t *testing.T) {
 		err = inst.Install(ctx)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "repository not found")
+		assert.Contains(t, err.Error(), "not found: repository")
 	})
 
 	t.Run("InvalidMetadata", func(t *testing.T) {
@@ -205,7 +206,7 @@ func TestInstallationErrorHandling(t *testing.T) {
 		err = inst.Install(ctx)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse metadata file")
+		assert.Contains(t, err.Error(), "file operation failed: parse metadata file")
 	})
 
 	t.Run("MissingMetadata", func(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/output"
 	"github.com/gifflet/ccmd/pkg/commands"
+	ccmderrors "github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
 )
 
@@ -53,7 +54,7 @@ func runRemove(commandName string, force, save bool) error {
 	}
 
 	if !lockManager.HasCommand(commandName) {
-		return fmt.Errorf("command '%s' is not installed", commandName)
+		return ccmderrors.NotFound(fmt.Sprintf("command '%s' is not installed", commandName))
 	}
 
 	// Get command info for display

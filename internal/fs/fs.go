@@ -15,36 +15,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // validateFilePath validates that a file path is safe to read
 func validateFilePath(path string) error {
-	// Convert to absolute path for validation
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("failed to resolve path: %w", err)
+	// Clean the path to remove any ".." or other traversal attempts
+	cleaned := filepath.Clean(path)
+	if cleaned != path {
+		return errors.InvalidInput(fmt.Sprintf("path contains invalid characters or traversal patterns: %s", path))
 	}
-
-	// Check for suspicious patterns that could indicate path traversal
-	if strings.Contains(absPath, "..") {
-		return fmt.Errorf("path contains suspicious traversal patterns: %s", path)
-	}
-
-	// Additional safety check: ensure path doesn't contain null bytes
-	if strings.ContainsRune(path, 0) {
-		return fmt.Errorf("path contains null byte: %s", path)
-	}
-
 	return nil
 }
 
 // safeReadFile safely reads a file after validating the path
 func safeReadFile(path string) ([]byte, error) {
 	if err := validateFilePath(path); err != nil {
-		return nil, fmt.Errorf("invalid file path: %w", err)
+		return nil, err
 	}
 	return os.ReadFile(path) //nolint:gosec // Path is validated above
 }
@@ -56,14 +46,14 @@ func safeReadFile(path string) ([]byte, error) {
 func GetClaudeCommandsDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
+		return "", errors.FileError("get home directory", "", err)
 	}
 
 	claudeDir := filepath.Join(homeDir, ".claude", "commands")
 
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(claudeDir, 0o750); err != nil {
-		return "", fmt.Errorf("failed to create .claude/commands directory: %w", err)
+		return "", errors.FileError("create .claude/commands directory", claudeDir, err)
 	}
 
 	return claudeDir, nil
@@ -73,11 +63,11 @@ func GetClaudeCommandsDir() (string, error) {
 func ReadYAMLFile(path string, v interface{}) error {
 	data, err := safeReadFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", path, err)
+		return errors.FileError("read file", path, err)
 	}
 
 	if err := yaml.Unmarshal(data, v); err != nil {
-		return fmt.Errorf("failed to unmarshal YAML from %s: %w", path, err)
+		return errors.FileError("unmarshal YAML", path, err)
 	}
 
 	return nil
@@ -87,11 +77,11 @@ func ReadYAMLFile(path string, v interface{}) error {
 func WriteYAMLFile(path string, v interface{}) error {
 	data, err := yaml.Marshal(v)
 	if err != nil {
-		return fmt.Errorf("failed to marshal YAML: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to marshal YAML: %v", err))
 	}
 
 	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return fmt.Errorf("failed to write file %s: %w", path, err)
+		return errors.FileError("write file", path, err)
 	}
 
 	return nil
@@ -101,11 +91,11 @@ func WriteYAMLFile(path string, v interface{}) error {
 func ReadJSONFile(path string, v interface{}) error {
 	data, err := safeReadFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", path, err)
+		return errors.FileError("read file", path, err)
 	}
 
 	if err := json.Unmarshal(data, v); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON from %s: %w", path, err)
+		return errors.FileError("unmarshal JSON", path, err)
 	}
 
 	return nil
@@ -115,11 +105,11 @@ func ReadJSONFile(path string, v interface{}) error {
 func WriteJSONFile(path string, v interface{}) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to marshal JSON: %v", err))
 	}
 
 	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return fmt.Errorf("failed to write file %s: %w", path, err)
+		return errors.FileError("write file", path, err)
 	}
 
 	return nil
@@ -143,7 +133,7 @@ func DirExists(path string) bool {
 // CreateDir creates a directory with all necessary parents
 func CreateDir(path string) error {
 	if err := os.MkdirAll(path, 0o750); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", path, err)
+		return errors.FileError("create directory", path, err)
 	}
 	return nil
 }
@@ -151,7 +141,7 @@ func CreateDir(path string) error {
 // RemoveFile removes a file
 func RemoveFile(path string) error {
 	if err := os.Remove(path); err != nil {
-		return fmt.Errorf("failed to remove file %s: %w", path, err)
+		return errors.FileError("remove file", path, err)
 	}
 	return nil
 }
@@ -159,7 +149,7 @@ func RemoveFile(path string) error {
 // RemoveDir removes a directory and all its contents
 func RemoveDir(path string) error {
 	if err := os.RemoveAll(path); err != nil {
-		return fmt.Errorf("failed to remove directory %s: %w", path, err)
+		return errors.FileError("remove directory", path, err)
 	}
 	return nil
 }
@@ -173,7 +163,7 @@ func JoinPath(elem ...string) string {
 func GetWorkingDir() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
+		return "", errors.FileError("get working directory", "", err)
 	}
 	return wd, nil
 }

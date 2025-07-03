@@ -11,7 +11,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 
 	"github.com/gifflet/ccmd/internal/installer"
@@ -48,7 +47,7 @@ func Install(opts InstallOptions) error {
 	// Create installer
 	inst, err := installer.New(installerOpts)
 	if err != nil {
-		return fmt.Errorf("failed to create installer: %w", err)
+		return err
 	}
 
 	// Perform installation
@@ -119,5 +118,5 @@ type InstalledCommand struct {
 // copyDirectory recursively copies a directory (deprecated - use installer package)
 // Kept for backward compatibility
 func copyDirectory(_ interface{}, _, _ string) error {
-	return fmt.Errorf("copyDirectory is deprecated, use installer package")
+	return errors.InvalidInput("copyDirectory is deprecated, use installer package")
 }

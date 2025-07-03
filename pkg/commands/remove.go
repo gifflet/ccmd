@@ -15,8 +15,11 @@ import (
 	"path/filepath"
 
 	"github.com/gifflet/ccmd/internal/fs"
+	"github.com/gifflet/ccmd/pkg/errors"
 	"github.com/gifflet/ccmd/pkg/project"
 )
+
+const errLoadLockFile = "load lock file"
 
 // RemoveOptions contains options for removing a command.
 type RemoveOptions struct {
@@ -28,7 +31,7 @@ type RemoveOptions struct {
 // Remove removes a command by name and cleans up associated files.
 func Remove(opts RemoveOptions) error {
 	if opts.Name == "" {
-		return fmt.Errorf("command name is required")
+		return errors.InvalidInput("command name is required")
 	}
 
 	if opts.FileSystem == nil {
@@ -44,18 +47,18 @@ func Remove(opts RemoveOptions) error {
 
 	// Load current lock file
 	if err := lockManager.Load(); err != nil {
-		return fmt.Errorf("failed to load lock file: %w", err)
+		return errors.FileError(errLoadLockFile, lockPath, err)
 	}
 
 	// Check if command exists
 	if !lockManager.HasCommand(opts.Name) {
-		return fmt.Errorf("command '%s' not found", opts.Name)
+		return errors.NotFound(fmt.Sprintf("command %s", opts.Name))
 	}
 
 	// Remove command directory (ignore if doesn't exist)
 	commandDir := filepath.Join(opts.BaseDir, ".claude", "commands", opts.Name)
 	if err := opts.FileSystem.RemoveAll(commandDir); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove command directory: %w", err)
+		return errors.FileError("remove command directory", commandDir, err)
 	}
 
 	// Remove command markdown file (ignore if doesn't exist)
@@ -66,7 +69,7 @@ func Remove(opts RemoveOptions) error {
 			// Log error but don't fail the operation
 			_ = mkdirErr
 		}
-		return fmt.Errorf("failed to remove command markdown file: %w", err)
+		return errors.FileError("remove command markdown file", commandFile, err)
 	}
 
 	// Update lock file
@@ -76,7 +79,7 @@ func Remove(opts RemoveOptions) error {
 			// Log error but don't fail the operation
 			_ = mkdirErr
 		}
-		return fmt.Errorf("failed to update lock file: %w", err)
+		return err
 	}
 
 	if err := lockManager.Save(); err != nil {
@@ -85,7 +88,7 @@ func Remove(opts RemoveOptions) error {
 			// Log error but don't fail the operation
 			_ = mkdirErr
 		}
-		return fmt.Errorf("failed to save lock file: %w", err)
+		return errors.FileError("save lock file", lockPath, err)
 	}
 
 	return nil
@@ -107,12 +110,12 @@ func ListCommands(baseDir string, filesystem fs.FileSystem) ([]string, error) {
 		if os.IsNotExist(err) {
 			return []string{}, nil
 		}
-		return nil, fmt.Errorf("failed to load lock file: %w", err)
+		return nil, errors.FileError(errLoadLockFile, lockPath, err)
 	}
 
 	cmds, err := lockManager.ListCommands()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list commands: %w", err)
+		return nil, err
 	}
 
 	commands := make([]string, 0, len(cmds))
@@ -136,7 +139,7 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*project.Co
 	lockPath := "ccmd-lock.yaml"
 	lockManager := project.NewLockManagerWithFS(lockPath, filesystem)
 	if err := lockManager.Load(); err != nil {
-		return nil, fmt.Errorf("failed to load lock file: %w", err)
+		return nil, errors.FileError(errLoadLockFile, lockPath, err)
 	}
 
 	cmd, err := lockManager.GetCommand(name)
@@ -145,7 +148,7 @@ func GetCommandInfo(name, baseDir string, filesystem fs.FileSystem) (*project.Co
 	}
 
 	if cmd == nil {
-		return nil, fmt.Errorf("command %q not found", name)
+		return nil, errors.NotFound(fmt.Sprintf("command %s", name))
 	}
 
 	return cmd, nil

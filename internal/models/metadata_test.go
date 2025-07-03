@@ -42,7 +42,7 @@ func TestCommandMetadata_Validate(t *testing.T) {
 				Repository:  "github.com/test/repo",
 			},
 			wantErr: true,
-			errMsg:  "name is required",
+			errMsg:  "invalid input: name is required",
 		},
 		{
 			name: "missing version",
@@ -53,7 +53,7 @@ func TestCommandMetadata_Validate(t *testing.T) {
 				Repository:  "github.com/test/repo",
 			},
 			wantErr: true,
-			errMsg:  "version is required",
+			errMsg:  "invalid input: version is required",
 		},
 		{
 			name: "missing description",
@@ -64,7 +64,7 @@ func TestCommandMetadata_Validate(t *testing.T) {
 				Repository: "github.com/test/repo",
 			},
 			wantErr: true,
-			errMsg:  "description is required",
+			errMsg:  "invalid input: description is required",
 		},
 		{
 			name: "missing author",
@@ -75,7 +75,7 @@ func TestCommandMetadata_Validate(t *testing.T) {
 				Repository:  "github.com/test/repo",
 			},
 			wantErr: true,
-			errMsg:  "author is required",
+			errMsg:  "invalid input: author is required",
 		},
 		{
 			name: "missing repository",
@@ -86,7 +86,7 @@ func TestCommandMetadata_Validate(t *testing.T) {
 				Author:      "Test Author",
 			},
 			wantErr: true,
-			errMsg:  "repository is required",
+			errMsg:  "invalid input: repository is required",
 		},
 		{
 			name: "full metadata with optional fields",

@@ -11,9 +11,10 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // CommandMetadata represents the structure of a ccmd.yaml file
@@ -32,22 +33,22 @@ type CommandMetadata struct {
 // Validate validates the command metadata
 func (cm *CommandMetadata) Validate() error {
 	if cm.Name == "" {
-		return fmt.Errorf("name is required")
+		return errors.InvalidInput("name is required")
 	}
 	if cm.Version == "" {
-		return fmt.Errorf("version is required")
+		return errors.InvalidInput("version is required")
 	}
 	if cm.Description == "" {
-		return fmt.Errorf("description is required")
+		return errors.InvalidInput("description is required")
 	}
 	if cm.Author == "" {
-		return fmt.Errorf("author is required")
+		return errors.InvalidInput("author is required")
 	}
 	if cm.Repository == "" {
-		return fmt.Errorf("repository is required")
+		return errors.InvalidInput("repository is required")
 	}
 	if cm.Entry == "" {
-		return fmt.Errorf("entry is required")
+		return errors.InvalidInput("entry is required")
 	}
 	return nil
 }

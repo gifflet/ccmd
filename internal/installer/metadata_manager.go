@@ -17,6 +17,7 @@ import (
 
 	"github.com/gifflet/ccmd/internal/fs"
 	"github.com/gifflet/ccmd/internal/models"
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // metadataManager handles metadata operations using the FileSystem interface
@@ -35,16 +36,16 @@ func (m *metadataManager) ReadCommandMetadata(commandDir string) (*models.Comman
 
 	data, err := m.fs.ReadFile(metadataPath)
 	if err != nil {
-		return nil, fmt.Errorf("metadata file not found at %s", metadataPath)
+		return nil, errors.NotFound(fmt.Sprintf("metadata file at %s", metadataPath))
 	}
 
 	var metadata models.CommandMetadata
 	if err := yaml.Unmarshal(data, &metadata); err != nil {
-		return nil, fmt.Errorf("failed to parse metadata file: %w", err)
+		return nil, errors.FileError("parse metadata file", metadataPath, err)
 	}
 
 	if err := metadata.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid metadata: %w", err)
+		return nil, errors.InvalidInput(fmt.Sprintf("invalid metadata: %v", err))
 	}
 
 	return &metadata, nil
@@ -53,23 +54,23 @@ func (m *metadataManager) ReadCommandMetadata(commandDir string) (*models.Comman
 // WriteCommandMetadata writes command metadata to a file in the specified directory
 func (m *metadataManager) WriteCommandMetadata(commandDir string, metadata *models.CommandMetadata) error {
 	if err := metadata.Validate(); err != nil {
-		return fmt.Errorf("invalid metadata: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("invalid metadata: %v", err))
 	}
 
 	metadataPath := filepath.Join(commandDir, "ccmd.yaml")
 
 	data, err := yaml.Marshal(metadata)
 	if err != nil {
-		return fmt.Errorf("failed to marshal metadata: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to marshal metadata: %v", err))
 	}
 
 	// Ensure the directory exists
 	if err := m.fs.MkdirAll(commandDir, 0o750); err != nil {
-		return fmt.Errorf("failed to create command directory: %w", err)
+		return errors.FileError("create command directory", commandDir, err)
 	}
 
 	if err := m.fs.WriteFile(metadataPath, data, 0o600); err != nil {
-		return fmt.Errorf("failed to write metadata file: %w", err)
+		return errors.FileError("write metadata file", metadataPath, err)
 	}
 
 	return nil
@@ -80,17 +81,17 @@ func (m *metadataManager) UpdateCommandMetadata(commandDir string, updates func(
 	// Read existing metadata
 	metadata, err := m.ReadCommandMetadata(commandDir)
 	if err != nil {
-		return fmt.Errorf("failed to read existing metadata: %w", err)
+		return err
 	}
 
 	// Apply updates
 	if err := updates(metadata); err != nil {
-		return fmt.Errorf("failed to update metadata: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("failed to update metadata: %v", err))
 	}
 
 	// Write updated metadata
 	if err := m.WriteCommandMetadata(commandDir, metadata); err != nil {
-		return fmt.Errorf("failed to write updated metadata: %w", err)
+		return err
 	}
 
 	return nil

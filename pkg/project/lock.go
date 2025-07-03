@@ -21,6 +21,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gifflet/ccmd/internal/fs"
+	"github.com/gifflet/ccmd/pkg/errors"
 )
 
 // LockFileVersion represents the current version of the lock file format
@@ -61,7 +62,7 @@ func NewLockFile() *LockFile {
 // AddCommand adds or updates a command in the lock file
 func (lf *LockFile) AddCommand(cmd *Command) error {
 	if err := cmd.Validate(); err != nil {
-		return fmt.Errorf("invalid command: %w", err)
+		return err
 	}
 
 	if lf.Commands == nil {
@@ -90,7 +91,7 @@ func (lf *LockFile) GetCommand(name string) (*Command, bool) {
 // Validate validates the lock file structure
 func (lf *LockFile) Validate() error {
 	if lf.Version == "" {
-		return fmt.Errorf("version is required")
+		return errors.InvalidInput("version is required")
 	}
 
 	if lf.Commands == nil {
@@ -99,10 +100,10 @@ func (lf *LockFile) Validate() error {
 
 	for name, cmd := range lf.Commands {
 		if cmd.Name != name {
-			return fmt.Errorf("command name mismatch: key=%s, name=%s", name, cmd.Name)
+			return errors.InvalidInput(fmt.Sprintf("command name mismatch: key=%s, name=%s", name, cmd.Name))
 		}
 		if err := cmd.Validate(); err != nil {
-			return fmt.Errorf("invalid command %s: %w", name, err)
+			return errors.InvalidInput(fmt.Sprintf("invalid command %s: %v", name, err))
 		}
 	}
 
@@ -112,25 +113,25 @@ func (lf *LockFile) Validate() error {
 // Validate validates a command entry
 func (c *CommandLockInfo) Validate() error {
 	if c.Name == "" {
-		return fmt.Errorf("name is required")
+		return errors.InvalidInput("name is required")
 	}
 	if c.Source == "" {
-		return fmt.Errorf("source is required")
+		return errors.InvalidInput("source is required")
 	}
 	if c.Version == "" {
-		return fmt.Errorf("version is required")
+		return errors.InvalidInput("version is required")
 	}
 	if c.Commit == "" {
-		return fmt.Errorf("commit is required")
+		return errors.InvalidInput("commit is required")
 	}
 	if len(c.Commit) != 40 {
-		return fmt.Errorf("commit must be a 40-character SHA")
+		return errors.InvalidInput("commit must be a 40-character SHA")
 	}
 	if c.InstalledAt.IsZero() {
-		return fmt.Errorf("installed_at is required")
+		return errors.InvalidInput("installed_at is required")
 	}
 	if c.UpdatedAt.IsZero() {
-		return fmt.Errorf("updated_at is required")
+		return errors.InvalidInput("updated_at is required")
 	}
 
 	return nil
@@ -141,7 +142,7 @@ func CalculateChecksum(filepath string) (string, error) {
 	// #nosec G304 -- filepath is provided by the application, not user input
 	file, err := os.Open(filepath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
+		return "", errors.FileError("open", filepath, err)
 	}
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
@@ -152,7 +153,7 @@ func CalculateChecksum(filepath string) (string, error) {
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
-		return "", fmt.Errorf("failed to calculate checksum: %w", err)
+		return "", errors.FileError("calculate checksum", filepath, err)
 	}
 
 	return hex.EncodeToString(hash.Sum(nil)), nil
@@ -162,16 +163,16 @@ func CalculateChecksum(filepath string) (string, error) {
 func LoadFromFile(filepath string, fileSystem fs.FileSystem) (*LockFile, error) {
 	data, err := fileSystem.ReadFile(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read lock file: %w", err)
+		return nil, errors.FileError("read lock file", filepath, err)
 	}
 
 	var lockFile LockFile
 	if err := yaml.Unmarshal(data, &lockFile); err != nil {
-		return nil, fmt.Errorf("failed to parse lock file: %w", err)
+		return nil, errors.FileError("parse lock file", filepath, err)
 	}
 
 	if err := lockFile.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid lock file: %w", err)
+		return nil, errors.InvalidInput(fmt.Sprintf("invalid lock file: %v", err))
 	}
 
 	return &lockFile, nil
@@ -180,7 +181,7 @@ func LoadFromFile(filepath string, fileSystem fs.FileSystem) (*LockFile, error) 
 // SaveToFile saves the lock file to disk
 func (lf *LockFile) SaveToFile(filepath string, fileSystem fs.FileSystem) error {
 	if err := lf.Validate(); err != nil {
-		return fmt.Errorf("invalid lock file: %w", err)
+		return errors.InvalidInput(fmt.Sprintf("invalid lock file: %v", err))
 	}
 
 	// Lock files should be owner-readable only (0600)
