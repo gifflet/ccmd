@@ -60,8 +60,8 @@ func TestRemove(t *testing.T) {
 		// Create command directories and files
 		os.MkdirAll(filepath.Join(".claude", "commands", "test-cmd"), 0755)
 		os.MkdirAll(filepath.Join(".claude", "commands", "keep-cmd"), 0755)
-		os.WriteFile(filepath.Join(".claude", "test-cmd.md"), []byte("# test-cmd"), 0644)
-		os.WriteFile(filepath.Join(".claude", "keep-cmd.md"), []byte("# keep-cmd"), 0644)
+		os.WriteFile(filepath.Join(".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
+		os.WriteFile(filepath.Join(".claude", "commands", "keep-cmd.md"), []byte("# keep-cmd"), 0644)
 
 		// Remove command
 		err = Remove(RemoveOptions{
@@ -83,11 +83,11 @@ func TestRemove(t *testing.T) {
 
 		// Verify files were removed
 		assert.False(t, dirExists(filepath.Join(".claude", "commands", "test-cmd")))
-		assert.False(t, fileExists(filepath.Join(".claude", "test-cmd.md")))
+		assert.False(t, fileExists(filepath.Join(".claude", "commands", "test-cmd.md")))
 
 		// Verify other command was not touched
 		assert.True(t, dirExists(filepath.Join(".claude", "commands", "keep-cmd")))
-		assert.True(t, fileExists(filepath.Join(".claude", "keep-cmd.md")))
+		assert.True(t, fileExists(filepath.Join(".claude", "commands", "keep-cmd.md")))
 	})
 
 	t.Run("returns error when command not found", func(t *testing.T) {
@@ -159,8 +159,8 @@ func TestRemove(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create only .md file, no command directory
-		os.MkdirAll(".claude", 0755)
-		os.WriteFile(filepath.Join(".claude", "test-cmd.md"), []byte("# test-cmd"), 0644)
+		os.MkdirAll(filepath.Join(".claude", "commands"), 0755)
+		os.WriteFile(filepath.Join(".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
 
 		// Remove should still work
 		err = Remove(RemoveOptions{
@@ -177,7 +177,7 @@ func TestRemove(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, updatedLock.Commands, 0)
-		assert.False(t, fileExists(filepath.Join(".claude", "test-cmd.md")))
+		assert.False(t, fileExists(filepath.Join(".claude", "commands", "test-cmd.md")))
 	})
 
 	t.Run("updates ccmd.yaml when requested", func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestRemove(t *testing.T) {
 
 		// Create command structure
 		os.MkdirAll(filepath.Join(".claude", "commands", "test-cmd"), 0755)
-		os.WriteFile(filepath.Join(".claude", "test-cmd.md"), []byte("# test-cmd"), 0644)
+		os.WriteFile(filepath.Join(".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
 
 		// Remove with UpdateFiles
 		err = Remove(RemoveOptions{
@@ -369,8 +369,7 @@ func TestListCommands(t *testing.T) {
 		// Create command structures
 		for _, cmd := range []string{"cmd1", "cmd2", "cmd3"} {
 			os.MkdirAll(filepath.Join(tempDir, ".claude", "commands", cmd), 0755)
-			os.MkdirAll(filepath.Join(tempDir, ".claude"), 0755)
-			os.WriteFile(filepath.Join(tempDir, ".claude", cmd+".md"), []byte("# "+cmd), 0644)
+			os.WriteFile(filepath.Join(tempDir, ".claude", "commands", cmd+".md"), []byte("# "+cmd), 0644)
 		}
 
 		// Get command names
