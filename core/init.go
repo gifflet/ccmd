@@ -108,6 +108,32 @@ func LoadExistingConfig(projectPath string) (InitOptions, interface{}, error) {
 	return defaults, existingCommands, nil
 }
 
+// orderedConfig ensures consistent field ordering in YAML output
+type orderedConfig struct {
+	Name        string      `yaml:"name,omitempty"`
+	Version     string      `yaml:"version,omitempty"`
+	Description string      `yaml:"description"`
+	Author      string      `yaml:"author"`
+	Repository  string      `yaml:"repository"`
+	Entry       string      `yaml:"entry,omitempty"`
+	Tags        []string    `yaml:"tags,omitempty"`
+	Commands    interface{} `yaml:"commands,omitempty"`
+}
+
+// createOrderedConfig creates an orderedConfig from InitOptions
+func createOrderedConfig(opts InitOptions, existingCommands interface{}) orderedConfig {
+	return orderedConfig{
+		Name:        opts.Name,
+		Version:     opts.Version,
+		Description: opts.Description,
+		Author:      opts.Author,
+		Repository:  opts.Repository,
+		Entry:       opts.Entry,
+		Tags:        opts.Tags,
+		Commands:    existingCommands,
+	}
+}
+
 // InitProject creates a new ccmd project with the given options
 func InitProject(opts InitOptions) error {
 	// Create .claude/commands directory
@@ -144,27 +170,7 @@ func InitProjectWithCommands(opts InitOptions, existingCommands interface{}) err
 	}
 
 	// Create ordered structure to ensure commands field comes last
-	type orderedConfig struct {
-		Name        string      `yaml:"name,omitempty"`
-		Version     string      `yaml:"version,omitempty"`
-		Description string      `yaml:"description"`
-		Author      string      `yaml:"author"`
-		Repository  string      `yaml:"repository"`
-		Entry       string      `yaml:"entry,omitempty"`
-		Tags        []string    `yaml:"tags,omitempty"`
-		Commands    interface{} `yaml:"commands,omitempty"`
-	}
-
-	config := orderedConfig{
-		Name:        opts.Name,
-		Version:     opts.Version,
-		Description: opts.Description,
-		Author:      opts.Author,
-		Repository:  opts.Repository,
-		Entry:       opts.Entry,
-		Tags:        opts.Tags,
-		Commands:    existingCommands,
-	}
+	config := createOrderedConfig(opts, existingCommands)
 
 	// Marshal to YAML
 	data, err := yaml.Marshal(&config)
@@ -184,27 +190,7 @@ func InitProjectWithCommands(opts InitOptions, existingCommands interface{}) err
 // GenerateConfigPreview generates a YAML preview of the configuration
 func GenerateConfigPreview(opts InitOptions, existingCommands interface{}) (string, error) {
 	// Create ordered structure
-	type orderedConfig struct {
-		Name        string      `yaml:"name,omitempty"`
-		Version     string      `yaml:"version,omitempty"`
-		Description string      `yaml:"description"`
-		Author      string      `yaml:"author"`
-		Repository  string      `yaml:"repository"`
-		Entry       string      `yaml:"entry,omitempty"`
-		Tags        []string    `yaml:"tags,omitempty"`
-		Commands    interface{} `yaml:"commands,omitempty"`
-	}
-
-	config := orderedConfig{
-		Name:        opts.Name,
-		Version:     opts.Version,
-		Description: opts.Description,
-		Author:      opts.Author,
-		Repository:  opts.Repository,
-		Entry:       opts.Entry,
-		Tags:        opts.Tags,
-		Commands:    existingCommands,
-	}
+	config := createOrderedConfig(opts, existingCommands)
 
 	data, err := yaml.Marshal(&config)
 	if err != nil {
