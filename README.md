@@ -3,6 +3,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8.svg)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gifflet/ccmd)](https://goreportcard.com/report/github.com/gifflet/ccmd)
+[![Sponsor](https://img.shields.io/badge/sponsor-30363D?logo=GitHub-Sponsors&color=5c5c5c)](https://github.com/sponsors/gifflet)
 
 Simple command-line tool for managing custom commands in Claude Code. Install and share commands from Git repositories with the ease of a package manager.
 
