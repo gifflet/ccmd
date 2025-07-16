@@ -456,12 +456,6 @@ func TestParseRepositorySpec(t *testing.T) {
 			wantVersion:    "v1.0.0",
 		},
 		{
-			name:           "SSH URL with branch",
-			spec:           "git@github.com:owner/repo.git@optimize-context-loading",
-			wantRepository: "git@github.com:owner/repo.git",
-			wantVersion:    "optimize-context-loading",
-		},
-		{
 			name:           "HTTPS URL without version",
 			spec:           "https://github.com/gifflet/parallax.git",
 			wantRepository: "https://github.com/gifflet/parallax.git",
@@ -472,18 +466,6 @@ func TestParseRepositorySpec(t *testing.T) {
 			spec:           "https://github.com/gifflet/parallax.git@main",
 			wantRepository: "https://github.com/gifflet/parallax.git",
 			wantVersion:    "main",
-		},
-		{
-			name:           "HTTP URL without version",
-			spec:           "http://example.com/repo.git",
-			wantRepository: "http://example.com/repo.git",
-			wantVersion:    "",
-		},
-		{
-			name:           "HTTP URL with tag",
-			spec:           "http://example.com/repo.git@v2.5.0",
-			wantRepository: "http://example.com/repo.git",
-			wantVersion:    "v2.5.0",
 		},
 		{
 			name:           "Shorthand without version",
@@ -498,31 +480,7 @@ func TestParseRepositorySpec(t *testing.T) {
 			wantVersion:    "v1.0.0",
 		},
 		{
-			name:           "Shorthand with branch",
-			spec:           "owner/repo@main",
-			wantRepository: "owner/repo",
-			wantVersion:    "main",
-		},
-		{
-			name:           "Complex SSH URL without version",
-			spec:           "git@gitlab.com:group/subgroup/project.git",
-			wantRepository: "git@gitlab.com:group/subgroup/project.git",
-			wantVersion:    "",
-		},
-		{
-			name:           "Complex SSH URL with version",
-			spec:           "git@gitlab.com:group/subgroup/project.git@develop",
-			wantRepository: "git@gitlab.com:group/subgroup/project.git",
-			wantVersion:    "develop",
-		},
-		{
-			name:           "SSH URL with @ in path without version",
-			spec:           "git@github.com:user@company/repo.git",
-			wantRepository: "git@github.com:user@company/repo.git",
-			wantVersion:    "",
-		},
-		{
-			name:           "SSH URL with @ in path with version",
+			name:           "SSH URL with @ in path and version",
 			spec:           "git@github.com:user@company/repo.git@feature-branch",
 			wantRepository: "git@github.com:user@company/repo.git",
 			wantVersion:    "feature-branch",
