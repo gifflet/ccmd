@@ -10,9 +10,12 @@
 package core
 
 import (
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsCommitHash(t *testing.T) {
@@ -70,4 +73,40 @@ func TestExtractRepoPath(t *testing.T) {
 			assert.Equal(t, tt.expected, result, "ExtractRepoPath(%q) should return %q", tt.input, tt.expected)
 		})
 	}
+}
+
+func TestGetGitPath(t *testing.T) {
+	// Reset the cached values for testing
+	gitPath = ""
+	gitPathErr = nil
+	gitPathOnce = sync.Once{}
+
+	path, err := getGitPath()
+	require.NoError(t, err, "git should be found in PATH")
+	assert.NotEmpty(t, path, "git path should not be empty")
+
+	// Verify it's in a trusted location
+	trustedPaths := []string{
+		"/usr/bin/",
+		"/usr/local/bin/",
+		"/opt/homebrew/bin/",
+		"/opt/local/bin/",
+		"C:\\Program Files\\Git\\",
+		"C:\\Program Files (x86)\\Git\\",
+	}
+
+	found := false
+	for _, tp := range trustedPaths {
+		if strings.HasPrefix(path, tp) {
+			found = true
+			break
+		}
+	}
+
+	assert.True(t, found, "git should be in a trusted location, found at: %s", path)
+
+	// Test caching - should return same result
+	path2, err2 := getGitPath()
+	assert.Equal(t, path, path2, "cached path should be the same")
+	assert.Equal(t, err, err2, "cached error should be the same")
 }

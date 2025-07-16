@@ -14,7 +14,51 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 )
+
+var (
+	gitPath     string
+	gitPathOnce sync.Once
+	gitPathErr  error
+)
+
+// getGitPath returns the absolute path to git executable after validating it's in a secure location
+func getGitPath() (string, error) {
+	gitPathOnce.Do(func() {
+		path, err := exec.LookPath("git")
+		if err != nil {
+			gitPathErr = fmt.Errorf("git not found in PATH: %w", err)
+			return
+		}
+
+		trustedPaths := []string{
+			"/usr/bin/",
+			"/usr/local/bin/",
+			"/opt/homebrew/bin/",
+			"/opt/local/bin/",
+			"C:\\Program Files\\Git\\",
+			"C:\\Program Files (x86)\\Git\\",
+		}
+
+		trusted := false
+		for _, tp := range trustedPaths {
+			if strings.HasPrefix(path, tp) {
+				trusted = true
+				break
+			}
+		}
+
+		if !trusted {
+			gitPathErr = fmt.Errorf("git found in untrusted location: %s", path)
+			return
+		}
+
+		gitPath = path
+	})
+
+	return gitPath, gitPathErr
+}
 
 // isCommitHash checks if a string looks like a git commit SHA-1 hash
 func isCommitHash(s string) bool {
@@ -32,17 +76,22 @@ func isCommitHash(s string) bool {
 
 // gitClone clones a repository to the specified destination
 func gitClone(repo, dest, version string) error {
+	git, err := getGitPath()
+	if err != nil {
+		return err
+	}
+
 	if version != "" && isCommitHash(version) {
 		// For commit hashes, we need to clone first then checkout
 		// Clone without depth limit to access all commits
-		cmd := exec.Command("git", "clone", repo, dest)
+		cmd := exec.Command(git, "clone", repo, dest)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("git clone failed: %w\nOutput: %s", err, string(output))
 		}
 
 		// Checkout the specific commit
-		checkoutCmd := exec.Command("git", "-C", dest, "checkout", version)
+		checkoutCmd := exec.Command(git, "-C", dest, "checkout", version)
 		checkoutOutput, checkoutErr := checkoutCmd.CombinedOutput()
 		if checkoutErr != nil {
 			return fmt.Errorf("git checkout failed: %w\nOutput: %s", checkoutErr, string(checkoutOutput))
@@ -60,7 +109,7 @@ func gitClone(repo, dest, version string) error {
 
 	args = append(args, repo, dest)
 
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command(git, args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -72,7 +121,12 @@ func gitClone(repo, dest, version string) error {
 
 // gitGetCurrentCommit returns the current commit hash of a repository
 func gitGetCurrentCommit(repoPath string) (string, error) {
-	cmd := exec.Command("git", "-C", repoPath, "rev-parse", "HEAD")
+	git, err := getGitPath()
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command(git, "-C", repoPath, "rev-parse", "HEAD")
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -84,8 +138,13 @@ func gitGetCurrentCommit(repoPath string) (string, error) {
 
 // gitGetRefCommit returns the commit hash for a specific ref (tag, branch or commit)
 func gitGetRefCommit(repoPath, ref string) (string, error) {
+	git, err := getGitPath()
+	if err != nil {
+		return "", err
+	}
+
 	// Get local ref commit
-	cmd := exec.Command("git", "-C", repoPath, "rev-list", "-n", "1", ref)
+	cmd := exec.Command(git, "-C", repoPath, "rev-list", "-n", "1", ref)
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -97,8 +156,13 @@ func gitGetRefCommit(repoPath, ref string) (string, error) {
 
 // gitGetRemoteRefCommit returns the commit hash for a remote ref (tag or branch)
 func gitGetRemoteRefCommit(repoPath, ref string) (string, error) {
+	git, err := getGitPath()
+	if err != nil {
+		return "", err
+	}
+
 	// Try as tag first
-	cmd := exec.Command("git", "-C", repoPath, "ls-remote", "origin", fmt.Sprintf("refs/tags/%s", ref))
+	cmd := exec.Command(git, "-C", repoPath, "ls-remote", "origin", fmt.Sprintf("refs/tags/%s", ref))
 	output, err := cmd.Output()
 
 	if err == nil && len(output) > 0 {
@@ -109,7 +173,7 @@ func gitGetRemoteRefCommit(repoPath, ref string) (string, error) {
 	}
 
 	// Try as branch
-	cmd = exec.Command("git", "-C", repoPath, "ls-remote", "origin", fmt.Sprintf("refs/heads/%s", ref))
+	cmd = exec.Command(git, "-C", repoPath, "ls-remote", "origin", fmt.Sprintf("refs/heads/%s", ref))
 	output, err = cmd.Output()
 
 	if err != nil {
@@ -126,8 +190,13 @@ func gitGetRemoteRefCommit(repoPath, ref string) (string, error) {
 
 // gitGetDefaultBranch returns the default branch name of a repository
 func gitGetDefaultBranch(repoPath string) (string, error) {
+	git, err := getGitPath()
+	if err != nil {
+		return "", err
+	}
+
 	// Try to get the default branch from remote
-	cmd := exec.Command("git", "-C", repoPath, "symbolic-ref", "refs/remotes/origin/HEAD")
+	cmd := exec.Command(git, "-C", repoPath, "symbolic-ref", "refs/remotes/origin/HEAD")
 	output, err := cmd.Output()
 
 	if err == nil {
@@ -139,7 +208,8 @@ func gitGetDefaultBranch(repoPath string) (string, error) {
 
 	// Fallback: try common default branch names
 	for _, branch := range []string{"main", "master"} {
-		checkCmd := exec.Command("git", "-C", repoPath, "show-ref", "--verify", fmt.Sprintf("refs/remotes/origin/%s", branch))
+		ref := fmt.Sprintf("refs/remotes/origin/%s", branch)
+		checkCmd := exec.Command(git, "-C", repoPath, "show-ref", "--verify", ref)
 		if err := checkCmd.Run(); err == nil {
 			return branch, nil
 		}
