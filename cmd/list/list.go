@@ -11,14 +11,14 @@ package list
 
 import (
 	"fmt"
-	"sort"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/gifflet/ccmd/internal/output"
-	"github.com/gifflet/ccmd/pkg/commands"
+	"github.com/gifflet/ccmd/core"
+	"github.com/gifflet/ccmd/pkg/output"
 )
 
 // NewCommand creates a new list command.
@@ -44,9 +44,17 @@ and have entries in the .claude/commands/ directory.`,
 }
 
 func runList(long bool) error {
+	// Get current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
 	// Get detailed command information
-	opts := commands.ListOptions{}
-	details, err := commands.List(opts)
+	opts := core.ListOptions{
+		ProjectPath: cwd,
+	}
+	details, err := core.List(opts)
 	if err != nil {
 		return fmt.Errorf("failed to list commands: %w", err)
 	}
@@ -57,15 +65,10 @@ func runList(long bool) error {
 		return nil
 	}
 
-	// Sort by name
-	sort.Slice(details, func(i, j int) bool {
-		return details[i].Name < details[j].Name
-	})
-
 	// Check for structure issues
 	hasStructureIssues := false
 	for _, detail := range details {
-		if !detail.StructureValid {
+		if detail.BrokenStructure {
 			hasStructureIssues = true
 			break
 		}
@@ -87,7 +90,7 @@ func runList(long bool) error {
 	return nil
 }
 
-func printSimpleList(commands []*commands.CommandDetail) {
+func printSimpleList(commands []core.CommandDetail) {
 	output.PrintInfof("Found %d command(s) managed by ccmd:\n", len(commands))
 
 	// Define column widths
@@ -98,164 +101,141 @@ func printSimpleList(commands []*commands.CommandDetail) {
 		updatedWidth     = 20
 	)
 
-	// Print header - Bold adds ANSI codes, so we need to pad the content, not the formatted string
-	fmt.Printf("%s%s  %s%s  %s%s  %s\n",
-		output.Bold("NAME"), strings.Repeat(" ", nameWidth-4),
-		output.Bold("VERSION"), strings.Repeat(" ", versionWidth-7),
-		output.Bold("DESCRIPTION"), strings.Repeat(" ", descriptionWidth-11),
-		output.Bold("UPDATED"))
+	// Print header
+	header := fmt.Sprintf("%-*s %-*s %-*s %-*s",
+		nameWidth, "NAME",
+		versionWidth, "VERSION",
+		descriptionWidth, "DESCRIPTION",
+		updatedWidth, "UPDATED")
+	output.Printf(header)
+	output.Printf(strings.Repeat("-", len(header)))
 
-	// Print separator line
-	fmt.Printf("%s  %s  %s  %s\n",
-		strings.Repeat("-", nameWidth),
-		strings.Repeat("-", versionWidth),
-		strings.Repeat("-", descriptionWidth),
-		strings.Repeat("-", updatedWidth))
-
-	// Print commands
-	for _, detail := range commands {
-		name := detail.Name
-		if !detail.StructureValid {
-			name += output.Warning(" ⚠")
+	// Print each command
+	for _, cmd := range commands {
+		// Format name with warning icon if structure is broken
+		name := cmd.Name
+		if cmd.BrokenStructure {
+			name = "⚠ " + name
+		}
+		if len(name) > nameWidth {
+			name = name[:nameWidth-3] + "..."
 		}
 
-		// Use metadata version if available, otherwise use lock file version
-		version := detail.Version
-		if detail.CommandMetadata != nil && detail.CommandMetadata.Version != "" {
-			version = detail.CommandMetadata.Version
+		// Format version
+		version := cmd.Version
+		if version == "" {
+			version = "unknown"
+		}
+		if len(version) > versionWidth {
+			version = version[:versionWidth-3] + "..."
 		}
 
-		// Get description from metadata if available
-		description := "(no description)"
-		if detail.CommandMetadata != nil && detail.CommandMetadata.Description != "" {
-			description = detail.CommandMetadata.Description
+		// Format description
+		description := cmd.Description
+		if description == "" {
+			description = "-"
+		}
+		if len(description) > descriptionWidth {
+			description = description[:descriptionWidth-3] + "..."
 		}
 
-		fmt.Printf("%-*s  %-*s  %-*s  %-*s\n",
+		// Format updated time
+		updated := formatTimeAgo(cmd.UpdatedAt)
+		if len(updated) > updatedWidth {
+			updated = updated[:updatedWidth-3] + "..."
+		}
+
+		// Print row
+		row := fmt.Sprintf("%-*s %-*s %-*s %-*s",
 			nameWidth, name,
 			versionWidth, version,
-			descriptionWidth, truncateText(description, descriptionWidth),
-			updatedWidth, formatTime(detail.UpdatedAt))
+			descriptionWidth, description,
+			updatedWidth, updated)
+		output.Printf(row)
 	}
 }
 
-func printLongList(commands []*commands.CommandDetail) {
+func printLongList(commands []core.CommandDetail) {
 	output.PrintInfof("Found %d command(s) managed by ccmd:\n", len(commands))
 
-	for i, detail := range commands {
+	for i, cmd := range commands {
 		if i > 0 {
-			fmt.Println()
+			output.Printf(strings.Repeat("-", 60))
 		}
 
-		fmt.Printf("%s %s\n", output.Bold("Command:"), detail.Name)
+		// Basic info
+		output.Printf("Name:        %s", cmd.Name)
+		output.Printf("Version:     %s", formatOrDash(cmd.Version))
+		output.Printf("Source:      %s", formatOrDash(cmd.Repository))
+		output.Printf("Description: %s", formatOrDash(cmd.Description))
 
-		// Use metadata version if available
-		version := detail.Version
-		if detail.CommandMetadata != nil && detail.CommandMetadata.Version != "" {
-			version = detail.CommandMetadata.Version
+		// Metadata
+		if cmd.Author != "" {
+			output.Printf("Author:      %s", cmd.Author)
 		}
-		fmt.Printf("  Version:     %s\n", version)
-
-		// Show description from metadata
-		if detail.CommandMetadata != nil && detail.CommandMetadata.Description != "" {
-			fmt.Printf("  Description: %s\n", detail.CommandMetadata.Description)
+		if len(cmd.Tags) > 0 {
+			output.Printf("Tags:        %s", strings.Join(cmd.Tags, ", "))
 		}
-
-		// Show author from metadata
-		if detail.CommandMetadata != nil && detail.CommandMetadata.Author != "" {
-			fmt.Printf("  Author:      %s\n", detail.CommandMetadata.Author)
+		if cmd.License != "" {
+			output.Printf("License:     %s", cmd.License)
 		}
-
-		fmt.Printf("  Source:      %s\n", detail.Source)
-		fmt.Printf("  Installed:   %s\n", formatTimeVerbose(detail.InstalledAt))
-		fmt.Printf("  Updated:     %s\n", formatTimeVerbose(detail.UpdatedAt))
+		if cmd.Homepage != "" {
+			output.Printf("Homepage:    %s", cmd.Homepage)
+		}
 
 		// Structure status
-		fmt.Print("  Structure:   ")
-		if detail.StructureValid {
-			fmt.Printf("%s\n", output.Success("OK"))
+		if cmd.BrokenStructure {
+			output.Printf("Status:      ⚠ BROKEN - %s", cmd.StructureError)
 		} else {
-			fmt.Printf("%s", output.Error("BROKEN"))
-			issues := []string{}
-			if !detail.HasDirectory {
-				issues = append(issues, "missing directory")
-			}
-			if !detail.HasMarkdownFile {
-				issues = append(issues, "missing .md file")
-			}
-			fmt.Printf(" (%s)\n", strings.Join(issues, ", "))
+			output.Printf("Status:      OK")
 		}
 
-		// Show metadata details if available
-		if detail.CommandMetadata != nil {
-			// Entry point
-			if detail.CommandMetadata.Entry != "" {
-				fmt.Printf("  Entry:       %s\n", detail.CommandMetadata.Entry)
-			}
-
-			// Tags
-			if len(detail.CommandMetadata.Tags) > 0 {
-				fmt.Printf("  Tags:        %s\n", strings.Join(detail.CommandMetadata.Tags, ", "))
-			}
-
-			// License
-			if detail.CommandMetadata.License != "" {
-				fmt.Printf("  License:     %s\n", detail.CommandMetadata.License)
-			}
-
-			// Homepage
-			if detail.CommandMetadata.Homepage != "" {
-				fmt.Printf("  Homepage:    %s\n", detail.CommandMetadata.Homepage)
-			}
-
-			// Repository (from metadata)
-			if detail.CommandMetadata.Repository != "" && detail.CommandMetadata.Repository != detail.Source {
-				fmt.Printf("  Repository:  %s\n", detail.CommandMetadata.Repository)
-			}
-		}
-
-		// Dependencies from lock file
-		if len(detail.Dependencies) > 0 {
-			fmt.Printf("  Dependencies: %s\n", strings.Join(detail.Dependencies, ", "))
-		}
-
-		// Additional metadata from lock file
-		if len(detail.Metadata) > 0 {
-			fmt.Println("  Lock Metadata:")
-			keys := make([]string, 0, len(detail.Metadata))
-			for k := range detail.Metadata {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			for _, k := range keys {
-				fmt.Printf("    %s: %s\n", k, detail.Metadata[k])
-			}
-		}
+		// Timestamps
+		output.Printf("Installed:   %s", formatTimestamp(cmd.InstalledAt))
+		output.Printf("Updated:     %s", formatTimestamp(cmd.UpdatedAt))
 	}
 }
 
-func truncateText(text string, maxLen int) string {
-	if len(text) <= maxLen {
-		return text
+func formatOrDash(s string) string {
+	if s == "" {
+		return "-"
 	}
-	return text[:maxLen-3] + "..."
+	return s
 }
 
-func formatTime(t time.Time) string {
-	now := time.Now()
-	diff := now.Sub(t)
+func formatTimeAgo(timestamp string) string {
+	if timestamp == "" {
+		return "unknown"
+	}
 
+	// Parse timestamp (assuming RFC3339 format)
+	t, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		// Try other formats
+		t, err = time.Parse("2006-01-02T15:04:05Z", timestamp)
+		if err != nil {
+			return timestamp
+		}
+	}
+
+	duration := time.Since(t)
 	switch {
-	case diff < time.Hour:
-		return fmt.Sprintf("%d minutes ago", int(diff.Minutes()))
-	case diff < 24*time.Hour:
-		hours := int(diff.Hours())
+	case duration < time.Minute:
+		return "just now"
+	case duration < time.Hour:
+		mins := int(duration.Minutes())
+		if mins == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", mins)
+	case duration < 24*time.Hour:
+		hours := int(duration.Hours())
 		if hours == 1 {
 			return "1 hour ago"
 		}
 		return fmt.Sprintf("%d hours ago", hours)
-	case diff < 7*24*time.Hour:
-		days := int(diff.Hours() / 24)
+	case duration < 30*24*time.Hour:
+		days := int(duration.Hours() / 24)
 		if days == 1 {
 			return "1 day ago"
 		}
@@ -265,6 +245,20 @@ func formatTime(t time.Time) string {
 	}
 }
 
-func formatTimeVerbose(t time.Time) string {
-	return t.Format("2006-01-02 15:04:05 MST")
+func formatTimestamp(timestamp string) string {
+	if timestamp == "" {
+		return "unknown"
+	}
+
+	// Parse timestamp
+	t, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		// Try other formats
+		t, err = time.Parse("2006-01-02T15:04:05Z", timestamp)
+		if err != nil {
+			return timestamp
+		}
+	}
+
+	return t.Format("2006-01-02 15:04:05")
 }

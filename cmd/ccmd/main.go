@@ -22,7 +22,7 @@ import (
 	"github.com/gifflet/ccmd/cmd/search"
 	"github.com/gifflet/ccmd/cmd/sync"
 	"github.com/gifflet/ccmd/cmd/update"
-	"github.com/gifflet/ccmd/internal/output"
+	"github.com/gifflet/ccmd/pkg/output"
 )
 
 // Build information, injected at build time
@@ -33,10 +33,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ccmd",
-	Short: "A CLI tool for managing Claude Code commands",
-	Long: `ccmd is a command-line interface tool designed to help manage and execute
-Claude Code commands efficiently.`,
+	Use:     "ccmd",
+	Short:   "A CLI tool for managing Claude Code commands",
+	Long:    `ccmd is a command-line interface tool designed to help manage Claude Code commands efficiently.`,
 	Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, buildDate),
 	Run: func(cmd *cobra.Command, args []string) {
 		// Default action when no subcommand is provided

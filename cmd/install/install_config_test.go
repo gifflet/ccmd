@@ -10,149 +10,46 @@
 package install
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/pkg/project"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRunInstallFromConfig(t *testing.T) {
-	// Create temporary directory
-	tempDir := t.TempDir()
+func TestNewCommand(t *testing.T) {
+	cmd := NewCommand()
 
-	// Change to temp directory
-	oldDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.Chdir(oldDir); err != nil {
-			t.Errorf("failed to restore directory: %v", err)
-		}
-	}()
+	assert.Equal(t, "install [repository]", cmd.Use)
+	assert.Equal(t, "Install a command from a Git repository or from ccmd.yaml", cmd.Short)
+	assert.NotNil(t, cmd.RunE)
 
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatal(err)
-	}
+	// Check flags
+	versionFlag := cmd.Flags().Lookup("version")
+	assert.NotNil(t, versionFlag)
+	assert.Equal(t, "v", versionFlag.Shorthand)
 
-	// Test 1: No ccmd.yaml file
-	err = runInstallFromConfig(false)
-	if err == nil {
-		t.Error("expected error when no ccmd.yaml exists")
-	}
-	// Just check that we got an error about missing ccmd.yaml
-	if err != nil && !strings.Contains(err.Error(), "ccmd.yaml") {
-		t.Errorf("unexpected error: %v", err)
-	}
+	forceFlag := cmd.Flags().Lookup("force")
+	assert.NotNil(t, forceFlag)
+	assert.Equal(t, "f", forceFlag.Shorthand)
 
-	// Test 2: Empty ccmd.yaml
-	config := &project.Config{
-		Commands: []project.ConfigCommand{},
-	}
-	fileSystem := fs.OS{}
-	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName), fileSystem); err != nil {
-		t.Fatal(err)
-	}
-
-	err = runInstallFromConfig(false)
-	if err != nil {
-		t.Errorf("unexpected error with empty config: %v", err)
-	}
-
-	// Test 3: ccmd.yaml with commands (will fail due to non-existent repos, but we can test the flow)
-	config = &project.Config{
-		Commands: []project.ConfigCommand{
-			{
-				Repo:    "test/repo1",
-				Version: "v1.0.0",
-			},
-			{
-				Repo:    "test/repo2",
-				Version: "",
-			},
-		},
-	}
-	if err := project.SaveConfig(config, filepath.Join(tempDir, project.ConfigFileName), fileSystem); err != nil {
-		t.Fatal(err)
-	}
-
-	// This will fail because the repos don't exist, but we're testing the flow
-	_ = runInstallFromConfig(false)
-	// No assertions here since we expect failures due to non-existent repos
+	nameFlag := cmd.Flags().Lookup("name")
+	assert.NotNil(t, nameFlag)
+	assert.Equal(t, "n", nameFlag.Shorthand)
 }
 
-func TestUpdateProjectLockFile(t *testing.T) {
-	// Create temporary directory
-	tempDir := t.TempDir()
+func TestCommandArgs(t *testing.T) {
+	cmd := NewCommand()
 
-	// Change to temp directory
-	oldDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.Chdir(oldDir); err != nil {
-			t.Errorf("failed to restore directory: %v", err)
-		}
-	}()
+	// Test with valid args
+	cmd.SetArgs([]string{"github.com/user/repo"})
+	err := cmd.Args(cmd, []string{"github.com/user/repo"})
+	assert.NoError(t, err)
 
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create project manager
-	pm := project.NewManager(".")
-
-	// Test creating new lock file
-	err = updateProjectLockFile(pm, "test-cmd", "https://github.com/test/test-cmd.git", "v1.0.0")
-	if err != nil {
-		t.Errorf("unexpected error creating lock file: %v", err)
-	}
-
-	// Verify lock file was created
-	if !pm.LockExists() {
-		t.Error("expected lock file to be created")
-	}
-
-	// Load lock file and verify content
-	lockFile, err := pm.LoadLockFile()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cmd, exists := lockFile.GetCommand("test-cmd")
-	if !exists {
-		t.Error("expected command to exist in lock file")
-	}
-
-	if cmd.Name != "test-cmd" {
-		t.Errorf("expected command name 'test-cmd', got %q", cmd.Name)
-	}
-
-	if cmd.Source != "https://github.com/test/test-cmd.git" {
-		t.Errorf("expected source 'https://github.com/test/test-cmd.git', got %q", cmd.Source)
-	}
-
-	if cmd.Version != "v1.0.0" {
-		t.Errorf("expected version 'v1.0.0', got %q", cmd.Version)
-	}
-
-	// Test updating existing lock file
-	err = updateProjectLockFile(pm, "another-cmd", "https://github.com/test/another-cmd.git", "v2.0.0")
-	if err != nil {
-		t.Errorf("unexpected error updating lock file: %v", err)
-	}
-
-	// Reload and verify both commands exist
-	lockFile, err = pm.LoadLockFile()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(lockFile.Commands) != 2 {
-		t.Errorf("expected 2 commands in lock file, got %d", len(lockFile.Commands))
-	}
+	// Test with too many args
+	cmd.SetArgs([]string{"arg1", "arg2"})
+	err = cmd.Args(cmd, []string{"arg1", "arg2"})
+	assert.Error(t, err)
 }
+
+// Note: Full integration tests for install command would require
+// mocking Git operations and file system access. The core functionality
+// is tested through the integration tests when running the actual commands.

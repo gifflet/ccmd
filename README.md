@@ -35,7 +35,7 @@ ccmd init
 
 ### 2. Install a demo command
 ```bash
-ccmd install https://github.com/gifflet/hello-world
+ccmd install gifflet/hello-world
 ```
 
 ### 3. Use it in Claude Code
@@ -58,7 +58,7 @@ That's it! You've just installed and used your first ccmd command.
 | `ccmd search <keyword>` | Search for commands in the registry |
 | `ccmd info <command>` | Show detailed command information |
 
-> For detailed usage and options, see [Command Reference](docs/commands.md)
+> For detailed usage and options, see [commands reference](docs/commands.md)
 
 ## Creating Your Own Commands
 
