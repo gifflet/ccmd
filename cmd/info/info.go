@@ -10,51 +10,16 @@
 package info
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
+	"github.com/gifflet/ccmd/core"
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/models"
-	"github.com/gifflet/ccmd/internal/output"
-	"github.com/gifflet/ccmd/pkg/commands"
-	ccmderrors "github.com/gifflet/ccmd/pkg/errors"
+	"github.com/gifflet/ccmd/pkg/output"
 )
-
-// Output represents the structured output format for JSON
-type Output struct {
-	Name        string            `json:"name"`
-	Version     string            `json:"version"`
-	Author      string            `json:"author"`
-	Description string            `json:"description"`
-	Repository  string            `json:"repository"`
-	License     string            `json:"license,omitempty"`
-	Homepage    string            `json:"homepage,omitempty"`
-	Tags        []string          `json:"tags,omitempty"`
-	Entry       string            `json:"entry,omitempty"`
-	Source      string            `json:"source"`
-	InstalledAt time.Time         `json:"installed_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
-	Structure   StructureInfo     `json:"structure"`
-}
-
-// StructureInfo contains information about command structure integrity
-type StructureInfo struct {
-	DirectoryExists bool     `json:"directory_exists"`
-	MarkdownExists  bool     `json:"markdown_exists"`
-	HasCcmdYaml     bool     `json:"has_ccmd_yaml"`
-	HasIndexMd      bool     `json:"has_index_md"`
-	IsValid         bool     `json:"is_valid"`
-	Issues          []string `json:"issues,omitempty"`
-}
 
 // NewCommand creates a new info command.
 func NewCommand() *cobra.Command {
@@ -85,136 +50,35 @@ func runInfoWithFS(commandName string, jsonFormat bool, filesystem fs.FileSystem
 		filesystem = fs.OS{}
 	}
 
-	// Get command info from lock file (this will check if command exists)
-	cmdInfo, err := commands.GetCommandInfo(commandName, ".claude", filesystem)
+	// Get detailed command information from core
+	info, err := core.GetCommandDetails(commandName, ".", filesystem)
 	if err != nil {
-		if errors.Is(err, ccmderrors.ErrNotFound) {
-			if jsonFormat {
-				return fmt.Errorf("command '%s' is not installed", commandName)
-			}
-			output.PrintErrorf("Command '%s' is not installed", commandName)
-			return fmt.Errorf("command not found")
-		}
-		return fmt.Errorf("failed to get command info: %w", err)
-	}
-
-	if cmdInfo == nil {
 		if jsonFormat {
-			return fmt.Errorf("command '%s' is not installed", commandName)
+			return err
 		}
-		output.PrintErrorf("Command '%s' is not installed", commandName)
+		output.PrintErrorf("Error: %s", err.Error())
 		return fmt.Errorf("command not found")
-	}
-
-	// Get base directory (project-local)
-	baseDir := ".claude"
-
-	// Check structure and get metadata
-	structureInfo, metadata := checkCommandStructure(commandName, baseDir, filesystem)
-
-	// Prepare output data
-	infoData := Output{
-		Name:        cmdInfo.Name,
-		Version:     cmdInfo.Version,
-		Source:      cmdInfo.Source,
-		InstalledAt: cmdInfo.InstalledAt,
-		UpdatedAt:   cmdInfo.UpdatedAt,
-		Metadata:    cmdInfo.Metadata,
-		Structure:   structureInfo,
-	}
-
-	// Fill in data from ccmd.yaml if available
-	if metadata != nil {
-		infoData.Author = metadata.Author
-		infoData.Description = metadata.Description
-		infoData.Repository = metadata.Repository
-		infoData.License = metadata.License
-		infoData.Homepage = metadata.Homepage
-		infoData.Tags = metadata.Tags
-		infoData.Entry = metadata.Entry
-	} else if desc, ok := cmdInfo.Metadata["description"]; ok {
-		// Fallback to lock file metadata
-		infoData.Description = desc
 	}
 
 	if jsonFormat {
 		// Output as JSON
-		data, err := json.MarshalIndent(infoData, "", "  ")
+		jsonStr, err := core.FormatCommandInfoJSON(info)
 		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
+			return err
 		}
-		fmt.Println(string(data))
+		fmt.Println(jsonStr)
 	} else {
 		// Output as formatted text
-		displayCommandInfo(infoData, baseDir, commandName, filesystem)
+		displayCommandInfo(info, commandName, filesystem)
 	}
 
 	return nil
 }
 
-func checkCommandStructure(commandName, baseDir string,
-	filesystem fs.FileSystem) (StructureInfo, *models.CommandMetadata) {
-	info := StructureInfo{
-		DirectoryExists: false,
-		MarkdownExists:  false,
-		HasCcmdYaml:     false,
-		HasIndexMd:      false,
-		IsValid:         false,
-		Issues:          []string{},
-	}
-
-	commandDir := filepath.Join(baseDir, "commands", commandName)
-	markdownFile := filepath.Join(baseDir, "commands", commandName+".md")
-	ccmdYamlFile := filepath.Join(commandDir, "ccmd.yaml")
-	indexMdFile := filepath.Join(commandDir, "index.md")
-
-	// Check directory
-	if dirInfo, err := filesystem.Stat(commandDir); err == nil && dirInfo.IsDir() {
-		info.DirectoryExists = true
-	} else {
-		info.Issues = append(info.Issues, "Command directory is missing")
-	}
-
-	// Check markdown file
-	if fileInfo, err := filesystem.Stat(markdownFile); err == nil && !fileInfo.IsDir() {
-		info.MarkdownExists = true
-	} else {
-		info.Issues = append(info.Issues, "Standalone markdown file is missing")
-	}
-
-	// Check ccmd.yaml
-	var metadata *models.CommandMetadata
-	if info.DirectoryExists {
-		if data, err := filesystem.ReadFile(ccmdYamlFile); err == nil {
-			info.HasCcmdYaml = true
-			metadata = &models.CommandMetadata{}
-			if err := yaml.Unmarshal(data, metadata); err != nil {
-				info.Issues = append(info.Issues, "ccmd.yaml is malformed")
-				metadata = nil
-			}
-		} else {
-			info.Issues = append(info.Issues, "ccmd.yaml is missing")
-		}
-
-		// Check index.md
-		if _, err := filesystem.Stat(indexMdFile); err == nil {
-			info.HasIndexMd = true
-		}
-	}
-
-	// Determine if structure is valid
-	info.IsValid = info.DirectoryExists && info.MarkdownExists && info.HasCcmdYaml
-	if !info.IsValid && len(info.Issues) == 0 {
-		info.Issues = append(info.Issues, "Incomplete command structure")
-	}
-
-	return info, metadata
-}
-
-func displayCommandInfo(info Output, baseDir, commandName string, filesystem fs.FileSystem) {
+func displayCommandInfo(info *core.CommandInfo, commandName string, filesystem fs.FileSystem) {
 	// Header
 	fmt.Println()
-	fmt.Println(output.Info("=== Command Information ==="))
+	output.PrintInfof("=== Command Information ===")
 	fmt.Println()
 
 	// Basic info
@@ -251,16 +115,16 @@ func displayCommandInfo(info Output, baseDir, commandName string, filesystem fs.
 
 	// Installation info
 	fmt.Println()
-	fmt.Println(output.Info("=== Installation Details ==="))
+	output.PrintInfof("=== Installation Details ===")
 	fmt.Println()
 
 	fmt.Printf("%s %s\n", color.CyanString("Source:"), info.Source)
-	fmt.Printf("%s %s\n", color.CyanString("Installed:"), info.InstalledAt.Format("2006-01-02 15:04:05"))
-	fmt.Printf("%s %s\n", color.CyanString("Updated:"), info.UpdatedAt.Format("2006-01-02 15:04:05"))
+	fmt.Printf("%s %s\n", color.CyanString("Installed:"), info.InstalledAt)
+	fmt.Printf("%s %s\n", color.CyanString("Updated:"), info.UpdatedAt)
 
 	// Structure verification
 	fmt.Println()
-	fmt.Println(output.Info("=== Structure Verification ==="))
+	output.PrintInfof("=== Structure Verification ===")
 	fmt.Println()
 
 	printStatus("Command directory", info.Structure.DirectoryExists)
@@ -270,7 +134,7 @@ func displayCommandInfo(info Output, baseDir, commandName string, filesystem fs.
 
 	if len(info.Structure.Issues) > 0 {
 		fmt.Println()
-		fmt.Println(output.Warning("Issues found:"))
+		output.PrintWarningf("Issues found:")
 		for _, issue := range info.Structure.Issues {
 			fmt.Printf("  - %s\n", issue)
 		}
@@ -279,23 +143,14 @@ func displayCommandInfo(info Output, baseDir, commandName string, filesystem fs.
 	// Preview content if available
 	if info.Structure.HasIndexMd {
 		fmt.Println()
-		fmt.Println(output.Info("=== Content Preview ==="))
+		output.PrintInfof("=== Content Preview ===")
 		fmt.Println()
 
-		indexPath := filepath.Join(baseDir, "commands", commandName, "index.md")
-		if content, err := filesystem.ReadFile(indexPath); err == nil {
-			lines := strings.Split(string(content), "\n")
-			previewLines := 10
-			if len(lines) < previewLines {
-				previewLines = len(lines)
-			}
-
-			for i := 0; i < previewLines; i++ {
-				fmt.Println(lines[i])
-			}
-
-			if len(lines) > previewLines {
-				fmt.Printf("\n... (showing first %d lines of %d total)\n", previewLines, len(lines))
+		preview, totalLines, err := core.ReadCommandContentPreview(commandName, ".claude", filesystem, 10)
+		if err == nil {
+			fmt.Print(preview)
+			if totalLines > 10 {
+				fmt.Printf("\n... (showing first 10 lines of %d total)\n", totalLines)
 			}
 		}
 	}

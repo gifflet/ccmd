@@ -17,266 +17,299 @@ This document describes the internal architecture of ccmd, including design deci
 
 ## Overview
 
-ccmd is designed as a lightweight, efficient command manager for Claude Code. It follows a modular architecture that separates concerns and allows for easy extension and maintenance.
+ccmd is designed as a lightweight, efficient command manager for Claude Code. It follows a simplified 2-layer architecture that separates concerns while avoiding unnecessary abstractions.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         CLI Layer                           │
-│                    (cmd/ccmd/main.go)                      │
+│                      (cmd/*/...)                            │
+│            Parsing, validation, user interaction            │
 ├─────────────────────────────────────────────────────────────┤
-│                     Command Layer                           │
-│                   (cmd/*/?.go files)                       │
+│                       Core Layer                            │
+│                        (core/)                              │
+│          Business logic, Git operations, metadata           │
 ├─────────────────────────────────────────────────────────────┤
-│                     Business Logic                          │
-│                    (pkg/commands/)                          │
-├─────────────────────────────────────────────────────────────┤
-│                    Core Services                            │
-│        ┌────────────┬──────────────┬────────────┐         │
-│        │ Git Client │ Lock Manager │ Filesystem │         │
-│        │  (pkg/git) │(internal/lock)│(internal/fs)│        │
-│        └────────────┴──────────────┴────────────┘         │
-├─────────────────────────────────────────────────────────────┤
-│                      Data Models                            │
-│                   (internal/models/)                        │
+│                    Support Packages                         │
+│     ┌─────────────┬──────────────┬─────────────────┐      │
+│     │   Output    │    Errors    │     Logger      │      │
+│     │(pkg/output) │(pkg/errors)  │  (pkg/logger)   │      │
+│     └─────────────┴──────────────┴─────────────────┘      │
+│                    Test Utilities                           │
+│                   (internal/fs)                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Design Principles
 
 ### 1. Simplicity (KISS)
-- Minimal abstractions
+- **2-layer architecture**: CLI → Core
+- Direct function calls over abstractions
 - Clear, readable code
-- Straightforward implementations
 
-### 2. Modularity
-- Separate concerns
-- Reusable components
-- Clear interfaces
+### 2. Minimalism
+- One file per command in both layers
+- Consolidated business logic in core/
 
 ### 3. Testability
-- Dependency injection
-- Interface-based design
-- Mockable external dependencies
+- FileSystem interface for testing (internal/fs)
+- Clear separation of concerns
+- Mockable where necessary
 
 ### 4. Performance
-- Efficient Git operations
+- Direct Git CLI usage via exec.Command
 - Minimal file I/O
-- Concurrent operations where beneficial
 
 ### 5. User Experience
-- Clear error messages
-- Progress feedback
-- Intuitive commands
+- Colored output with pkg/output
+- Progress indicators and spinners
+- Clear error messages via pkg/errors
 
 ## System Architecture
 
-### Layer Separation
+### 2-Layer Architecture
 
-1. **Presentation Layer** (`cmd/`)
-   - CLI parsing and validation
+1. **CLI Layer** (`cmd/`)
+   - Command parsing with Cobra
+   - Flag validation
    - User interaction
-   - Output formatting
+   - Delegates to Core layer
 
-2. **Business Logic Layer** (`pkg/commands/`)
-   - Command implementations
-   - Business rules
-   - Workflow orchestration
-
-3. **Service Layer** (`pkg/`, `internal/`)
+2. **Core Layer** (`core/`)
+   - All business logic
    - Git operations
    - File system operations
-   - Lock management
-   - Data persistence
+   - Metadata management
 
-4. **Data Layer** (`internal/models/`)
-   - Data structures
-   - Serialization/deserialization
-   - Validation
+### Support Packages
+
+- **pkg/errors**: Consistent error handling with sentinel errors
+- **pkg/logger**: Convenient wrapper over slog
+- **pkg/output**: Colored output, progress bars, spinners
+- **internal/fs**: FileSystem interface for testing
 
 ### Key Components
 
 #### CLI Entry Point (`cmd/ccmd/main.go`)
 
 ```go
-// Simplified flow
+// Each command follows a simple pattern
 func main() {
-    app := &cli.App{
-        Name:     "ccmd",
-        Commands: []*cli.Command{
-            installCmd,
-            listCmd,
-            removeCmd,
-            searchCmd,
-            updateCmd,
-        },
+    rootCmd := &cobra.Command{
+        Use:   "ccmd",
+        Short: "Claude Code Command Manager",
     }
-    app.Run(os.Args)
+    
+    // Add commands
+    rootCmd.AddCommand(
+        install.NewCommand(),
+        list.NewCommand(),
+        remove.NewCommand(),
+        // ...
+    )
+    
+    rootCmd.Execute()
 }
 ```
 
 #### Command Implementation (`cmd/install/install.go`)
 
 ```go
-// Each command follows this pattern
-func Command() *cli.Command {
-    return &cli.Command{
-        Name:   "install",
-        Action: runInstall,
-        Flags:  installFlags(),
+// Minimal CLI layer - just parsing and delegation
+func NewCommand() *cobra.Command {
+    var version, name string
+    var force bool
+    
+    cmd := &cobra.Command{
+        Use:   "install [repository]",
+        Short: "Install a command from a Git repository",
+        RunE: func(cmd *cobra.Command, args []string) error {
+            if len(args) == 0 {
+                return core.InstallFromConfig(force)
+            }
+            
+            return core.Install(context.Background(), core.InstallOptions{
+                Repository: args[0],
+                Version:    version,
+                Name:       name,
+                Force:      force,
+            })
+        },
     }
-}
-
-func runInstall(c *cli.Context) error {
-    // 1. Parse arguments
-    // 2. Create command instance
-    // 3. Execute business logic
-    // 4. Handle output
+    
+    // Add flags
+    return cmd
 }
 ```
 
-#### Business Logic (`pkg/commands/install.go`)
+#### Core Logic (`core/install.go`)
 
 ```go
-type InstallCommand struct {
-    git    git.Client
-    fs     fs.Interface
-    lock   lock.Manager
-    output output.Interface
+// All business logic in one place
+type InstallOptions struct {
+    Repository string
+    Version    string
+    Name       string
+    Force      bool
 }
 
-func (c *InstallCommand) Execute(repo string, opts Options) error {
-    // 1. Validate repository
+func Install(ctx context.Context, opts InstallOptions) error {
+    // 1. Validate input
     // 2. Clone repository
     // 3. Validate command structure
     // 4. Install files
     // 5. Update lock file
+    
+    return nil
 }
 ```
 
 ## Component Details
 
-### Git Client (`pkg/git/`)
+### Git Operations (`core/git.go`)
 
-Handles all Git operations:
-
-```go
-type Client interface {
-    Clone(url string, opts CloneOptions) error
-    GetTags(url string) ([]string, error)
-    GetLatestTag(url string) (string, error)
-    GetCommitHash(path string) (string, error)
-}
-```
-
-Features:
-- Shallow cloning for efficiency
-- Tag/version resolution
-- Support for multiple Git providers
-- Authentication handling
-
-### Lock Manager (`internal/lock/`)
-
-Manages the ccmd-lock.yaml file:
+Simple, direct Git operations using exec.Command:
 
 ```go
-type Manager interface {
-    Read() (*LockFile, error)
-    Write(lock *LockFile) error
-    AddEntry(name string, entry LockEntry) error
-    RemoveEntry(name string) error
-    GetEntry(name string) (*LockEntry, bool)
-}
-```
-
-Lock file format:
-```json
-{
-  "version": "1.0",
-  "commands": {
-    "my-command": {
-      "version": "1.2.3",
-      "repository": "github.com/user/repo",
-      "commit": "abc123...",
-      "installed_at": "2024-01-01T00:00:00Z",
-      "integrity": "sha256:..."
+// Direct Git CLI usage - no abstractions
+func gitClone(ctx context.Context, repo, dest, version string) error {
+    args := []string{"clone", "--depth", "1"}
+    if version != "" {
+        args = append(args, "--branch", version)
     }
-  }
+    args = append(args, repo, dest)
+    
+    cmd := exec.CommandContext(ctx, "git", args...)
+    return cmd.Run()
+}
+
+func gitFetch(ctx context.Context, dir string) error {
+    cmd := exec.CommandContext(ctx, "git", "fetch", "--tags")
+    cmd.Dir = dir
+    return cmd.Run()
+}
+```
+
+### Metadata Management (`core/metadata.go`)
+
+Handles project configuration and lock files:
+
+```go
+type ProjectConfig struct {
+    Name        string   `yaml:"name,omitempty"`
+    Version     string   `yaml:"version,omitempty"`
+    Description string   `yaml:"description,omitempty"`
+    Author      string   `yaml:"author,omitempty"`
+    Repository  string   `yaml:"repository,omitempty"`
+    Commands    []string `yaml:"commands,omitempty"`
+}
+
+type LockFile struct {
+    Version  string                 `yaml:"version"`
+    Commands map[string]CommandLock `yaml:"commands"`
+}
+
+// Direct functions - no unnecessary interfaces
+func LoadProjectConfig(projectPath string) (*ProjectConfig, error)
+func SaveProjectConfig(projectPath string, config *ProjectConfig) error
+func LoadLockFile(projectPath string) (*LockFile, error)
+func SaveLockFile(projectPath string, lock *LockFile) error
+```
+
+### Type Definitions (`core/types.go`)
+
+Consolidated types used across the core:
+
+```go
+type CommandDetail struct {
+    Name        string
+    Version     string
+    Repository  string
+    InstalledAt string
+    UpdatedAt   string
+    Description string
+}
+
+type CommandMetadata struct {
+    Name        string   `yaml:"name"`
+    Version     string   `yaml:"version"`
+    Description string   `yaml:"description"`
+    Author      string   `yaml:"author"`
+    Repository  string   `yaml:"repository"`
+    Entry       string   `yaml:"entry"`
+    Tags        []string `yaml:"tags"`
 }
 ```
 
 ### File System Abstraction (`internal/fs/`)
 
-Provides testable file operations:
+Only abstraction kept for testing purposes:
 
 ```go
-type Interface interface {
+type FileSystem interface {
     ReadFile(path string) ([]byte, error)
     WriteFile(path string, data []byte, perm os.FileMode) error
+    Stat(path string) (os.FileInfo, error)
     MkdirAll(path string, perm os.FileMode) error
-    Remove(path string) error
     RemoveAll(path string) error
-    Exists(path string) bool
-    Walk(root string, fn filepath.WalkFunc) error
+    Exists(path string) (bool, error)
 }
+
+// Implementations
+type OS struct{}     // Real filesystem
+type MemFS struct{} // In-memory for tests
 ```
 
-Implementations:
-- `RealFS`: Actual file system operations
-- `MemFS`: In-memory for testing
+### Output Manager (`pkg/output/`)
 
-### Output Manager (`internal/output/`)
-
-Handles all user output:
+Rich terminal output capabilities:
 
 ```go
-type Interface interface {
-    Info(format string, args ...interface{})
-    Success(format string, args ...interface{})
-    Warning(format string, args ...interface{})
-    Error(format string, args ...interface{})
-    StartSpinner(message string) func()
-    Progress(current, total int, message string)
-}
-```
+// Colored output functions
+func Print(format string, args ...interface{})
+func PrintInfo(format string, args ...interface{})
+func PrintSuccess(format string, args ...interface{})
+func PrintWarning(format string, args ...interface{})
+func PrintError(format string, args ...interface{})
 
-Features:
-- Colored output
-- Progress indicators
-- Spinner animations
-- Table formatting
+// Progress indicators
+func NewProgressBar(total int) *ProgressBar
+func NewSpinner(message string) *Spinner
+
+// Interactive prompts
+func Prompt(message string) string
+func Confirm(message string) bool
+```
 
 ## Data Flow
 
 ### Install Command Flow
 
 ```
-User Input → CLI Parser → Install Command → Validation
-                                              ↓
-                                         Git Clone
-                                              ↓
-                                    Validate Structure
-                                              ↓
-                                      Copy Files
-                                              ↓
-                                   Update Lock File
-                                              ↓
-                                    Success Output
+User Input → CLI Parser → core.Install()
+                              ↓
+                         Validate Input
+                              ↓
+                      Clone Repository (git)
+                              ↓
+                    Validate Command Structure
+                              ↓
+                       Install Files
+                              ↓
+                    Update Lock File
+                              ↓
+                      Success Output
 ```
 
-### Update Command Flow
+### List Command Flow
 
 ```
-User Input → CLI Parser → Update Command → Read Lock File
-                                              ↓
-                                      Check for Updates
-                                              ↓
-                                   Clone New Version
-                                              ↓
-                                    Replace Files
-                                              ↓
-                                   Update Lock File
-                                              ↓
-                                    Success Output
+User Input → CLI Parser → core.List()
+                              ↓
+                      Read Lock File
+                              ↓
+                 Read Command Metadata
+                              ↓
+                    Format and Display
 ```
 
 ## File System Layout
@@ -291,32 +324,18 @@ my-project/
 │   │   │   ├── ccmd.yaml
 │   │   │   ├── index.md
 │   │   │   └── ...
-│   │   └── command2/
-│   └── config.yaml          # Optional config
-├── ccmd.yaml                # Project configuration
+│   │   └── command1.md       # Standalone markdown
+├── ccmd.yaml                 # Project configuration
 ├── ccmd-lock.yaml           # Lock file
 └── src/                     # Project files
 ```
 
-### Global Cache (Future)
-
-```
-~/.ccmd/
-├── cache/                   # Downloaded repositories
-│   ├── github.com/
-│   │   └── user/
-│   │       └── repo/
-│   │           └── abc123/  # Commit hash
-│   └── gitlab.com/
-├── config.yaml             # Global config
-└── registry.json           # Local registry cache
-```
 
 ## Error Handling
 
-### Sentinel Errors
+### Sentinel Errors (`pkg/errors`)
 
-ccmd uses sentinel errors for common error types:
+ccmd uses sentinel errors for consistent error handling:
 
 ```go
 var (
@@ -341,32 +360,6 @@ errors.GitError("clone", err)            // "git operation failed during clone: 
 errors.FileError("read", path, err)      // "file operation failed: read on path: ..."
 ```
 
-### Error Flow
-
-1. **Capture** - Errors are captured at origin using helper functions
-2. **Wrap** - Add context with error creation functions
-3. **Check** - Use `errors.Is()` to check error types
-4. **Display** - Show appropriate message to user
-
-Example:
-```go
-// Creating errors
-if !exists {
-    return errors.NotFound(fmt.Sprintf("command %s", name))
-}
-
-// Wrapping Git errors
-if err := git.Clone(repo); err != nil {
-    return errors.GitError("clone repository", err)
-}
-
-// Checking error types
-if errors.Is(err, errors.ErrNotFound) {
-    output.Warning("Command not found. Use 'ccmd search' to find available commands.")
-    return nil
-}
-```
-
 ## Security Considerations
 
 ### Repository Validation
@@ -383,137 +376,56 @@ if errors.Is(err, errors.ErrNotFound) {
 - User must explicitly run commands
 - Sandboxed to project directory
 
-### Future Security Features
-
-- Command signing with GPG
-- Checksum verification
-- Registry authentication
-- Vulnerability scanning
-
 ## Performance
 
 ### Optimization Strategies
 
 1. **Shallow Cloning**
-   ```go
+   ```bash
    git clone --depth 1 --single-branch
    ```
 
-2. **Concurrent Operations**
-   ```go
-   // Update multiple commands concurrently
-   var wg sync.WaitGroup
-   for _, cmd := range commands {
-       wg.Add(1)
-       go func(c Command) {
-           defer wg.Done()
-           updateCommand(c)
-       }(cmd)
-   }
-   wg.Wait()
-   ```
-
-3. **Caching**
-   - Cache Git operations
-   - Store registry data locally
-   - Reuse cloned repositories
-
-4. **Minimal File I/O**
+2. **Efficient I/O**
    - Read files once
-   - Batch write operations
+   - Batch operations where possible
    - Use buffered I/O
 
-### Benchmarks
+### Performance Targets
 
-Key operations should complete within:
 - Install: < 5 seconds
 - List: < 100ms
 - Remove: < 500ms
 - Update: < 5 seconds per command
 
-## Future Considerations
-
-### Planned Features
-
-1. **Global Command Registry**
-   - Central repository of commands
-   - Search and discovery
-   - Ratings and reviews
-   - Verified publishers
-
-2. **Dependency Management**
-   - Command dependencies
-   - Version resolution
-   - Dependency tree visualization
-
-3. **Plugin System**
-   - Extend ccmd functionality
-   - Custom providers
-   - Hook system
-
-4. **Enhanced Security**
-   - GPG signing
-   - Integrity verification
-   - Security advisories
-
-### Architecture Evolution
-
-1. **Service Registry Pattern**
-   ```go
-   type ServiceRegistry struct {
-       git    git.Client
-       fs     fs.Interface
-       lock   lock.Manager
-       cache  cache.Interface
-   }
-   ```
-
-2. **Event System**
-   ```go
-   type EventBus interface {
-       Subscribe(event string, handler func(data interface{}))
-       Publish(event string, data interface{})
-   }
-   ```
-
-3. **Provider Interface**
-   ```go
-   type Provider interface {
-       Name() string
-       Clone(url string) error
-       GetMetadata(url string) (*Metadata, error)
-   }
-   ```
-
 ## Testing Strategy
 
 ### Unit Tests
 
-- Test individual components in isolation
-- Mock external dependencies
+- Test core logic in isolation
+- Mock filesystem with internal/fs
 - Focus on business logic
 
 ### Integration Tests
 
-- Test component interactions
-- Use real file system in temp directories
-- Verify end-to-end workflows
+- Test end-to-end workflows
+- Use real filesystem in temp directories
+- Verify command interactions
 
-### Example Test Structure
+### Example Test
 
 ```go
-func TestInstallCommand(t *testing.T) {
-    // Setup
-    fs := memfs.New()
-    git := mockgit.New()
-    cmd := &InstallCommand{fs: fs, git: git}
+func TestInstall(t *testing.T) {
+    // Use memory filesystem for testing
+    fs := &memfs.MemFS{}
     
-    // Execute
-    err := cmd.Execute("github.com/user/repo", Options{})
+    // Test installation
+    err := InstallWithFS(context.Background(), InstallOptions{
+        Repository: "github.com/user/repo",
+        Name:       "test-cmd",
+    }, fs)
     
-    // Assert
     assert.NoError(t, err)
-    assert.True(t, fs.Exists(".claude/commands/repo/index.md"))
+    assert.True(t, fs.Exists(".claude/commands/test-cmd/index.md"))
 }
 ```
 

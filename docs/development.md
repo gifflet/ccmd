@@ -86,39 +86,51 @@ ccmd/
 ├── cmd/                    # Command-line interfaces
 │   ├── ccmd/              # Main CLI entry point
 │   │   └── main.go
-│   ├── install/           # Install command
-│   ├── list/              # List command
-│   ├── remove/            # Remove command
-│   ├── search/            # Search command
-│   └── info/              # Info command
-├── pkg/                   # Public packages
-│   ├── commands/          # Command implementations
-│   │   ├── install.go
-│   │   ├── list.go
-│   │   └── ...
-│   └── git/              # Git operations
-│       └── client.go
-├── internal/             # Private packages
-│   ├── fs/              # File system abstraction
-│   ├── lock/            # Lock file management
-│   ├── models/          # Data models
-│   ├── output/          # Output formatting
-│   └── validation/      # Input validation
-├── docs/                # Documentation
-├── examples/            # Example commands
-├── scripts/             # Build and utility scripts
-├── testdata/            # Test fixtures
-├── .github/             # GitHub workflows
-├── Makefile            # Build automation
-├── go.mod              # Go module definition
-└── go.sum              # Dependency checksums
+│   ├── install/           # Install command CLI
+│   ├── list/              # List command CLI
+│   ├── remove/            # Remove command CLI
+│   ├── search/            # Search command CLI
+│   ├── update/            # Update command CLI
+│   ├── info/              # Info command CLI
+│   ├── init/              # Init command CLI
+│   └── sync/              # Sync command CLI
+├── core/                  # Core business logic
+│   ├── install.go         # Install logic
+│   ├── list.go            # List logic
+│   ├── remove.go          # Remove logic
+│   ├── search.go          # Search logic
+│   ├── update.go          # Update logic
+│   ├── info.go            # Info logic
+│   ├── init.go            # Init logic
+│   ├── sync.go            # Sync logic
+│   ├── git.go             # Git operations
+│   ├── metadata.go        # Config/lock file management
+│   └── types.go           # Shared types
+├── pkg/                   # Public utilities
+│   ├── errors/            # Error handling
+│   ├── logger/            # Logging wrapper
+│   └── output/            # Colored output, progress
+├── internal/              # Private packages
+│   └── fs/                # File system abstraction for tests
+├── docs/                  # Documentation
+├── examples/              # Example commands
+├── scripts/               # Build and utility scripts
+├── testdata/              # Test fixtures
+├── tests/                 # Integration tests
+├── .github/               # GitHub workflows
+├── Makefile               # Build automation
+├── go.mod                 # Go module definition
+└── go.sum                 # Dependency checksums
 ```
 
 ### Package Responsibilities
 
-- **cmd/**: CLI parsing, flag handling, user interaction
-- **pkg/**: Public APIs, business logic
-- **internal/**: Private implementations, utilities
+- **cmd/**: CLI parsing with Cobra, flag handling, delegates to core
+- **core/**: All business logic, Git operations, file management
+- **pkg/errors**: Consistent error handling with sentinel errors
+- **pkg/logger**: Convenient wrapper over slog
+- **pkg/output**: Colored output, progress bars, spinners
+- **internal/fs**: FileSystem interface for testing
 - **scripts/**: Build automation, release scripts
 - **testdata/**: Test fixtures and mock data
 
@@ -232,10 +244,10 @@ make test-verbose
 make test-coverage
 
 # Run specific package tests
-go test ./pkg/commands/...
+go test ./core/...
 
 # Run specific test
-go test -run TestInstallCommand ./pkg/commands/
+go test -run TestInstall ./core/
 ```
 
 ### Writing Tests
@@ -373,7 +385,7 @@ dlv debug ./cmd/ccmd -- install github.com/user/repo
 
 # Set breakpoints
 (dlv) break main.main
-(dlv) break pkg/commands.(*InstallCommand).Execute
+(dlv) break core.Install
 (dlv) continue
 ```
 
@@ -504,7 +516,7 @@ package newcmd
 
 import (
     "github.com/urfave/cli/v2"
-    "github.com/gifflet/ccmd/pkg/commands"
+    "github.com/gifflet/ccmd/core"
 )
 
 func Command() *cli.Command {
@@ -534,7 +546,7 @@ func run(c *cli.Context) error {
 ### 3. Implement Business Logic
 
 ```go
-// pkg/commands/newcmd.go
+// core/newcmd.go
 package commands
 
 type NewCmd struct {
@@ -558,7 +570,7 @@ func (c *NewCmd) Execute(arg string, opts NewCmdOptions) error {
 ### 4. Add Tests
 
 ```go
-// pkg/commands/newcmd_test.go
+// core/newcmd_test.go
 package commands
 
 import "testing"
@@ -612,7 +624,7 @@ mockgen -source=internal/fs/interface.go -destination=internal/fs/mock_fs.go -pa
 go test -bench=. ./...
 
 # Run specific benchmark
-go test -bench=BenchmarkInstall ./pkg/commands/
+go test -bench=BenchmarkInstall ./core/
 
 # With memory allocation stats
 go test -bench=. -benchmem ./...
@@ -622,11 +634,11 @@ go test -bench=. -benchmem ./...
 
 ```bash
 # CPU profiling
-go test -cpuprofile=cpu.prof -bench=. ./pkg/commands/
+go test -cpuprofile=cpu.prof -bench=. ./core/
 go tool pprof cpu.prof
 
 # Memory profiling
-go test -memprofile=mem.prof -bench=. ./pkg/commands/
+go test -memprofile=mem.prof -bench=. ./core/
 go tool pprof mem.prof
 ```
 

@@ -17,9 +17,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/gifflet/ccmd/core"
 	"github.com/gifflet/ccmd/internal/fs"
-	"github.com/gifflet/ccmd/internal/output"
-	"github.com/gifflet/ccmd/pkg/commands"
+	"github.com/gifflet/ccmd/pkg/output"
 )
 
 func TestListCommandIntegration(t *testing.T) {
@@ -135,11 +135,10 @@ license: MIT
 // runListWithFS is a test helper that allows injecting a custom filesystem
 func runListWithFS(long bool, baseDir string, filesystem fs.FileSystem) error {
 	// Get detailed command information
-	opts := commands.ListOptions{
-		BaseDir:    baseDir,
-		FileSystem: filesystem,
+	opts := core.ListOptions{
+		ProjectPath: ".",
 	}
-	details, err := commands.List(opts)
+	details, err := core.List(opts)
 	if err != nil {
 		return fmt.Errorf("failed to list commands: %w", err)
 	}
@@ -158,7 +157,7 @@ func runListWithFS(long bool, baseDir string, filesystem fs.FileSystem) error {
 	// Check for structure issues
 	hasStructureIssues := false
 	for _, detail := range details {
-		if !detail.StructureValid {
+		if detail.BrokenStructure {
 			hasStructureIssues = true
 			break
 		}
