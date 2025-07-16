@@ -17,7 +17,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func TestList(t *testing.T) {
@@ -33,45 +32,35 @@ func TestList(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"test-cmd": {
-					Name:        "test-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/test-cmd.git",
-					Resolved:    "https://github.com/user/test-cmd.git@v1.0.0",
-					Commit:      "abc123",
-					InstalledAt: time.Now().Add(-24 * time.Hour),
-					UpdatedAt:   time.Now(),
-				},
-				"another-cmd": {
-					Name:        "another-cmd",
-					Version:     "2.0.0",
-					Source:      "https://github.com/user/another-cmd.git",
-					Resolved:    "https://github.com/user/another-cmd.git@v2.0.0",
-					Commit:      "def456",
-					InstalledAt: time.Now().Add(-48 * time.Hour),
-					UpdatedAt:   time.Now().Add(-24 * time.Hour),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["test-cmd"] = &LockCommand{
+			Name:        "test-cmd",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/test-cmd.git",
+			Resolved:    "https://github.com/user/test-cmd.git@v1.0.0",
+			Commit:      "abc123",
+			InstalledAt: time.Now().Add(-24 * time.Hour),
+			UpdatedAt:   time.Now(),
+		}
+		lockFile.Commands["another-cmd"] = &LockCommand{
+			Name:        "another-cmd",
+			Version:     "2.0.0",
+			Source:      "https://github.com/user/another-cmd.git",
+			Resolved:    "https://github.com/user/another-cmd.git@v2.0.0",
+			Commit:      "def456",
+			InstalledAt: time.Now().Add(-48 * time.Hour),
+			UpdatedAt:   time.Now().Add(-24 * time.Hour),
 		}
 
 		// Write lock file
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
-		// Create directories for commands
-		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands", "test-cmd"), 0755)
-		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands", "another-cmd"), 0755)
-
-		// Create .md files
-		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands"), 0755)
-		os.WriteFile(filepath.Join(tempDir, ".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
-		os.WriteFile(filepath.Join(tempDir, ".claude", "commands", "another-cmd.md"), []byte("# another-cmd"), 0644)
+		// Create command structures
+		oldDir, _ := os.Getwd()
+		os.Chdir(tempDir)
+		createCommandStructure(t, "test-cmd")
+		createCommandStructure(t, "another-cmd")
+		os.Chdir(oldDir)
 
 		// List commands
 		commands, err := List(ListOptions{ProjectPath: tempDir})
@@ -96,29 +85,21 @@ func TestList(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"broken-cmd": {
-					Name:        "broken-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/broken-cmd.git",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["broken-cmd"] = &LockCommand{
+			Name:        "broken-cmd",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/broken-cmd.git",
+			InstalledAt: time.Now(),
+			UpdatedAt:   time.Now(),
 		}
 
 		// Write lock file
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
 		// Create .md file but no command directory
-		os.MkdirAll(filepath.Join(tempDir, ".claude"), 0755)
-		os.WriteFile(filepath.Join(tempDir, ".claude", "broken-cmd.md"), []byte("# broken-cmd"), 0644)
+		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands"), 0755)
+		os.WriteFile(filepath.Join(tempDir, ".claude", "commands", "broken-cmd.md"), []byte("# broken-cmd"), 0644)
 
 		// List commands
 		commands, err := List(ListOptions{ProjectPath: tempDir})
@@ -134,25 +115,17 @@ func TestList(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"broken-cmd": {
-					Name:        "broken-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/broken-cmd.git",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["broken-cmd"] = &LockCommand{
+			Name:        "broken-cmd",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/broken-cmd.git",
+			InstalledAt: time.Now(),
+			UpdatedAt:   time.Now(),
 		}
 
 		// Write lock file
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
 		// Create command directory but no .md file
 		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands", "broken-cmd"), 0755)
@@ -171,31 +144,23 @@ func TestList(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"meta-cmd": {
-					Name:        "meta-cmd",
-					Version:     "", // Empty in lock file
-					Source:      "https://github.com/user/meta-cmd.git",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["meta-cmd"] = &LockCommand{
+			Name:        "meta-cmd",
+			Version:     "", // Empty in lock file
+			Source:      "https://github.com/user/meta-cmd.git",
+			InstalledAt: time.Now(),
+			UpdatedAt:   time.Now(),
 		}
 
 		// Write lock file
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
 		// Create command directory and files
 		cmdDir := filepath.Join(tempDir, ".claude", "commands", "meta-cmd")
 		os.MkdirAll(cmdDir, 0755)
-		os.MkdirAll(filepath.Join(tempDir, ".claude"), 0755)
-		os.WriteFile(filepath.Join(tempDir, ".claude", "meta-cmd.md"), []byte("# meta-cmd"), 0644)
+		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands"), 0755)
+		os.WriteFile(filepath.Join(tempDir, ".claude", "commands", "meta-cmd.md"), []byte("# meta-cmd"), 0644)
 
 		// Create metadata file
 		metadata := ProjectConfig{
@@ -209,9 +174,7 @@ func TestList(t *testing.T) {
 			License:     "MIT",
 			Homepage:    "https://example.com",
 		}
-		metaData, err := yaml.Marshal(&metadata)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(cmdDir, "ccmd.yaml"), metaData, 0644)
+		err := writeCommandMetadata(filepath.Join(cmdDir, "ccmd.yaml"), &metadata)
 		require.NoError(t, err)
 
 		// List commands
@@ -236,30 +199,23 @@ func TestGetCommandInfo(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create lock file with one command
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"test-cmd": {
-					Name:        "test-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/test-cmd.git",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["test-cmd"] = &LockCommand{
+			Name:        "test-cmd",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/test-cmd.git",
+			InstalledAt: time.Now(),
+			UpdatedAt:   time.Now(),
 		}
 
 		// Write lock file
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
 		// Create command structure
-		os.MkdirAll(filepath.Join(tempDir, ".claude", "commands", "test-cmd"), 0755)
-		os.MkdirAll(filepath.Join(tempDir, ".claude"), 0755)
-		os.WriteFile(filepath.Join(tempDir, ".claude", "test-cmd.md"), []byte("# test-cmd"), 0644)
+		oldDir, _ := os.Getwd()
+		os.Chdir(tempDir)
+		createCommandStructure(t, "test-cmd")
+		os.Chdir(oldDir)
 
 		// Get command info
 		info, err := GetCommandInfo("test-cmd", tempDir)
@@ -273,16 +229,10 @@ func TestGetCommandInfo(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create empty lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands:        make(map[string]*LockCommand),
-		}
+		lockFile := createBasicLockFile()
 
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		// Write lock file
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
 		// Try to get non-existent command
 		info, err := GetCommandInfo("non-existent", tempDir)
@@ -299,24 +249,16 @@ func TestReadLockFile(t *testing.T) {
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"cmd1": {
-					Name:        "cmd1",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/cmd1.git",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["cmd1"] = &LockCommand{
+			Name:        "cmd1",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/cmd1.git",
+			InstalledAt: time.Now(),
+			UpdatedAt:   time.Now(),
 		}
 
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(lockPath, data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, lockPath, lockFile)
 
 		// Read lock file
 		result, err := ReadLockFile(lockPath)
@@ -339,9 +281,7 @@ lockfileVersion: 1`)
 		require.NoError(t, err)
 
 		// Read lock file
-		result, err := ReadLockFile(lockPath)
-		require.NoError(t, err)
-		require.NotNil(t, result)
+		result := readLockFileFromPath(t, lockPath)
 		assert.NotNil(t, result.Commands)
 		assert.Len(t, result.Commands, 0)
 	})

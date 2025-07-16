@@ -18,7 +18,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func TestUpdateLockFile(t *testing.T) {
@@ -39,13 +38,7 @@ func TestUpdateLockFile(t *testing.T) {
 
 		// Read the created lock file
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		data, err := os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		// Parse lock file
-		var lockFile LockFile
-		err = yaml.Unmarshal(data, &lockFile)
-		require.NoError(t, err)
+		lockFile := readLockFileFromPath(t, lockPath)
 
 		// Verify structure
 		assert.Equal(t, "1.0", lockFile.Version)
@@ -70,28 +63,20 @@ func TestUpdateLockFile(t *testing.T) {
 
 		// Create initial lock file
 		initialTime := time.Now().Add(-24 * time.Hour)
-		initialLock := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"test-cmd": {
-					Name:        "test-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/test-cmd.git",
-					Resolved:    "https://github.com/user/test-cmd.git@1.0.0",
-					Commit:      "abc123",
-					InstalledAt: initialTime,
-					UpdatedAt:   initialTime,
-				},
-			},
+		initialLock := createBasicLockFile()
+		initialLock.Commands["test-cmd"] = &LockCommand{
+			Name:        "test-cmd",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/test-cmd.git",
+			Resolved:    "https://github.com/user/test-cmd.git@1.0.0",
+			Commit:      "abc123",
+			InstalledAt: initialTime,
+			UpdatedAt:   initialTime,
 		}
 
 		// Write initial lock file
-		data, err := yaml.Marshal(&initialLock)
-		require.NoError(t, err)
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		err = os.WriteFile(lockPath, data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, lockPath, initialLock)
 
 		// Update with new version
 		metadata := &ProjectConfig{
@@ -101,16 +86,11 @@ func TestUpdateLockFile(t *testing.T) {
 		}
 
 		// Call updateLockFile
-		err = updateLockFile(tempDir, "test-cmd", metadata, metadata.Version, "")
+		err := updateLockFile(tempDir, "test-cmd", metadata, metadata.Version, "")
 		require.NoError(t, err)
 
 		// Read updated lock file
-		data, err = os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		var updatedLock LockFile
-		err = yaml.Unmarshal(data, &updatedLock)
-		require.NoError(t, err)
+		updatedLock := readLockFileFromPath(t, lockPath)
 
 		// Verify update
 		cmd := updatedLock.Commands["test-cmd"]
@@ -126,28 +106,20 @@ func TestUpdateLockFile(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create initial lock file with one command
-		initialLock := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"existing-cmd": {
-					Name:        "existing-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/existing-cmd.git",
-					Resolved:    "https://github.com/user/existing-cmd.git@1.0.0",
-					Commit:      "xyz789",
-					InstalledAt: time.Now().Add(-48 * time.Hour),
-					UpdatedAt:   time.Now().Add(-48 * time.Hour),
-				},
-			},
+		initialLock := createBasicLockFile()
+		initialLock.Commands["existing-cmd"] = &LockCommand{
+			Name:        "existing-cmd",
+			Version:     "1.0.0",
+			Source:      "https://github.com/user/existing-cmd.git",
+			Resolved:    "https://github.com/user/existing-cmd.git@1.0.0",
+			Commit:      "xyz789",
+			InstalledAt: time.Now().Add(-48 * time.Hour),
+			UpdatedAt:   time.Now().Add(-48 * time.Hour),
 		}
 
 		// Write initial lock file
-		data, err := yaml.Marshal(&initialLock)
-		require.NoError(t, err)
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		err = os.WriteFile(lockPath, data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, lockPath, initialLock)
 
 		// Add new command
 		metadata := &ProjectConfig{
@@ -156,16 +128,11 @@ func TestUpdateLockFile(t *testing.T) {
 			Repository: "https://github.com/user/new-cmd.git",
 		}
 
-		err = updateLockFile(tempDir, "new-cmd", metadata, metadata.Version, "")
+		err := updateLockFile(tempDir, "new-cmd", metadata, metadata.Version, "")
 		require.NoError(t, err)
 
 		// Read updated lock file
-		data, err = os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		var updatedLock LockFile
-		err = yaml.Unmarshal(data, &updatedLock)
-		require.NoError(t, err)
+		updatedLock := readLockFileFromPath(t, lockPath)
 
 		// Verify both commands exist
 		assert.Len(t, updatedLock.Commands, 2)
@@ -197,13 +164,7 @@ func TestUpdateLockFile(t *testing.T) {
 
 		// Read the created lock file
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		data, err := os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		// Parse lock file
-		var lockFile LockFile
-		err = yaml.Unmarshal(data, &lockFile)
-		require.NoError(t, err)
+		lockFile := readLockFileFromPath(t, lockPath)
 
 		// Verify command
 		cmd := lockFile.Commands["test-cmd"]
@@ -220,28 +181,20 @@ func TestUpdateLockFile(t *testing.T) {
 
 		// Create initial lock file with command under different name
 		initialTime := time.Now().Add(-24 * time.Hour)
-		initialLock := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"my-awesome-cli": {
-					Name:        "my-awesome-cli",
-					Version:     "1.0.0",
-					Source:      "https://github.com/owner/cli-tool.git",
-					Resolved:    "https://github.com/owner/cli-tool.git@1.0.0",
-					Commit:      "abc123",
-					InstalledAt: initialTime,
-					UpdatedAt:   initialTime,
-				},
-			},
+		initialLock := createBasicLockFile()
+		initialLock.Commands["my-awesome-cli"] = &LockCommand{
+			Name:        "my-awesome-cli",
+			Version:     "1.0.0",
+			Source:      "https://github.com/owner/cli-tool.git",
+			Resolved:    "https://github.com/owner/cli-tool.git@1.0.0",
+			Commit:      "abc123",
+			InstalledAt: initialTime,
+			UpdatedAt:   initialTime,
 		}
 
 		// Write initial lock file
-		data, err := yaml.Marshal(&initialLock)
-		require.NoError(t, err)
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		err = os.WriteFile(lockPath, data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, lockPath, initialLock)
 
 		// Update with same repo but different command name
 		metadata := &ProjectConfig{
@@ -250,16 +203,11 @@ func TestUpdateLockFile(t *testing.T) {
 			Repository: "https://github.com/owner/cli-tool.git",
 		}
 
-		err = updateLockFile(tempDir, "new-cli-name", metadata, metadata.Version, "")
+		err := updateLockFile(tempDir, "new-cli-name", metadata, metadata.Version, "")
 		require.NoError(t, err)
 
 		// Read updated lock file
-		data, err = os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		var updatedLock LockFile
-		err = yaml.Unmarshal(data, &updatedLock)
-		require.NoError(t, err)
+		updatedLock := readLockFileFromPath(t, lockPath)
 
 		// Verify old entry is removed
 		assert.Nil(t, updatedLock.Commands["my-awesome-cli"])
@@ -279,35 +227,27 @@ func TestUpdateLockFile(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create initial lock file with multiple commands
-		initialLock := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"tool-one": {
-					Name:        "tool-one",
-					Version:     "1.0.0",
-					Source:      "https://github.com/org/first-repo.git",
-					Resolved:    "https://github.com/org/first-repo.git@1.0.0",
-					InstalledAt: time.Now().Add(-48 * time.Hour),
-					UpdatedAt:   time.Now().Add(-48 * time.Hour),
-				},
-				"tool-two": {
-					Name:        "tool-two",
-					Version:     "1.0.0",
-					Source:      "https://github.com/org/second-repo.git",
-					Resolved:    "https://github.com/org/second-repo.git@1.0.0",
-					InstalledAt: time.Now().Add(-24 * time.Hour),
-					UpdatedAt:   time.Now().Add(-24 * time.Hour),
-				},
-			},
+		initialLock := createBasicLockFile()
+		initialLock.Commands["tool-one"] = &LockCommand{
+			Name:        "tool-one",
+			Version:     "1.0.0",
+			Source:      "https://github.com/org/first-repo.git",
+			Resolved:    "https://github.com/org/first-repo.git@1.0.0",
+			InstalledAt: time.Now().Add(-48 * time.Hour),
+			UpdatedAt:   time.Now().Add(-48 * time.Hour),
+		}
+		initialLock.Commands["tool-two"] = &LockCommand{
+			Name:        "tool-two",
+			Version:     "1.0.0",
+			Source:      "https://github.com/org/second-repo.git",
+			Resolved:    "https://github.com/org/second-repo.git@1.0.0",
+			InstalledAt: time.Now().Add(-24 * time.Hour),
+			UpdatedAt:   time.Now().Add(-24 * time.Hour),
 		}
 
 		// Write initial lock file
-		data, err := yaml.Marshal(&initialLock)
-		require.NoError(t, err)
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		err = os.WriteFile(lockPath, data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, lockPath, initialLock)
 
 		// Update second command with new name
 		metadata := &ProjectConfig{
@@ -316,16 +256,11 @@ func TestUpdateLockFile(t *testing.T) {
 			Repository: "https://github.com/org/second-repo.git",
 		}
 
-		err = updateLockFile(tempDir, "renamed-tool", metadata, metadata.Version, "")
+		err := updateLockFile(tempDir, "renamed-tool", metadata, metadata.Version, "")
 		require.NoError(t, err)
 
 		// Read updated lock file
-		data, err = os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		var updatedLock LockFile
-		err = yaml.Unmarshal(data, &updatedLock)
-		require.NoError(t, err)
+		updatedLock := readLockFileFromPath(t, lockPath)
 
 		// Verify first command unchanged
 		assert.NotNil(t, updatedLock.Commands["tool-one"])
@@ -359,13 +294,7 @@ func TestUpdateLockFile(t *testing.T) {
 
 		// Read the created lock file
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		data, err := os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		// Parse lock file
-		var lockFile LockFile
-		err = yaml.Unmarshal(data, &lockFile)
-		require.NoError(t, err)
+		lockFile := readLockFileFromPath(t, lockPath)
 
 		// Verify command has original version from ccmd.yaml, not install version
 		cmd := lockFile.Commands["test-cmd"]
@@ -397,13 +326,7 @@ func TestUpdateLockFile(t *testing.T) {
 
 		// Read the created lock file
 		lockPath := filepath.Join(tempDir, "ccmd-lock.yaml")
-		data, err := os.ReadFile(lockPath)
-		require.NoError(t, err)
-
-		// Parse lock file
-		var lockFile LockFile
-		err = yaml.Unmarshal(data, &lockFile)
-		require.NoError(t, err)
+		lockFile := readLockFileFromPath(t, lockPath)
 
 		// Verify command has ccmd.yaml version
 		cmd := lockFile.Commands["test-cmd"]
@@ -637,10 +560,7 @@ func TestAddToConfigWithDifferentCommandName(t *testing.T) {
 			Version:    "1.0.0",
 			Repository: "https://github.com/owner/cli-tool.git",
 		}
-		metadataPath := filepath.Join(commandsDir, "ccmd.yaml")
-		data, err := yaml.Marshal(commandMetadata)
-		require.NoError(t, err)
-		err = os.WriteFile(metadataPath, data, 0644)
+		err = writeCommandMetadata(filepath.Join(commandsDir, "ccmd.yaml"), commandMetadata)
 		require.NoError(t, err)
 
 		// Create initial config with the command
@@ -711,10 +631,7 @@ func TestAddToConfigWithDifferentCommandName(t *testing.T) {
 				Version:    "1.0.0",
 				Repository: fmt.Sprintf("https://github.com/%s.git", cmd.repo),
 			}
-			metadataPath := filepath.Join(cmdDir, "ccmd.yaml")
-			data, err := yaml.Marshal(metadata)
-			require.NoError(t, err)
-			err = os.WriteFile(metadataPath, data, 0644)
+			err = writeCommandMetadata(filepath.Join(cmdDir, "ccmd.yaml"), metadata)
 			require.NoError(t, err)
 		}
 

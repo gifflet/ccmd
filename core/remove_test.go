@@ -22,60 +22,37 @@ import (
 
 func TestRemove(t *testing.T) {
 	t.Run("removes command successfully", func(t *testing.T) {
-		tempDir := t.TempDir()
-		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		cleanup := setupTestDir(t)
+		defer cleanup()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"test-cmd": {
-					Name:        "test-cmd",
-					Version:     "1.0.0",
-					Source:      "https://github.com/user/test-cmd.git",
-					Resolved:    "https://github.com/user/test-cmd.git@v1.0.0",
-					Commit:      "abc123",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-				"keep-cmd": {
-					Name:        "keep-cmd",
-					Version:     "2.0.0",
-					Source:      "https://github.com/user/keep-cmd.git",
-					InstalledAt: time.Now(),
-					UpdatedAt:   time.Now(),
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["test-cmd"] = createTestLockCommand("test-cmd", "1.0.0", "https://github.com/user/test-cmd.git")
+		lockFile.Commands["test-cmd"].Resolved = "https://github.com/user/test-cmd.git@v1.0.0"
+		lockFile.Commands["keep-cmd"] = &LockCommand{
+			Name:        "keep-cmd",
+			Version:     "2.0.0",
+			Source:      "https://github.com/user/keep-cmd.git",
+			InstalledAt: time.Now(),
+			UpdatedAt:   time.Now(),
 		}
 
 		// Write lock file
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile("ccmd-lock.yaml", data, 0644)
-		require.NoError(t, err)
+		writeLockFile(t, lockFile)
 
 		// Create command directories and files
-		os.MkdirAll(filepath.Join(".claude", "commands", "test-cmd"), 0755)
-		os.MkdirAll(filepath.Join(".claude", "commands", "keep-cmd"), 0755)
-		os.WriteFile(filepath.Join(".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
-		os.WriteFile(filepath.Join(".claude", "commands", "keep-cmd.md"), []byte("# keep-cmd"), 0644)
+		createCommandStructure(t, "test-cmd")
+		createCommandStructure(t, "keep-cmd")
 
 		// Remove command
-		err = Remove(RemoveOptions{
+		err := Remove(RemoveOptions{
 			Name:  "test-cmd",
 			Force: true,
 		})
 		require.NoError(t, err)
 
 		// Verify command was removed from lock file
-		data, err = os.ReadFile("ccmd-lock.yaml")
-		require.NoError(t, err)
-		var updatedLock LockFile
-		err = yaml.Unmarshal(data, &updatedLock)
-		require.NoError(t, err)
+		updatedLock := readLockFile(t)
 
 		assert.Len(t, updatedLock.Commands, 1)
 		assert.NotNil(t, updatedLock.Commands["keep-cmd"])
@@ -91,29 +68,19 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("returns error when command not found", func(t *testing.T) {
-		tempDir := t.TempDir()
-		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		cleanup := setupTestDir(t)
+		defer cleanup()
 
 		// Create lock file without the command
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"other-cmd": {
-					Name: "other-cmd",
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["other-cmd"] = &LockCommand{
+			Name: "other-cmd",
 		}
 
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile("ccmd-lock.yaml", data, 0644)
-		require.NoError(t, err)
+		writeLockFile(t, lockFile)
 
 		// Try to remove non-existent command
-		err = Remove(RemoveOptions{
+		err := Remove(RemoveOptions{
 			Name: "non-existent",
 		})
 		assert.Error(t, err)
@@ -122,10 +89,8 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("returns error when no commands installed", func(t *testing.T) {
-		tempDir := t.TempDir()
-		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		cleanup := setupTestDir(t)
+		defer cleanup()
 
 		// No lock file exists
 		err := Remove(RemoveOptions{
@@ -136,91 +101,57 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("handles missing command directory gracefully", func(t *testing.T) {
-		tempDir := t.TempDir()
-		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		cleanup := setupTestDir(t)
+		defer cleanup()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"test-cmd": {
-					Name:   "test-cmd",
-					Source: "https://github.com/user/test-cmd.git",
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["test-cmd"] = &LockCommand{
+			Name:   "test-cmd",
+			Source: "https://github.com/user/test-cmd.git",
 		}
 
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile("ccmd-lock.yaml", data, 0644)
-		require.NoError(t, err)
+		writeLockFile(t, lockFile)
 
 		// Create only .md file, no command directory
 		os.MkdirAll(filepath.Join(".claude", "commands"), 0755)
 		os.WriteFile(filepath.Join(".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
 
 		// Remove should still work
-		err = Remove(RemoveOptions{
+		err := Remove(RemoveOptions{
 			Name:  "test-cmd",
 			Force: true,
 		})
 		require.NoError(t, err)
 
 		// Verify command was removed from lock file
-		data, err = os.ReadFile("ccmd-lock.yaml")
-		require.NoError(t, err)
-		var updatedLock LockFile
-		err = yaml.Unmarshal(data, &updatedLock)
-		require.NoError(t, err)
+		updatedLock := readLockFile(t)
 
 		assert.Len(t, updatedLock.Commands, 0)
 		assert.False(t, fileExists(filepath.Join(".claude", "commands", "test-cmd.md")))
 	})
 
 	t.Run("updates ccmd.yaml when requested", func(t *testing.T) {
-		tempDir := t.TempDir()
-		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		cleanup := setupTestDir(t)
+		defer cleanup()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"test-cmd": {
-					Name:   "test-cmd",
-					Source: "https://github.com/user/test-cmd.git",
-				},
-			},
+		lockFile := createBasicLockFile()
+		lockFile.Commands["test-cmd"] = &LockCommand{
+			Name:   "test-cmd",
+			Source: "https://github.com/user/test-cmd.git",
 		}
 
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile("ccmd-lock.yaml", data, 0644)
-		require.NoError(t, err)
+		writeLockFile(t, lockFile)
 
 		// Create ccmd.yaml with the command
-		config := map[string]interface{}{
-			"commands": []interface{}{
-				"user/test-cmd@v1.0.0",
-				"user/keep-cmd",
-			},
-		}
-		configData, err := yaml.Marshal(config)
-		require.NoError(t, err)
-		err = os.WriteFile("ccmd.yaml", configData, 0644)
-		require.NoError(t, err)
+		writeConfig(t, []string{"user/test-cmd@v1.0.0", "user/keep-cmd"})
 
 		// Create command structure
-		os.MkdirAll(filepath.Join(".claude", "commands", "test-cmd"), 0755)
-		os.WriteFile(filepath.Join(".claude", "commands", "test-cmd.md"), []byte("# test-cmd"), 0644)
+		createCommandStructure(t, "test-cmd")
 
 		// Remove with UpdateFiles
-		err = Remove(RemoveOptions{
+		err := Remove(RemoveOptions{
 			Name:        "test-cmd",
 			Force:       true,
 			UpdateFiles: true,
@@ -228,7 +159,7 @@ func TestRemove(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify ccmd.yaml was updated
-		configData, err = os.ReadFile("ccmd.yaml")
+		configData, err := os.ReadFile("ccmd.yaml")
 		require.NoError(t, err)
 		var updatedConfig map[string]interface{}
 		err = yaml.Unmarshal(configData, &updatedConfig)
@@ -251,6 +182,7 @@ func TestRemoveFromConfig(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create config file
+		configPath := filepath.Join(tempDir, "ccmd.yaml")
 		config := map[string]interface{}{
 			"commands": []interface{}{
 				"https://github.com/user/test-cmd.git@v1.0.0",
@@ -259,7 +191,6 @@ func TestRemoveFromConfig(t *testing.T) {
 		}
 		data, err := yaml.Marshal(config)
 		require.NoError(t, err)
-		configPath := filepath.Join(tempDir, "ccmd.yaml")
 		err = os.WriteFile(configPath, data, 0644)
 		require.NoError(t, err)
 
@@ -351,20 +282,12 @@ func TestListCommands(t *testing.T) {
 		tempDir := t.TempDir()
 
 		// Create lock file
-		lockFile := LockFile{
-			Version:         "1.0",
-			LockfileVersion: 1,
-			Commands: map[string]*LockCommand{
-				"cmd1": {Name: "cmd1"},
-				"cmd2": {Name: "cmd2"},
-				"cmd3": {Name: "cmd3"},
-			},
-		}
+		lockFile := createBasicLockFile()
+		lockFile.Commands["cmd1"] = &LockCommand{Name: "cmd1"}
+		lockFile.Commands["cmd2"] = &LockCommand{Name: "cmd2"}
+		lockFile.Commands["cmd3"] = &LockCommand{Name: "cmd3"}
 
-		data, err := yaml.Marshal(&lockFile)
-		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "ccmd-lock.yaml"), data, 0644)
-		require.NoError(t, err)
+		writeLockFileToPath(t, filepath.Join(tempDir, "ccmd-lock.yaml"), lockFile)
 
 		// Create command structures
 		for _, cmd := range []string{"cmd1", "cmd2", "cmd3"} {
