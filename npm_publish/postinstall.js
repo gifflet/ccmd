@@ -150,12 +150,11 @@ async function install(callback) {
         src = `./dist/ccmd-${PLATFORM_MAPPING[process.platform]}-amd64_${PLATFORM_MAPPING[process.platform]}_amd64/${opts.binName}`;
     }
 
-    if (PLATFORM_MAPPING[process.platform] === "windows") {
-        let cmd = `copy ${src} ${opts.binPath}/${opts.binName}`
-        cmd = cmd.replace(/\//g, "\\")
-        await execShellCommand(cmd);
-    } else {
-        await execShellCommand(`cp ${src} ${opts.binPath}/${opts.binName}`);
+    const dest = path.join(opts.binPath, opts.binName);
+    try {
+        await fs.promises.copyFile(src, dest);
+    } catch (err) {
+        return callback(`Failed to copy binary: ${err.message}`);
     }
 
     await verifyAndPlaceBinary(opts.binName, opts.binPath, callback);
@@ -183,22 +182,6 @@ var actions = {
     "install": install,
     "uninstall": uninstall
 };
-/**
- * Executes a shell command and return it as a Promise.
- * @param cmd {string}
- * @return {Promise<string>}
- */
-function execShellCommand(cmd) {
-    const exec = require('child_process').exec;
-    return new Promise((resolve, reject) => {
-        exec(cmd, (error, stdout, stderr) => {
-            if (error) {
-                console.warn(error);
-            }
-            resolve(stdout ? stdout : stderr);
-        });
-    });
-}
 
 var argv = process.argv;
 if (argv && argv.length > 2) {
