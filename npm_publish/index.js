@@ -22,7 +22,7 @@ let fullPath = null;
 /**
  * @return {Promise<string>}
  */
-export async function findCcmdBinary() {
+async function findCcmdBinary() {
   if (fullPath) {
     // return the previously cached value
     return fullPath;
@@ -65,6 +65,8 @@ async function main() {
   });
 }
 
+
+module.exports = { findCcmdBinary };
 
 if (require.main === module) {
   (async () => await main())();
