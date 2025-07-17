@@ -1,0 +1,48 @@
+{
+  "name": "@gifflet/ccmd",
+  "version": "local-build",
+  "description": "Simple command-line tool for managing custom commands in Claude Code. Install and share commands from Git repositories with the ease of a package manager.",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node postinstall.js install",
+    "preuninstall": "node postinstall.js uninstall"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gifflet/ccmd.git"
+  },
+  "author": "gifflet",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gifflet/ccmd/issues"
+  },
+  "homepage": "https://github.com/gifflet/ccmd#readme",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "command-manager",
+    "cli",
+    "package-manager"
+  ],
+  "bin": {
+    "ccmd": "./index.js"
+  },
+  "goBinary": {
+    "name": "ccmd",
+    "path": "./bin"
+  },
+  "files": [
+    "dist",
+    "postinstall.js",
+    "index.js"
+  ],
+  "dependencies": {
+    "mkdirp": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

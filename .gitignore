@@ -93,3 +93,5 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
+
+npm_publish/package-lock.json

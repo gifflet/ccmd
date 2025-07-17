@@ -21,7 +21,7 @@ BUILD_DIR := ./dist
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)"
 
 # Target OS and architectures
-PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64
+PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 windows/amd64
 
 .PHONY: all build clean test deps fmt lint vet build-all release help
 
@@ -44,6 +44,9 @@ endif
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
+	@rm -rf npm_publish/bin
+	@rm -rf npm_publish/dist
+	@rm -rf npm_publish/node_modules
 	$(GOCLEAN)
 
 # Run tests
@@ -114,6 +117,19 @@ release: build-all compress-artifacts
 	@echo "Release artifacts created in $(BUILD_DIR)/"
 	@ls -la $(BUILD_DIR)/
 
+# Prepare npm package for publishing
+npm-prepare-publish: build-all
+	@echo "Preparing npm package..."
+	@mkdir -p ./npm_publish/dist/ccmd-darwin-amd64_darwin_amd64
+	@mkdir -p ./npm_publish/dist/ccmd-darwin-arm64_darwin_arm64
+	@mkdir -p ./npm_publish/dist/ccmd-linux-amd64_linux_amd64
+	@mkdir -p ./npm_publish/dist/ccmd-windows-amd64_windows_amd64
+	@cp $(BUILD_DIR)/ccmd-darwin-amd64 ./npm_publish/dist/ccmd-darwin-amd64_darwin_amd64/ccmd
+	@cp $(BUILD_DIR)/ccmd-darwin-arm64 ./npm_publish/dist/ccmd-darwin-arm64_darwin_arm64/ccmd
+	@cp $(BUILD_DIR)/ccmd-windows-amd64.exe ./npm_publish/dist/ccmd-windows-amd64_windows_amd64/ccmd.exe
+	@cp $(BUILD_DIR)/ccmd-linux-amd64 ./npm_publish/dist/ccmd-linux-amd64_linux_amd64/ccmd
+	@echo "Package ready for publishing"
+
 # Install locally
 install: build
 	@echo "Installing $(BINARY_NAME)..."
@@ -160,6 +176,7 @@ help:
 	@echo "  make build         - Build for current platform"
 	@echo "  make build-all     - Build for all platforms"
 	@echo "  make release       - Build and compress all platforms"
+	@echo "  make npm-prepare-publish - Prepare npm package for publishing"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make test          - Run tests"
 	@echo "  make deps          - Download dependencies"

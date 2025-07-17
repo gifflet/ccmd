@@ -63,6 +63,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish to NPM
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: |
+          make npm-prepare-publish
+          cp README.md npm_publish/
+          echo "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> ~/.npmrc
+          cd npm_publish
+          sed -i 's/"local-build"/"${{ github.ref_name }}"/' package.json
+          npm install
+          npm publish
+
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
