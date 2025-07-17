@@ -8,6 +8,8 @@
 
 Simple command-line tool for managing custom commands in Claude Code. Install and share commands from Git repositories with the ease of a package manager.
 
+<img src="./docs/demo.gif" />
+
 ## Why ccmd?
 
 Managing custom Claude Code commands across multiple projects can be challenging. ccmd solves this by treating commands as versioned, reusable packages:
