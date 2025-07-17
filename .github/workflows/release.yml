@@ -71,7 +71,8 @@ jobs:
           cp README.md npm_publish/
           echo "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> ~/.npmrc
           cd npm_publish
-          sed -i 's/"local-build"/"${{ github.ref_name }}"/' package.json
+          VERSION="${{ github.ref_name }}"
+          sed -i "s/\"local-build\"/\"${VERSION#v}\"/" package.json
           npm install
           npm publish
 
