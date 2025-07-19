@@ -46,7 +46,7 @@ jobs:
 
       - name: Build site
         working-directory: hugo-docs
-        run: hugo --minify --baseURL https://gifflet.github.io/ccmd/
+        run: hugo --minify --baseURL https://gifflet.is-a.dev/ccmd/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
