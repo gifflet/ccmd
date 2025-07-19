@@ -1,0 +1,397 @@
+// Custom styles for ccmd documentation
+
+// Import dark mode code highlighting
+@import 'td/code-dark';
+
+// Fix code blocks in dark mode specifically
+[data-bs-theme="dark"] .highlight pre {
+  background-color: var(--td-pre-bg) !important;
+}
+
+// ============================================
+// Navigation Overlap and Scroll Fixes
+// ============================================
+
+// Add scroll padding to prevent content from hiding under fixed navbar
+html {
+  scroll-padding-top: 5.5rem; // Match navbar height + buffer
+}
+
+// Ensure navbar has proper z-index to stay above content
+.td-navbar {
+  z-index: 1030; // Bootstrap's standard for fixed headers
+}
+
+// Mobile adjustments
+@media (max-width: 767px) {
+  html {
+    scroll-padding-top: 4rem; // Smaller offset for mobile
+  }
+}
+
+// Additional fix for sidebar navigation links to ensure proper spacing
+.td-sidebar-nav {
+  // Ensure sidebar links don't get covered
+  .td-sidebar-link {
+    scroll-margin-top: 5.5rem;
+  }
+}
+
+// Fix for anchor links within content
+.td-content {
+  h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
+    scroll-margin-top: 5.5rem;
+  }
+}
+
+// ============================================
+// Dark Mode Hover Styles for Links and Menus
+// ============================================
+
+// General links hover in dark mode
+[data-bs-theme="dark"] a:hover,
+html[data-bs-theme="dark"] a:hover,
+.td-content a:not([class]):hover {
+  color: #66d9ef !important; // Bright cyan blue
+  text-decoration: underline;
+  transition: color 0.2s ease-in-out;
+}
+
+// Sidebar navigation links
+[data-bs-theme="dark"] .td-sidebar-nav a:hover,
+html[data-bs-theme="dark"] .td-sidebar-nav a:hover {
+  color: #66d9ef !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease-in-out;
+}
+
+// Active sidebar items
+[data-bs-theme="dark"] .td-sidebar-nav .td-sidebar-link.td-sidebar-link__page.active,
+html[data-bs-theme="dark"] .td-sidebar-nav .active > a {
+  background-color: rgba(102, 217, 239, 0.1) !important;
+  color: #66d9ef !important;
+}
+
+// Navbar links
+[data-bs-theme="dark"] .td-navbar .nav-link:hover,
+html[data-bs-theme="dark"] .td-navbar .nav-link:hover,
+[data-bs-theme="dark"] .navbar-nav .nav-link:hover {
+  color: #66d9ef !important;
+  transition: color 0.2s ease-in-out;
+}
+
+// Dropdown menu items
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item:hover,
+html[data-bs-theme="dark"] .dropdown-menu .dropdown-item:hover {
+  background-color: rgba(102, 217, 239, 0.15) !important;
+  color: #66d9ef !important;
+}
+
+// Table of Contents (TOC) links
+[data-bs-theme="dark"] .td-toc a:hover,
+html[data-bs-theme="dark"] .td-toc a:hover,
+[data-bs-theme="dark"] #TableOfContents a:hover {
+  color: #66d9ef !important;
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+// Breadcrumb links
+[data-bs-theme="dark"] .td-breadcrumbs a:hover,
+html[data-bs-theme="dark"] .breadcrumb-item a:hover {
+  color: #66d9ef !important;
+  text-decoration: none;
+}
+
+// Footer links
+[data-bs-theme="dark"] .td-footer a:hover,
+html[data-bs-theme="dark"] footer a:hover {
+  color: #66d9ef !important;
+  text-decoration: underline;
+}
+
+// Button links
+[data-bs-theme="dark"] .btn-link:hover,
+html[data-bs-theme="dark"] .btn-link:hover {
+  color: #66d9ef !important;
+}
+
+// Card links
+[data-bs-theme="dark"] .card a:hover,
+html[data-bs-theme="dark"] .td-card a:hover {
+  color: #66d9ef !important;
+}
+
+// Pagination links
+[data-bs-theme="dark"] .pagination .page-link:hover,
+html[data-bs-theme="dark"] .page-link:hover {
+  background-color: rgba(102, 217, 239, 0.15) !important;
+  border-color: #66d9ef !important;
+  color: #66d9ef !important;
+}
+
+// Code links (inline code that are links)
+[data-bs-theme="dark"] code a:hover,
+html[data-bs-theme="dark"] a code:hover {
+  color: #66d9ef !important;
+}
+
+// ============================================
+// Navbar Icon Links Styling
+// ============================================
+
+// Style for navbar icon links
+.td-navbar .navbar-nav .nav-link {
+  &[href*="github.com"],
+  &[href*="npmjs.com"] {
+    padding: 0.0rem 0.0rem;
+    
+    i {
+      font-size: 1.8rem;
+      transition: all 0.2s ease-in-out;
+    }
+    
+    &:hover i {
+      color: #66d9ef;
+    }
+  }
+}
+
+// Dark mode navbar icon styling
+[data-bs-theme="dark"] .td-navbar .navbar-nav .nav-link {
+  &[href*="github.com"] i,
+  &[href*="npmjs.com"] i {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  &[href*="github.com"]:hover i,
+  &[href*="npmjs.com"]:hover i {
+    color: #66d9ef !important;
+  }
+}
+
+// Light mode navbar icon styling
+.td-navbar .navbar-nav .nav-link {
+  &[href*="github.com"] i,
+  &[href*="npmjs.com"] i {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  &[href*="github.com"]:hover i,
+  &[href*="npmjs.com"]:hover i {
+    color: #ffffff;
+  }
+}
+
+// Ensure proper spacing between navbar items
+.td-navbar .navbar-nav {
+  align-items: center;
+  
+  .nav-item {
+    margin-left: 0.5rem;
+  }
+}
+
+// Mobile adjustments for navbar icons
+@media (max-width: 767px) {
+  .td-navbar .navbar-nav .nav-link {
+    &[href*="github.com"],
+    &[href*="npmjs.com"] {
+      padding: 0.5rem;
+      
+      i {
+        font-size: 1.3rem;
+      }
+    }
+  }
+}
+
+// ============================================
+// Typography and Font Size Standards
+// ============================================
+
+// Base font size system
+:root {
+  --base-font-size: 16px;
+  --small-font-size: 14px;
+  --large-font-size: 18px;
+}
+
+// Mobile font size adjustments
+@media (max-width: 767px) {
+  :root {
+    --base-font-size: 15px;
+    --small-font-size: 13px;
+    --large-font-size: 17px;
+  }
+}
+
+// Content typography
+.td-content {
+  font-size: var(--base-font-size);
+  line-height: 1.6;
+  
+  // Paragraph and list items
+  p, li, td {
+    font-size: var(--base-font-size);
+    line-height: 1.6;
+  }
+  
+  // Heading hierarchy
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  
+  h2 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  
+  h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  h5 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  
+  // Mobile heading sizes
+  @media (max-width: 767px) {
+    h1 { font-size: 1.875rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+    h4 { font-size: 1.125rem; }
+    h5 { font-size: 1rem; }
+    h6 { font-size: 0.9375rem; }
+  }
+  
+  // Code typography
+  code {
+    font-size: 0.875em;
+  }
+  
+  pre code {
+    font-size: var(--small-font-size);
+    line-height: 1.5;
+  }
+  
+  // Block quotes
+  blockquote {
+    font-size: var(--base-font-size);
+    font-style: italic;
+  }
+}
+
+// Sidebar typography
+.td-sidebar-nav {
+  font-size: var(--small-font-size);
+  
+  .td-sidebar-link {
+    font-size: var(--small-font-size);
+    line-height: 1.5;
+  }
+  
+  // Section headers
+  .td-sidebar-nav__section-title {
+    font-size: var(--base-font-size);
+    font-weight: 600;
+  }
+}
+
+// Breadcrumb typography
+.td-breadcrumbs {
+  font-size: var(--small-font-size);
+}
+
+// Table of Contents
+.td-toc {
+  font-size: var(--small-font-size);
+  line-height: 1.5;
+  
+  #TableOfContents {
+    ul {
+      font-size: var(--small-font-size);
+    }
+  }
+}
+
+// Footer typography
+.td-footer {
+  font-size: var(--small-font-size);
+  
+  .td-footer__links {
+    font-size: var(--small-font-size);
+  }
+}
+
+// ============================================
+// Content Spacing and Readability
+// ============================================
+
+// Improved spacing between content elements
+.td-content {
+  > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  h2, h3, h4, h5, h6 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  h1 {
+    margin-bottom: 1.5rem;
+  }
+  
+  // List spacing
+  ul, ol {
+    margin-bottom: 1rem;
+    
+    li + li {
+      margin-top: 0.25rem;
+    }
+  }
+  
+  // Code block spacing
+  pre {
+    margin: 1.5rem 0;
+  }
+}
+
+// Maximum line width for better readability
+.td-main main {
+  .td-content > section {
+    max-width: 80ch;
+    
+    @media (min-width: 1400px) {
+      max-width: 90ch;
+    }
+  }
+  
+  // Full width for tables and code blocks
+  .td-content {
+    table, pre {
+      max-width: 100%;
+    }
+  }
+}

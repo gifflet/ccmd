@@ -1,0 +1,11 @@
+{
+  "name": "ccmd-docs",
+  "version": "1.0.0",
+  "description": "Documentation for ccmd - Claude Command Manager",
+  "private": true,
+  "devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "postcss-cli": "^11.0.0"
+  }
+}

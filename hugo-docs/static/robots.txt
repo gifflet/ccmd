@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gifflet.github.io/ccmd/sitemap.xml
