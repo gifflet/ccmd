@@ -148,7 +148,7 @@ enable = false
   desc = "Discussion and help from your fellow users"
 [[params.links.user]]
   name ="Twitter"
-  url = "https://twitter.com/gifflet"
+  url = "https://twitter.com/gifflet_"
   icon = "fab fa-twitter"
   desc = "Follow us on Twitter to get the latest news!"
 [[params.links.user]]
