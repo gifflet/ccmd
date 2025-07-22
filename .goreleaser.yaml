@@ -51,26 +51,47 @@ checksum:
 
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
       - '^chore:'
       - '^style:'
-      - '^refactor:'
-      - Merge pull request
-      - Merge branch
+      - 'Merge pull request'
+      - 'Merge branch'
+      - 'merge conflict'
+      - '^WIP:'
   groups:
-    - title: 'Features'
+    - title: '🚀 Features'
       regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
       order: 0
-    - title: 'Bug fixes'
+    - title: '🐛 Bug Fixes'
       regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
       order: 1
-    - title: 'Performance improvements'
+    - title: '⚡ Performance Improvements'
       regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
       order: 2
-    - title: 'Other'
+    - title: '🔨 Build System'
+      regexp: '^.*?build(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: '👷 CI/CD'
+      regexp: '^.*?ci(\([[:word:]]+\))??!?:.+$'
+      order: 4
+    - title: '📚 Documentation'
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 5
+    - title: '🔧 Refactoring'
+      regexp: '^.*?refactor(\([[:word:]]+\))??!?:.+$'
+      order: 6
+    - title: '🧪 Tests'
+      regexp: '^.*?test(\([[:word:]]+\))??!?:.+$'
+      order: 7
+    - title: '📦 Dependencies'
+      regexp: '^.*?(deps|dependency)(\([[:word:]]+\))??!?:.+$'
+      order: 8
+    - title: '💥 Breaking Changes'
+      regexp: '^.*?(\w+)(\([[:word:]]+\))??!:.+$'
+      order: -1
+    - title: '🔄 Other Changes'
       order: 999
 
 snapshot:
@@ -82,16 +103,45 @@ release:
     name: ccmd
   name_template: "v{{.Version}}"
   header: |
-    ## ccmd {{.Version}} ({{.Date}})
+    # 🎉 ccmd {{.Version}}
     
-    Welcome to this new release!
+    ## What's Changed
+
   footer: |
-    ## Thanks!
     
-    Those were the changes on {{ .Tag }}!
+    ---
+    
+    ## 📥 Installation
+    
+    ### Using npm
+    ```bash
+    npm install -g @gifflet/ccmd@{{.Version}}
+    ```
+    
+    ### Using Go
+    ```bash
+    go install github.com/gifflet/ccmd/cmd/ccmd@{{.Tag}}
+    ```
+    
+    ### Download Binary
+    Download the appropriate binary for your platform from the [release assets](https://github.com/gifflet/ccmd/releases/tag/{{.Tag}}) above.
+    
+    ## 📖 Documentation
+    
+    - [Getting Started](https://github.com/gifflet/ccmd#getting-started)
+    - [Commands Reference](https://github.com/gifflet/ccmd/blob/main/docs/commands.md)
+    - [Contributing Guide](https://github.com/gifflet/ccmd/blob/main/CONTRIBUTING.md)
+    
+    ## 💬 Support
+    
+    If you encounter any issues or have questions:
+    - 🐛 [Report a Bug](https://github.com/gifflet/ccmd/issues/new?template=bug_report.md)
+    - 💬 [Start a Discussion](https://github.com/gifflet/ccmd/discussions)
+    
+    Thank you for using ccmd! 🙏
   draft: false
   prerelease: auto
-  mode: append
+  mode: replace
 
 sboms:
   - artifacts: archive
