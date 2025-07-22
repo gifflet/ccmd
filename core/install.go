@@ -35,11 +35,11 @@ type InstallOptions struct {
 }
 
 // Install installs a command from a Git repository
-func Install(_ context.Context, opts InstallOptions) error {
+func Install(_ context.Context, opts InstallOptions) (string, error) {
 	log := logger.New()
 
 	if opts.Repository == "" {
-		return errors.InvalidInput("repository URL is required")
+		return "", errors.InvalidInput("repository URL is required")
 	}
 
 	repo, version := ParseRepositorySpec(opts.Repository)
@@ -53,19 +53,19 @@ func Install(_ context.Context, opts InstallOptions) error {
 
 	projectRoot, err := findProjectRoot()
 	if err != nil {
-		return errors.FileError("find project root", "", err)
+		return "", errors.FileError("find project root", "", err)
 	}
 
 	ccmdDir := filepath.Join(projectRoot, ".claude")
 	commandsDir := filepath.Join(ccmdDir, "commands")
 
 	if err := os.MkdirAll(commandsDir, 0755); err != nil {
-		return errors.FileError("create commands directory", commandsDir, err)
+		return "", errors.FileError("create commands directory", commandsDir, err)
 	}
 
 	tempDir, err := os.MkdirTemp("", "ccmd-install-*")
 	if err != nil {
-		return errors.FileError("create temp directory", "", err)
+		return "", errors.FileError("create temp directory", "", err)
 	}
 	defer os.RemoveAll(tempDir)
 
@@ -75,13 +75,13 @@ func Install(_ context.Context, opts InstallOptions) error {
 		cloneVersion = opts.Commit
 	}
 	if err := gitClone(repoURL, tempDir, cloneVersion); err != nil {
-		return errors.GitError("clone", err)
+		return "", errors.GitError("clone", err)
 	}
 
 	metadataPath := filepath.Join(tempDir, "ccmd.yaml")
 	metadata, err := readCommandMetadata(metadataPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	commandName := opts.Name
@@ -93,17 +93,17 @@ func Install(_ context.Context, opts InstallOptions) error {
 	}
 
 	if err := validateCommandName(commandName); err != nil {
-		return err
+		return "", err
 	}
 
 	targetRepoPath := ExtractRepoPath(repoURL)
 	existingCommand, err := findExistingCommandByRepo(projectRoot, targetRepoPath)
 	if err != nil {
-		return errors.FileError("check existing commands", "", err)
+		return "", errors.FileError("check existing commands", "", err)
 	}
 
 	if existingCommand != "" && !opts.Force {
-		return errors.AlreadyExists(fmt.Sprintf(
+		return "", errors.AlreadyExists(fmt.Sprintf(
 			"repository already installed as command %q, use --force to reinstall",
 			existingCommand))
 	}
@@ -113,7 +113,7 @@ func Install(_ context.Context, opts InstallOptions) error {
 	if opts.Force {
 		output.PrintInfof("Removing previous installation %q...", existingCommand)
 		if err := removeCommandFiles(projectRoot, existingCommand); err != nil {
-			return err
+			return "", err
 		}
 	}
 
@@ -121,7 +121,7 @@ func Install(_ context.Context, opts InstallOptions) error {
 
 	output.PrintInfof("Installing command %q...", commandName)
 	if err := copyDirectory(tempDir, destDir); err != nil {
-		return errors.FileError("copy command files", destDir, err)
+		return "", errors.FileError("copy command files", destDir, err)
 	}
 
 	originalVersion := metadata.Version
@@ -131,7 +131,7 @@ func Install(_ context.Context, opts InstallOptions) error {
 
 	if err := writeCommandMetadata(filepath.Join(destDir, "ccmd.yaml"), metadata); err != nil {
 		os.RemoveAll(destDir)
-		return err
+		return "", err
 	}
 
 	standalonePath := filepath.Join(ccmdDir, "commands", commandName+".md")
@@ -161,7 +161,7 @@ func Install(_ context.Context, opts InstallOptions) error {
 		output.PrintSuccessf("Command %q installed successfully", commandName)
 	}
 
-	return nil
+	return commandName, nil
 }
 
 // InstallFromConfig installs all commands from project's ccmd.yaml
@@ -205,7 +205,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		}
 
 		output.PrintInfof("Installing %s...", cmdSpec)
-		if err := Install(ctx, opts); err != nil {
+		if _, err := Install(ctx, opts); err != nil {
 			installErrors = append(installErrors, fmt.Errorf("%s: %w", repo, err))
 			output.PrintErrorf("Failed to install %s: %v", repo, err)
 		}

@@ -30,7 +30,7 @@ func TestInstallCommandBehavior(t *testing.T) {
 			Repository: "",
 		}
 
-		err := core.Install(context.Background(), opts)
+		_, err := core.Install(context.Background(), opts)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "repository URL is required")
 	})
@@ -146,7 +146,7 @@ func TestInstallCommandErrorCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := core.Install(context.Background(), tc.opts)
+			_, err := core.Install(context.Background(), tc.opts)
 
 			if tc.errContains != "" {
 				require.Error(t, err)

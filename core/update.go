@@ -104,7 +104,7 @@ func updateAllCommands(ctx context.Context, checkOnly, force bool) (*UpdateResul
 			Force:      true,
 		}
 
-		if err := Install(ctx, opts); err != nil {
+		if _, err := Install(ctx, opts); err != nil {
 			output.PrintErrorf("Failed to update %s: %v", cmd.Name, err)
 			result.FailedCount++
 		} else {
@@ -242,7 +242,7 @@ func updateSingleCommand(ctx context.Context, name string, checkOnly, force bool
 		Force:      true,
 	}
 
-	if err := Install(ctx, opts); err != nil {
+	if _, err := Install(ctx, opts); err != nil {
 		result.FailedCount = 1
 		return result, fmt.Errorf("failed to update: %w", err)
 	}

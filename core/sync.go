@@ -130,7 +130,7 @@ func Sync(ctx context.Context, opts SyncOptions) (*SyncResult, error) {
 			Force:      false,
 		}
 
-		if err := Install(ctx, installOpts); err != nil {
+		if _, err := Install(ctx, installOpts); err != nil {
 			result.Failed = append(result.Failed, SyncError{
 				Command:   cmd.Repo,
 				Operation: "install",
