@@ -12,7 +12,6 @@ package install
 import (
 	"context"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -72,19 +71,9 @@ Examples:
 				Force:      force,
 			}
 
-			if err := core.Install(ctx, opts); err != nil {
+			commandName, err := core.Install(ctx, opts)
+			if err != nil {
 				return err
-			}
-
-			// Extract command name for usage info
-			commandName := name
-			if commandName == "" {
-				repo, _ := core.ParseRepositorySpec(args[0])
-				path := core.ExtractRepoPath(core.NormalizeRepositoryURL(repo))
-				parts := strings.Split(path, "/")
-				if len(parts) > 0 {
-					commandName = parts[len(parts)-1]
-				}
 			}
 
 			output.PrintInfof("\nTo use the command, run:")
