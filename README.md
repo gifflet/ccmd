@@ -3,6 +3,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8.svg)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gifflet/ccmd)](https://goreportcard.com/report/github.com/gifflet/ccmd)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gifflet_ccmd&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gifflet_ccmd)
 [![NPM](https://nodei.co/npm/@gifflet/ccmd.svg?style=mini)](https://www.npmjs.com/package/@gifflet/ccmd)
 [![Sponsor](https://img.shields.io/badge/sponsor-30363D?logo=GitHub-Sponsors&color=5c5c5c)](https://github.com/sponsors/gifflet)
 
