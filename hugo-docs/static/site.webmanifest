@@ -1,0 +1,13 @@
+{
+  "name": "ccmd - Claude Command Manager",
+  "short_name": "ccmd",
+  "description": "A package manager for Claude Code slash commands. Install, share, and manage AI development tools with npm-like simplicity.",
+  "start_url": "/ccmd/",
+  "scope": "/ccmd/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#66d9ef",
+  "lang": "en-US",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": []
+}

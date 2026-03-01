@@ -95,3 +95,7 @@ node_modules/
 *.sw?
 
 npm_publish/package-lock.json
+
+# hugo
+
+public/

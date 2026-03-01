@@ -1,0 +1,55 @@
+{{/* Web App Manifest */}}
+<link rel="manifest" href="{{ "site.webmanifest" | absURL }}">
+
+{{/* Theme color for mobile browsers */}}
+<meta name="theme-color" content="#66d9ef">
+
+{{/* Canonical URL */}}
+<link rel="canonical" href="{{ .Permalink }}">
+
+{{/* JSON-LD Structured Data */}}
+{{ if .IsHome }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ccmd",
+  "alternateName": "Claude Command Manager",
+  "description": {{ site.Params.description | jsonify }},
+  "url": {{ site.BaseURL | jsonify }},
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": {{ site.Params.author | jsonify }}
+  },
+  "codeRepository": "https://github.com/gifflet/ccmd",
+  "license": "https://github.com/gifflet/ccmd/blob/main/LICENSE",
+  "keywords": {{ site.Params.keywords | jsonify }}
+}
+</script>
+{{ else }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": {{ .Title | jsonify }},
+  "description": {{ or .Description site.Params.description | jsonify }},
+  "url": {{ .Permalink | jsonify }},
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "ccmd documentation",
+    "url": {{ site.BaseURL | jsonify }}
+  },
+  "author": {
+    "@type": "Person",
+    "name": {{ site.Params.author | jsonify }}
+  }
+}
+</script>
+{{ end }}
