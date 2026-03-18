@@ -60,8 +60,8 @@ func runList(long bool) error {
 	}
 
 	if len(details) == 0 {
-		output.PrintInfof("No commands installed yet.")
-		output.PrintInfof("Use 'ccmd install' to install commands.")
+		output.PrintInfof("No commands or plugins installed yet.")
+		output.PrintInfof("Use 'ccmd install' to install commands or plugins.")
 		return nil
 	}
 
@@ -91,20 +91,22 @@ func runList(long bool) error {
 }
 
 func printSimpleList(commands []core.CommandDetail) {
-	output.PrintInfof("Found %d command(s) managed by ccmd:\n", len(commands))
+	output.PrintInfof("Found %d item(s) managed by ccmd:\n", len(commands))
 
 	// Define column widths
 	const (
 		nameWidth        = 20
 		versionWidth     = 10
+		typeWidth        = 9
 		descriptionWidth = 40
 		updatedWidth     = 20
 	)
 
 	// Print header
-	header := fmt.Sprintf("%-*s %-*s %-*s %-*s",
+	header := fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s",
 		nameWidth, "NAME",
 		versionWidth, "VERSION",
+		typeWidth, "TYPE",
 		descriptionWidth, "DESCRIPTION",
 		updatedWidth, "UPDATED")
 	output.Printf(header)
@@ -130,6 +132,12 @@ func printSimpleList(commands []core.CommandDetail) {
 			version = version[:versionWidth-3] + "..."
 		}
 
+		// Format type
+		cmdType := cmd.Type
+		if cmdType == "" {
+			cmdType = "command"
+		}
+
 		// Format description
 		description := cmd.Description
 		if description == "" {
@@ -146,9 +154,10 @@ func printSimpleList(commands []core.CommandDetail) {
 		}
 
 		// Print row
-		row := fmt.Sprintf("%-*s %-*s %-*s %-*s",
+		row := fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s",
 			nameWidth, name,
 			versionWidth, version,
+			typeWidth, cmdType,
 			descriptionWidth, description,
 			updatedWidth, updated)
 		output.Printf(row)
@@ -156,7 +165,7 @@ func printSimpleList(commands []core.CommandDetail) {
 }
 
 func printLongList(commands []core.CommandDetail) {
-	output.PrintInfof("Found %d command(s) managed by ccmd:\n", len(commands))
+	output.PrintInfof("Found %d item(s) managed by ccmd:\n", len(commands))
 
 	for i, cmd := range commands {
 		if i > 0 {
@@ -166,6 +175,7 @@ func printLongList(commands []core.CommandDetail) {
 		// Basic info
 		output.Printf("Name:        %s", cmd.Name)
 		output.Printf("Version:     %s", formatOrDash(cmd.Version))
+		output.Printf("Type:        %s", formatOrDash(cmd.Type))
 		output.Printf("Source:      %s", formatOrDash(cmd.Repository))
 		output.Printf("Description: %s", formatOrDash(cmd.Description))
 
