@@ -24,10 +24,12 @@ import (
 
 // NewCommand creates a new init command.
 func NewCommand() *cobra.Command {
+	var plugin bool
+
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new Claude Code Command project",
-		Long: `Initialize a new Claude Code Command project by creating the necessary 
+		Long: `Initialize a new Claude Code Command project by creating the necessary
 configuration files and directory structure.
 
 This interactive command guides you through setting up a new ccmd project. It will
@@ -36,39 +38,43 @@ description, author, and repository information. The command then generates a
 properly formatted ccmd.yaml file with your specifications.
 
 Additionally, it creates the .claude/commands directory structure required for
-storing and managing Claude Code commands in your project.`,
+storing and managing Claude Code commands in your project.
+
+Use --plugin to initialize as a Claude Code plugin instead.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInit()
+			return runInit(plugin)
 		},
 	}
+
+	cmd.Flags().BoolVarP(&plugin, "plugin", "p", false, "Initialize as a Claude Code plugin")
 
 	return cmd
 }
 
-func runInit() error {
+func runInit(plugin bool) error {
 	scanner := bufio.NewScanner(os.Stdin)
+
+	if plugin {
+		return runPluginInit(scanner)
+	}
 
 	output.Printf("This utility will walk you through creating a ccmd.yaml file.")
 	output.Printf("Press ^C at any time to quit.\n")
 
-	// Get current directory
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	// Load existing config if any
 	defaults, existingCommands, err := core.LoadExistingConfig(currentDir)
 	if err != nil {
 		output.PrintWarningf("Warning: %v", err)
-		// Continue with fresh defaults
 		defaults = core.InitDefaults(currentDir)
 	} else if existingCommands != nil {
 		output.Printf("Loaded existing ccmd.yaml file.")
 	}
 
-	// Prompt for each field
 	name := promptUser(scanner, "name", defaults.Name)
 	version := promptUser(scanner, "version", defaults.Version)
 	description := promptUser(scanner, "description", defaults.Description)
@@ -77,7 +83,6 @@ func runInit() error {
 	entry := promptUser(scanner, "entry", defaults.Entry)
 	tagsInput := promptUser(scanner, "tags (comma-separated)", core.FormatTags(defaults.Tags))
 
-	// Create options
 	opts := core.InitOptions{
 		Name:        name,
 		Version:     version,
@@ -89,7 +94,6 @@ func runInit() error {
 		ProjectPath: currentDir,
 	}
 
-	// Generate preview
 	preview, err := core.GenerateConfigPreview(opts, existingCommands)
 	if err != nil {
 		return err
@@ -98,14 +102,12 @@ func runInit() error {
 	output.Printf("\nAbout to write to %s:\n", filepath.Join(currentDir, "ccmd.yaml"))
 	output.Printf("%s", preview)
 
-	// Confirm
 	confirm := promptUser(scanner, "\nIs this OK?", "yes")
 	if !isConfirmation(confirm) {
 		output.PrintWarningf("Canceled.")
 		return nil
 	}
 
-	// Initialize project
 	if existingCommands != nil {
 		err = core.InitProjectWithCommands(opts, existingCommands)
 	} else {
@@ -120,8 +122,67 @@ func runInit() error {
 	output.PrintSuccessf("✓ Created ccmd.yaml")
 	output.Printf("\n🎉 ccmd project initialized!")
 
-	// Show next steps
 	showNextSteps(opts)
+
+	return nil
+}
+
+func runPluginInit(scanner *bufio.Scanner) error {
+	output.Printf("This utility will walk you through creating a Claude Code plugin.")
+	output.Printf("Press ^C at any time to quit.\n")
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	defaults := core.InitDefaults(currentDir)
+
+	name := promptUser(scanner, "name", defaults.Name)
+	version := promptUser(scanner, "version", defaults.Version)
+	description := promptUser(scanner, "description", defaults.Description)
+	author := promptUser(scanner, "author", defaults.Author)
+	repository := promptUser(scanner, "repository", defaults.Repository)
+	tagsInput := promptUser(scanner, "tags (comma-separated)", core.FormatTags(defaults.Tags))
+
+	opts := core.InitOptions{
+		Name:        name,
+		Version:     version,
+		Description: description,
+		Author:      author,
+		Repository:  repository,
+		Tags:        core.ParseTags(tagsInput),
+		ProjectPath: currentDir,
+		Plugin:      true,
+	}
+
+	output.Printf("\nAbout to create plugin structure in %s:", currentDir)
+	output.Printf("  ccmd.yaml (type: plugin)")
+	output.Printf("  .claude-plugin/plugin.json")
+	output.Printf("  .claude/plugins/")
+	output.Printf("  commands/.gitkeep")
+
+	confirm := promptUser(scanner, "\nIs this OK?", "yes")
+	if !isConfirmation(confirm) {
+		output.PrintWarningf("Canceled.")
+		return nil
+	}
+
+	if err := core.InitPlugin(opts); err != nil {
+		return err
+	}
+
+	output.PrintSuccessf("✓ Created ccmd.yaml (type: plugin)")
+	output.PrintSuccessf("✓ Created .claude-plugin/plugin.json")
+	output.PrintSuccessf("✓ Created .claude/plugins/ directory")
+	output.PrintSuccessf("✓ Created commands/.gitkeep")
+	output.Printf("\n🎉 Claude Code plugin initialized!")
+	output.Printf("\n🚀 Publish your plugin:")
+	output.Printf("  1. git add ccmd.yaml .claude-plugin/ commands/")
+	output.Printf("  2. git commit -m \"feat: add %s plugin\"", name)
+	output.Printf("  3. git push origin main")
+	output.Printf("\n✨ Then install with:")
+	output.PrintInfof(core.GetInstallCommand(repository))
 
 	return nil
 }

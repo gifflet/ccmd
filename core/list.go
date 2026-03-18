@@ -19,7 +19,7 @@ import (
 	"github.com/gifflet/ccmd/pkg/errors"
 )
 
-// CommandDetail represents detailed information about an installed command
+// CommandDetail represents detailed information about an installed command or plugin
 type CommandDetail struct {
 	Name            string
 	Version         string
@@ -30,6 +30,7 @@ type CommandDetail struct {
 	InstalledAt     string
 	BrokenStructure bool
 	StructureError  string
+	Type            string // "command" or "plugin"
 	// Additional metadata from ccmd.yaml
 	Tags     []string
 	License  string
@@ -85,6 +86,7 @@ func List(opts ListOptions) ([]CommandDetail, error) {
 			UpdatedAt:   info.UpdatedAt.Format(time.RFC3339),
 			InstalledAt: info.InstalledAt.Format(time.RFC3339),
 			Resolved:    info.Resolved,
+			Type:        "command",
 		}
 
 		// Check command structure
@@ -103,7 +105,6 @@ func List(opts ListOptions) ([]CommandDetail, error) {
 		if dirExists(cmdDir) {
 			metadataPath := filepath.Join(cmdDir, "ccmd.yaml")
 			if metadata, err := readCommandMetadata(metadataPath); err == nil {
-				// Use metadata values if available
 				if metadata.Description != "" {
 					cmd.Description = metadata.Description
 				}
@@ -117,7 +118,47 @@ func List(opts ListOptions) ([]CommandDetail, error) {
 				cmd.License = metadata.License
 				cmd.Homepage = metadata.Homepage
 				cmd.Entry = metadata.Entry
-				// Requires field doesn't exist in current metadata model
+			}
+		}
+
+		commands = append(commands, cmd)
+	}
+
+	pluginsDir := filepath.Join(projectRoot, ".claude", "plugins")
+
+	for name, info := range lockData.Plugins {
+		cmd := CommandDetail{
+			Name:        name,
+			Version:     info.Version,
+			Repository:  info.Source,
+			UpdatedAt:   info.UpdatedAt.Format(time.RFC3339),
+			InstalledAt: info.InstalledAt.Format(time.RFC3339),
+			Resolved:    info.Resolved,
+			Type:        "plugin",
+		}
+
+		pluginDir := filepath.Join(pluginsDir, name)
+
+		if !dirExists(pluginDir) {
+			cmd.BrokenStructure = true
+			cmd.StructureError = "plugin directory not found"
+		}
+
+		if dirExists(pluginDir) {
+			metadataPath := filepath.Join(pluginDir, "ccmd.yaml")
+			if metadata, err := readCommandMetadata(metadataPath); err == nil {
+				if metadata.Description != "" {
+					cmd.Description = metadata.Description
+				}
+				if metadata.Author != "" {
+					cmd.Author = metadata.Author
+				}
+				if metadata.Version != "" && cmd.Version == "" {
+					cmd.Version = metadata.Version
+				}
+				cmd.Tags = metadata.Tags
+				cmd.License = metadata.License
+				cmd.Homepage = metadata.Homepage
 			}
 		}
 
