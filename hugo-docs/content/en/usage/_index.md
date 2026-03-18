@@ -57,32 +57,38 @@ These options are available for all ccmd commands:
 
 ## ccmd init
 
-Initialize a new Claude Code Command project by creating the necessary configuration files and directory structure.
+Initialize a new Claude Code Command or Plugin project by creating the necessary configuration files and directory structure.
 
 ### Usage
 
 ```bash
-ccmd init
+ccmd init [flags]
 ```
 
 ### Description
 
-This interactive command guides you through setting up a new ccmd project. It prompts for essential metadata about your command and generates:
+This interactive command guides you through setting up a new ccmd project. It prompts for essential metadata and generates the appropriate project structure.
+
+**For commands**, generates:
 - `ccmd.yaml` - Command configuration file
 - `.claude/commands/` - Directory structure for commands
 
+**For plugins** (`--plugin` flag), generates:
+- `ccmd.yaml` - Plugin configuration file with `type: plugin`
+- `.claude-plugin/plugin.json` - Claude Code plugin manifest
+
 ### Options
 
-This command has no additional flags. It runs interactively.
+- `-p, --plugin` - Initialize as a Claude Code plugin instead of a command
 
 ### Interactive Prompts
 
-- **name**: Command name (defaults to current directory name)
+- **name**: Command/plugin name (defaults to current directory name)
 - **version**: Semantic version (defaults to "1.0.0")
-- **description**: Brief description of what your command does
+- **description**: Brief description of what your command/plugin does
 - **author**: Your name or organization
 - **repository**: Git repository URL
-- **entry**: Entry point file (defaults to "index.md")
+- **entry**: Entry point file (defaults to "index.md") — not prompted for plugins
 - **tags**: Comma-separated list of tags
 
 ### Examples
@@ -92,25 +98,22 @@ This command has no additional flags. It runs interactively.
 cd my-command
 ccmd init
 
-# Example interaction:
-# name: (my-command) 
-# version: (1.0.0) 
-# description: Automates common development tasks
-# author: Jane Doe
-# repository: https://github.com/janedoe/my-command
-# entry: (index.md) 
-# tags (comma-separated): automation, dev-tools
+# Initialize a new plugin project
+cd my-plugin
+ccmd init --plugin
+# or shorthand
+ccmd init -p
 ```
 
 ### Notes
 
 - If a `ccmd.yaml` file already exists, it will load existing values as defaults
-- The command creates the `.claude/commands` directory structure automatically
-- After initialization, create your `index.md` file with command instructions
+- After initializing a command, create your `index.md` file with command instructions
+- After initializing a plugin, edit `.claude-plugin/plugin.json` with your plugin manifest
 
 ## ccmd install
 
-Install a command from a Git repository or install all commands from ccmd.yaml.
+Install a command or plugin from a Git repository, or install all entries from ccmd.yaml.
 
 ### Usage
 
@@ -120,22 +123,29 @@ ccmd install [repository] [flags]
 
 ### Description
 
-When no repository is provided, installs all commands defined in the project's ccmd.yaml file. When a repository is provided, installs the command and adds it to ccmd.yaml and ccmd-lock.yaml.
+When no repository is provided, installs all commands and plugins defined in the project's ccmd.yaml. When a repository is provided, ccmd reads the repository's `ccmd.yaml` and automatically determines whether to install it as a command or a plugin based on the `type` field.
+
+- `type: plugin` → installed to `.claude/plugins/` and registered in Claude Code settings
+- no type (default) → installed to `.claude/commands/` as a slash command
 
 ### Options
 
 - `-v, --version <version>` - Version/tag to install (defaults to latest)
-- `-n, --name <name>` - Override command name
+- `-n, --name <name>` - Override command/plugin name
 - `-f, --force` - Force reinstall if already exists
+- `--plugin` - Force installation as a plugin (optional; only needed when the repository does not declare `type: plugin`)
 
 ### Examples
 
 ```bash
-# Install all commands from ccmd.yaml
+# Install all commands and plugins from ccmd.yaml
 ccmd install
 
-# Install latest version of a command
-ccmd install github.com/user/repo
+# Install a command (auto-detected)
+ccmd install github.com/user/my-command
+
+# Install a plugin (auto-detected via type: plugin in the repo's ccmd.yaml)
+ccmd install gifflet/review-plugin
 
 # Install specific version
 ccmd install github.com/user/repo@v1.0.0
@@ -159,7 +169,7 @@ ccmd install github.com/user/repo --force
 
 ## ccmd list
 
-List all commands managed by ccmd with their versions, sources, and metadata.
+List all commands and plugins managed by ccmd with their versions, sources, and metadata.
 
 ### Usage
 
@@ -169,7 +179,7 @@ ccmd list [flags]
 
 ### Description
 
-Shows only commands that are tracked in the ccmd-lock.yaml file and have entries in the .claude/commands/ directory.
+Shows commands and plugins tracked in the ccmd-lock.yaml file. Commands must have entries in `.claude/commands/` and plugins in `.claude/plugins/`.
 
 ### Options
 
@@ -178,7 +188,7 @@ Shows only commands that are tracked in the ccmd-lock.yaml file and have entries
 ### Examples
 
 ```bash
-# List commands in table format
+# List all commands and plugins in table format
 ccmd list
 
 # Show detailed information
@@ -188,8 +198,9 @@ ccmd list --long
 ### Output Format
 
 **Simple format** shows:
-- NAME - Command name
+- NAME - Command or plugin name
 - VERSION - Installed version
+- TYPE - `command` or `plugin`
 - DESCRIPTION - Brief description
 - UPDATED - Last update time
 
@@ -204,7 +215,7 @@ ccmd list --long
 
 ### Notes
 
-- Commands with broken structure are marked with ⚠ 
+- Entries with broken structure are marked with ⚠
 - Use `--long` flag to see details about structure issues
 
 ## ccmd update
@@ -252,17 +263,17 @@ ccmd update my-command --force
 
 ## ccmd remove
 
-Remove an installed command and clean up all associated files.
+Remove an installed command or plugin and clean up all associated files.
 
 ### Usage
 
 ```bash
-ccmd remove <command-name> [flags]
+ccmd remove <name> [flags]
 ```
 
 ### Description
 
-Removes a command from the .claude/commands directory and optionally updates configuration files.
+Removes a command from `.claude/commands/` or a plugin from `.claude/plugins/`. For plugins, also removes the entry from `.claude/settings.json` and updates the marketplace registry. Optionally updates configuration files.
 
 ### Options
 
@@ -272,8 +283,11 @@ Removes a command from the .claude/commands directory and optionally updates con
 ### Examples
 
 ```bash
-# Remove with confirmation prompt
+# Remove a command with confirmation prompt
 ccmd remove my-command
+
+# Remove a plugin with confirmation prompt
+ccmd remove review-plugin
 
 # Force removal without confirmation
 ccmd remove my-command --force
@@ -285,7 +299,7 @@ ccmd remove my-command --save
 ### Confirmation
 
 Unless `--force` is used, the command will display:
-- Command name and version
+- Name and version
 - Description (if available)
 - Confirmation prompt
 
@@ -485,6 +499,7 @@ ccmd update my-command
 
 ## See Also
 
+- [Plugin Support](/plugins/) - Installing and creating Claude Code plugins
 - [Creating Commands](/creating-commands/) - Guide for creating your own commands
 - [Examples](/examples/) - Real-world use cases and patterns
 - [FAQ](/faq/) - Common questions and troubleshooting

@@ -127,7 +127,7 @@ yes
 	defer func() { os.Stdin = oldStdin }()
 
 	// Run the init command
-	err := runInit()
+	err := runInit(false)
 	if err != nil {
 		t.Fatalf("runInit() error = %v", err)
 	}
@@ -210,7 +210,7 @@ no
 	defer func() { os.Stdin = oldStdin }()
 
 	// Run the init command
-	err := runInit()
+	err := runInit(false)
 	if err != nil {
 		t.Fatalf("runInit() error = %v", err)
 	}
@@ -248,7 +248,7 @@ func TestRunInitDefaults(t *testing.T) {
 	defer func() { os.Stdin = oldStdin }()
 
 	// Run the init command
-	err := runInit()
+	err := runInit(false)
 	if err != nil {
 		t.Fatalf("runInit() error = %v", err)
 	}

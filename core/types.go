@@ -24,6 +24,7 @@ type LockFile struct {
 	Version         string                  `yaml:"version"`
 	LockfileVersion int                     `yaml:"lockfileVersion"`
 	Commands        map[string]*LockCommand `yaml:"commands"`
+	Plugins         map[string]*LockPlugin  `yaml:"plugins,omitempty"`
 }
 
 // LockCommand represents a command entry in the lock file
@@ -35,6 +36,36 @@ type LockCommand struct {
 	Commit      string    `yaml:"commit"`
 	InstalledAt time.Time `yaml:"installed_at"`
 	UpdatedAt   time.Time `yaml:"updated_at"`
+}
+
+// LockPlugin represents a plugin entry in the lock file
+type LockPlugin struct {
+	Name        string    `yaml:"name"`
+	Version     string    `yaml:"version"`
+	Source      string    `yaml:"source"`
+	Resolved    string    `yaml:"resolved"`
+	Commit      string    `yaml:"commit"`
+	InstalledAt time.Time `yaml:"installed_at"`
+	UpdatedAt   time.Time `yaml:"updated_at"`
+}
+
+// MarketplaceSource represents the source configuration for a plugin marketplace
+type MarketplaceSource struct {
+	Source string `json:"source"`
+	Path   string `json:"path,omitempty"`
+	Repo   string `json:"repo,omitempty"`
+	URL    string `json:"url,omitempty"`
+}
+
+// MarketplaceEntry represents an entry in extraKnownMarketplaces
+type MarketplaceEntry struct {
+	Source MarketplaceSource `json:"source"`
+}
+
+// ClaudeSettings represents the .claude/settings.json structure
+type ClaudeSettings struct {
+	EnabledPlugins         map[string]bool             `json:"enabledPlugins,omitempty"`
+	ExtraKnownMarketplaces map[string]MarketplaceEntry `json:"extraKnownMarketplaces,omitempty"`
 }
 
 // InstalledCommand represents an installed command
@@ -60,8 +91,14 @@ type ProjectConfig struct {
 	License     string   `yaml:"license,omitempty" json:"license,omitempty"`
 	Homepage    string   `yaml:"homepage,omitempty" json:"homepage,omitempty"`
 
+	// Type indicates whether this is a "plugin" or command (default)
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
 	// Commands list (when ccmd.yaml is for a project)
 	Commands []string `yaml:"commands,omitempty" json:"commands,omitempty"`
+
+	// Plugins list (when ccmd.yaml is for a project)
+	Plugins []string `yaml:"plugins,omitempty" json:"plugins,omitempty"`
 }
 
 // ConfigCommand represents a command in the configuration
@@ -95,7 +132,7 @@ func (pc *ProjectConfig) Validate() error {
 		if pc.Repository == "" {
 			return errors.InvalidInput("repository is required")
 		}
-		if pc.Entry == "" {
+		if pc.Entry == "" && pc.Type != "plugin" {
 			return errors.InvalidInput("entry is required")
 		}
 	}

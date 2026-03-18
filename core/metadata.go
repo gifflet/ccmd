@@ -10,6 +10,7 @@
 package core
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -84,7 +85,51 @@ func ReadLockFile(path string) (*LockFile, error) {
 		lock.Commands = make(map[string]*LockCommand)
 	}
 
+	if lock.Plugins == nil {
+		lock.Plugins = make(map[string]*LockPlugin)
+	}
+
 	return &lock, nil
+}
+
+// ReadClaudeSettings reads the .claude/settings.json file.
+func ReadClaudeSettings(claudeDir string) (*ClaudeSettings, error) {
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &ClaudeSettings{}, nil
+		}
+		return nil, errors.FileError("read claude settings", settingsPath, err)
+	}
+
+	var settings ClaudeSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, errors.FileError("parse claude settings", settingsPath, err)
+	}
+
+	return &settings, nil
+}
+
+// WriteClaudeSettings writes the .claude/settings.json file.
+func WriteClaudeSettings(claudeDir string, s *ClaudeSettings) error {
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+
+	if err := os.MkdirAll(claudeDir, 0o750); err != nil {
+		return errors.FileError("create claude directory", claudeDir, err)
+	}
+
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return errors.FileError("marshal claude settings", settingsPath, err)
+	}
+
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
+		return errors.FileError("write claude settings", settingsPath, err)
+	}
+
+	return nil
 }
 
 // WriteLockFile writes the lock file to disk

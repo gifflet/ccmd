@@ -11,6 +11,7 @@ package core
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -82,6 +83,10 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 	metadata, err := readCommandMetadata(metadataPath)
 	if err != nil {
 		return "", err
+	}
+
+	if repoType(metadata) == "plugin" {
+		return installPlugin(projectRoot, tempDir, metadata, opts)
 	}
 
 	commandName := opts.Name
@@ -164,14 +169,14 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 	return commandName, nil
 }
 
-// InstallFromConfig installs all commands from project's ccmd.yaml
+// InstallFromConfig installs all commands and plugins from project's ccmd.yaml
 func InstallFromConfig(ctx context.Context, projectPath string, force bool) error {
 	config, err := LoadProjectConfig(projectPath)
 	if err != nil {
 		return err
 	}
 
-	if len(config.Commands) == 0 {
+	if len(config.Commands) == 0 && len(config.Plugins) == 0 {
 		output.PrintInfof("No commands found in ccmd.yaml")
 		return nil
 	}
@@ -183,19 +188,10 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 	}
 
 	var installErrors []error
+
 	for _, cmdSpec := range config.Commands {
 		repo, version := ParseCommandSpec(cmdSpec)
-
-		commitToInstall := ""
-		if lockFile != nil {
-			normalizedRepo := NormalizeRepositoryURL(repo)
-			for _, lockCmd := range lockFile.Commands {
-				if NormalizeRepositoryURL(lockCmd.Source) == normalizedRepo {
-					commitToInstall = lockCmd.Commit
-					break
-				}
-			}
-		}
+		commitToInstall := resolveCommitFromLock(lockFile, repo, false)
 
 		opts := InstallOptions{
 			Repository: repo,
@@ -206,16 +202,69 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 
 		output.PrintInfof("Installing %s...", cmdSpec)
 		if _, err := Install(ctx, opts); err != nil {
-			installErrors = append(installErrors, fmt.Errorf("%s: %w", repo, err))
-			output.PrintErrorf("Failed to install %s: %v", repo, err)
+			if stderrors.Is(err, errors.ErrAlreadyExists) {
+				output.PrintWarningf("%s already installed, use --force to reinstall", repo)
+			} else {
+				installErrors = append(installErrors, fmt.Errorf("%s: %w", repo, err))
+				output.PrintErrorf("Failed to install %s: %v", repo, err)
+			}
+		}
+	}
+
+	for _, pluginSpec := range config.Plugins {
+		repo, version := ParseCommandSpec(pluginSpec)
+		commitToInstall := resolveCommitFromLock(lockFile, repo, true)
+
+		opts := InstallOptions{
+			Repository: repo,
+			Version:    version,
+			Commit:     commitToInstall,
+			Force:      force,
+		}
+
+		output.PrintInfof("Installing plugin %s...", pluginSpec)
+		if _, err := Install(ctx, opts); err != nil {
+			if stderrors.Is(err, errors.ErrAlreadyExists) {
+				output.PrintWarningf("plugin %s already installed, use --force to reinstall", repo)
+			} else {
+				installErrors = append(installErrors, fmt.Errorf("%s: %w", repo, err))
+				output.PrintErrorf("Failed to install plugin %s: %v", repo, err)
+			}
 		}
 	}
 
 	if len(installErrors) > 0 {
-		return fmt.Errorf("failed to install %d commands", len(installErrors))
+		return fmt.Errorf("failed to install %d package(s)", len(installErrors))
 	}
 
 	return nil
+}
+
+// resolveCommitFromLock finds the locked commit hash for a given repo spec.
+// When isPlugin is true, it searches the Plugins map; otherwise Commands.
+func resolveCommitFromLock(lockFile *LockFile, repo string, isPlugin bool) string {
+	if lockFile == nil {
+		return ""
+	}
+
+	normalizedRepo := NormalizeRepositoryURL(repo)
+
+	if isPlugin {
+		for _, lockPlugin := range lockFile.Plugins {
+			if NormalizeRepositoryURL(lockPlugin.Source) == normalizedRepo {
+				return lockPlugin.Commit
+			}
+		}
+		return ""
+	}
+
+	for _, lockCmd := range lockFile.Commands {
+		if NormalizeRepositoryURL(lockCmd.Source) == normalizedRepo {
+			return lockCmd.Commit
+		}
+	}
+
+	return ""
 }
 
 // Helper functions

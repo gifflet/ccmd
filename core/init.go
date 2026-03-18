@@ -10,6 +10,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ type InitOptions struct {
 	Tags        []string
 	ProjectPath string
 	CommandMode bool // true for command mode, false for project mode
+	Plugin      bool // true to initialize as a Claude Code plugin
 }
 
 // InitDefaults returns default values for init based on current directory
@@ -138,7 +140,7 @@ func createOrderedConfig(opts InitOptions, existingCommands interface{}) ordered
 func InitProject(opts InitOptions) error {
 	// Create .claude/commands directory
 	claudeDir := filepath.Join(opts.ProjectPath, ".claude", "commands")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o750); err != nil {
 		return errors.FileError("create .claude directory", claudeDir, err)
 	}
 
@@ -165,7 +167,7 @@ func InitProject(opts InitOptions) error {
 func InitProjectWithCommands(opts InitOptions, existingCommands interface{}) error {
 	// Create .claude/commands directory
 	claudeDir := filepath.Join(opts.ProjectPath, ".claude", "commands")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o750); err != nil {
 		return errors.FileError("create .claude directory", claudeDir, err)
 	}
 
@@ -180,7 +182,7 @@ func InitProjectWithCommands(opts InitOptions, existingCommands interface{}) err
 
 	// Write file
 	configPath := filepath.Join(opts.ProjectPath, ConfigFileName)
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, 0o600); err != nil {
 		return errors.FileError("write config", configPath, err)
 	}
 
@@ -220,6 +222,81 @@ func ParseTags(input string) []string {
 // FormatTags formats a slice of tags as comma-separated string
 func FormatTags(tags []string) string {
 	return strings.Join(tags, ", ")
+}
+
+// pluginManifest mirrors ccmd.yaml metadata for .claude-plugin/plugin.json
+type pluginManifest struct {
+	Name        string            `json:"name"`
+	Version     string            `json:"version"`
+	Description string            `json:"description"`
+	Author      map[string]string `json:"author,omitempty"`
+	Repository  string            `json:"repository,omitempty"`
+	License     string            `json:"license,omitempty"`
+}
+
+// InitPlugin creates a new Claude Code plugin project with the given options.
+func InitPlugin(opts InitOptions) error {
+	// Create .claude/plugins directory
+	pluginsDir := filepath.Join(opts.ProjectPath, ".claude", "plugins")
+	if err := os.MkdirAll(pluginsDir, 0o750); err != nil {
+		return errors.FileError("create .claude/plugins directory", pluginsDir, err)
+	}
+
+	// Create .claude-plugin directory
+	claudePluginDir := filepath.Join(opts.ProjectPath, ".claude-plugin")
+	if err := os.MkdirAll(claudePluginDir, 0o750); err != nil {
+		return errors.FileError("create .claude-plugin directory", claudePluginDir, err)
+	}
+
+	// Create commands directory with .gitkeep
+	commandsDir := filepath.Join(opts.ProjectPath, "commands")
+	if err := os.MkdirAll(commandsDir, 0o750); err != nil {
+		return errors.FileError("create commands directory", commandsDir, err)
+	}
+	gitkeepPath := filepath.Join(commandsDir, ".gitkeep")
+	if !fileExists(gitkeepPath) {
+		if err := os.WriteFile(gitkeepPath, []byte{}, 0o600); err != nil {
+			return errors.FileError("create .gitkeep", gitkeepPath, err)
+		}
+	}
+
+	// Write ccmd.yaml with type: plugin
+	config := &ProjectConfig{
+		Type:        "plugin",
+		Name:        opts.Name,
+		Version:     opts.Version,
+		Description: opts.Description,
+		Author:      opts.Author,
+		Repository:  opts.Repository,
+		Tags:        opts.Tags,
+	}
+	if err := SaveProjectConfig(opts.ProjectPath, config); err != nil {
+		return err
+	}
+
+	// Write .claude-plugin/plugin.json
+	manifest := pluginManifest{
+		Name:        opts.Name,
+		Version:     opts.Version,
+		Description: opts.Description,
+		Repository:  opts.Repository,
+		License:     "MIT",
+	}
+	if opts.Author != "" {
+		manifest.Author = map[string]string{"name": opts.Author}
+	}
+
+	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return errors.FileError("marshal plugin.json", "", err)
+	}
+
+	pluginJSONPath := filepath.Join(claudePluginDir, "plugin.json")
+	if err := os.WriteFile(pluginJSONPath, manifestData, 0o600); err != nil {
+		return errors.FileError("write plugin.json", pluginJSONPath, err)
+	}
+
+	return nil
 }
 
 // GetInstallCommand generates the install command for the repository

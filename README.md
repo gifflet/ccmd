@@ -21,7 +21,7 @@ Managing custom Claude Code commands across multiple projects can be challenging
 - **Easy sharing**: Share commands with your team or the community through Git repositories
 - **Simple management**: Install, update, and remove commands with familiar package manager semantics
 
-Think of ccmd as "npm for Claude Code commands" - centralize your AI tooling configurations and use them anywhere.
+Think of ccmd as "npm for Claude Code commands and plugins" - centralize your AI tooling configurations and use them anywhere.
 
 ## Installation
 
@@ -62,11 +62,12 @@ That's it! You've just installed and used your first ccmd command.
 | Command | Description |
 |---------|-------------|
 | `ccmd init` | Initialize a new command project |
-| `ccmd install <repo>` | Install a command from a Git repository |
-| `ccmd install` | Install all commands from ccmd.yaml |
-| `ccmd list` | List installed commands |
+| `ccmd init --plugin` | Initialize a new plugin project |
+| `ccmd install <repo>` | Install a command or plugin from a Git repository (auto-detected) |
+| `ccmd install` | Install all commands and plugins from ccmd.yaml |
+| `ccmd list` | List installed commands and plugins |
 | `ccmd update <command>` | Update a specific command |
-| `ccmd remove <command>` | Remove an installed command |
+| `ccmd remove <command>` | Remove an installed command or plugin |
 | `ccmd search <keyword>` | Search for commands in the registry |
 | `ccmd info <command>` | Show detailed command information |
 
@@ -107,6 +108,38 @@ entry: index.md  # Optional, defaults to index.md
 
 > For complete guide with examples, see [Creating Commands](docs/creating-commands.md)
 
+## Plugin Support
+
+ccmd also manages Claude Code plugins — packages that extend Claude Code itself rather than defining slash commands.
+
+### Installing a Plugin
+
+```bash
+ccmd install gifflet/review-plugin
+```
+
+ccmd automatically detects whether a repository is a plugin or a command by reading the `type` field in its `ccmd.yaml`. No special flags are needed.
+
+### Creating a Plugin
+
+```bash
+mkdir my-plugin && cd my-plugin
+ccmd init --plugin
+```
+
+### Example ccmd.yaml for a Plugin
+
+```yaml
+type: plugin
+name: my-plugin
+version: 1.0.0
+description: Extends Claude Code with custom capabilities
+author: Your Name
+repository: https://github.com/username/my-plugin
+```
+
+> For complete guide, see [Creating Plugins](docs/creating-commands.md)
+
 ## Example Commands
 
 Here are some commands you can install and try:
@@ -116,10 +149,20 @@ Here are some commands you can install and try:
   ccmd install https://github.com/gifflet/hello-world
   ```
 
+## Example Plugins
+
+Here are some plugins you can install and try:
+
+- **review-plugin**: AI-powered code review plugin for Claude Code
+  ```bash
+  ccmd install gifflet/review-plugin
+  ```
+
 ## Documentation
 
 - **[Full Documentation](docs/)** - Complete guides and references
 - **[Command Creation Guide](docs/creating-commands.md)** - Create your own commands
+- **[Plugin Creation Guide](examples/creating_plugins.md)** - Create your own plugins
 
 ## Community
 

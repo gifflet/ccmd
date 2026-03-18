@@ -49,9 +49,34 @@ func Remove(opts RemoveOptions) error {
 		return err
 	}
 
-	cmdInfo, exists := lockFile.Commands[opts.Name]
-	if !exists {
-		return errors.NotFound(fmt.Sprintf("command %q", opts.Name))
+	cmdInfo, isCommand := lockFile.Commands[opts.Name]
+	pluginInfo, isPlugin := lockFile.Plugins[opts.Name]
+
+	if !isCommand && !isPlugin {
+		return errors.NotFound(fmt.Sprintf("command or plugin %q", opts.Name))
+	}
+
+	if isPlugin {
+		output.PrintInfof("Will remove plugin %q", opts.Name)
+		output.PrintInfof("Repository: %s", pluginInfo.Source)
+		if pluginInfo.Version != "" {
+			output.PrintInfof("Version: %s", pluginInfo.Version)
+		}
+
+		if err := removePlugin(projectRoot, opts.Name); err != nil {
+			return err
+		}
+
+		if opts.UpdateFiles {
+			if err := removePluginFromConfig(projectRoot, opts.Name, pluginInfo.Source); err != nil {
+				output.PrintWarningf("Failed to update ccmd.yaml: %v", err)
+			} else {
+				output.PrintInfof("Updated ccmd.yaml")
+			}
+		}
+
+		output.PrintSuccessf("Plugin %q removed successfully", opts.Name)
+		return nil
 	}
 
 	if err := removeCommandFiles(projectRoot, opts.Name); err != nil {

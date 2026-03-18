@@ -41,3 +41,12 @@ commands:
     checksum: fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321
     metadata:
       build_tags: extended
+
+plugins:
+  review-plugin:
+    name: review-plugin
+    repository: github.com/gifflet/review-plugin
+    version: v1.0.0
+    commit_hash: aabbccddeeff00112233445566778899aabbccdd
+    installed_at: 2024-01-16T08:00:00Z
+    updated_at: 2024-01-16T08:00:00Z
