@@ -373,54 +373,64 @@ type pluginComponents struct {
 	MCPServers []string
 }
 
+func scanMDFilesInDir(dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") && strings.HasSuffix(e.Name(), ".md") {
+			names = append(names, strings.TrimSuffix(e.Name(), ".md"))
+		}
+	}
+	return names
+}
+
+func scanSkillsDir(pluginDir string) []string {
+	entries, err := os.ReadDir(filepath.Join(pluginDir, "skills"))
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		skillFile := filepath.Join(pluginDir, "skills", e.Name(), "SKILL.md")
+		if _, err := os.Stat(skillFile); err == nil {
+			names = append(names, e.Name())
+		}
+	}
+	return names
+}
+
+func scanMCPServers(pluginDir string) []string {
+	data, err := os.ReadFile(filepath.Join(pluginDir, ".mcp.json"))
+	if err != nil {
+		return nil
+	}
+	var mcpConfig struct {
+		MCPServers map[string]json.RawMessage `json:"mcpServers"`
+	}
+	if json.Unmarshal(data, &mcpConfig) != nil {
+		return nil
+	}
+	names := make([]string, 0, len(mcpConfig.MCPServers))
+	for name := range mcpConfig.MCPServers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func scanPluginComponents(pluginDir string) pluginComponents {
-	var c pluginComponents
-
-	// Commands: .md files directly in commands/
-	if entries, err := os.ReadDir(filepath.Join(pluginDir, "commands")); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") && strings.HasSuffix(e.Name(), ".md") {
-				c.Commands = append(c.Commands, strings.TrimSuffix(e.Name(), ".md"))
-			}
-		}
+	return pluginComponents{
+		Commands:   scanMDFilesInDir(filepath.Join(pluginDir, "commands")),
+		Skills:     scanSkillsDir(pluginDir),
+		Agents:     scanMDFilesInDir(filepath.Join(pluginDir, "agents")),
+		MCPServers: scanMCPServers(pluginDir),
 	}
-
-	// Skills: subdirs in skills/ that contain SKILL.md
-	if entries, err := os.ReadDir(filepath.Join(pluginDir, "skills")); err == nil {
-		for _, e := range entries {
-			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
-				skillFile := filepath.Join(pluginDir, "skills", e.Name(), "SKILL.md")
-				if _, err := os.Stat(skillFile); err == nil {
-					c.Skills = append(c.Skills, e.Name())
-				}
-			}
-		}
-	}
-
-	// Agents: .md files in agents/
-	if entries, err := os.ReadDir(filepath.Join(pluginDir, "agents")); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") && strings.HasSuffix(e.Name(), ".md") {
-				c.Agents = append(c.Agents, strings.TrimSuffix(e.Name(), ".md"))
-			}
-		}
-	}
-
-	// MCP servers: read .mcp.json and extract server names
-	mcpPath := filepath.Join(pluginDir, ".mcp.json")
-	if data, err := os.ReadFile(mcpPath); err == nil {
-		var mcpConfig struct {
-			MCPServers map[string]json.RawMessage `json:"mcpServers"`
-		}
-		if json.Unmarshal(data, &mcpConfig) == nil {
-			for name := range mcpConfig.MCPServers {
-				c.MCPServers = append(c.MCPServers, name)
-			}
-			sort.Strings(c.MCPServers)
-		}
-	}
-
-	return c
 }
 
 func printPluginComponents(c pluginComponents) {
