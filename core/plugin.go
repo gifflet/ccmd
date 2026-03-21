@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -105,6 +106,7 @@ func installPlugin(projectRoot, tempDir string, cfg *ProjectConfig, opts Install
 	}
 
 	output.PrintSuccessf("Plugin %q installed successfully", name)
+	printPluginComponents(scanPluginComponents(destDir))
 	return name, nil
 }
 
@@ -362,6 +364,82 @@ func disablePlugin(projectRoot, name string) error {
 	}
 
 	return updateCCMDMarketplace(projectRoot, name, false)
+}
+
+type pluginComponents struct {
+	Commands   []string
+	Skills     []string
+	Agents     []string
+	MCPServers []string
+}
+
+func scanPluginComponents(pluginDir string) pluginComponents {
+	var c pluginComponents
+
+	// Commands: .md files directly in commands/
+	if entries, err := os.ReadDir(filepath.Join(pluginDir, "commands")); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") && strings.HasSuffix(e.Name(), ".md") {
+				c.Commands = append(c.Commands, strings.TrimSuffix(e.Name(), ".md"))
+			}
+		}
+	}
+
+	// Skills: subdirs in skills/ that contain SKILL.md
+	if entries, err := os.ReadDir(filepath.Join(pluginDir, "skills")); err == nil {
+		for _, e := range entries {
+			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+				skillFile := filepath.Join(pluginDir, "skills", e.Name(), "SKILL.md")
+				if _, err := os.Stat(skillFile); err == nil {
+					c.Skills = append(c.Skills, e.Name())
+				}
+			}
+		}
+	}
+
+	// Agents: .md files in agents/
+	if entries, err := os.ReadDir(filepath.Join(pluginDir, "agents")); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") && strings.HasSuffix(e.Name(), ".md") {
+				c.Agents = append(c.Agents, strings.TrimSuffix(e.Name(), ".md"))
+			}
+		}
+	}
+
+	// MCP servers: read .mcp.json and extract server names
+	mcpPath := filepath.Join(pluginDir, ".mcp.json")
+	if data, err := os.ReadFile(mcpPath); err == nil {
+		var mcpConfig struct {
+			MCPServers map[string]json.RawMessage `json:"mcpServers"`
+		}
+		if json.Unmarshal(data, &mcpConfig) == nil {
+			for name := range mcpConfig.MCPServers {
+				c.MCPServers = append(c.MCPServers, name)
+			}
+			sort.Strings(c.MCPServers)
+		}
+	}
+
+	return c
+}
+
+func printPluginComponents(c pluginComponents) {
+	if len(c.Agents)+len(c.Commands)+len(c.Skills)+len(c.MCPServers) == 0 {
+		return
+	}
+	output.PrintInfof("Components installed:")
+	if len(c.Agents) > 0 {
+		output.PrintInfof("  Agents:      %s", strings.Join(c.Agents, ", "))
+	}
+	if len(c.Commands) > 0 {
+		output.PrintInfof("  Commands:    /%s", strings.Join(c.Commands, ", /"))
+	}
+	if len(c.Skills) > 0 {
+		output.PrintInfof("  Skills:      %s", strings.Join(c.Skills, ", "))
+	}
+	if len(c.MCPServers) > 0 {
+		output.PrintInfof("  MCP servers: %s", strings.Join(c.MCPServers, ", "))
+	}
 }
 
 // updateCCMDMarketplace maintains .claude/plugins/.claude-plugin/marketplace.json.
