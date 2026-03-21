@@ -36,11 +36,11 @@ type InstallOptions struct {
 }
 
 // Install installs a command from a Git repository
-func Install(_ context.Context, opts InstallOptions) (string, error) {
+func Install(_ context.Context, opts InstallOptions) (string, bool, error) {
 	log := logger.New()
 
 	if opts.Repository == "" {
-		return "", errors.InvalidInput("repository URL is required")
+		return "", false, errors.InvalidInput("repository URL is required")
 	}
 
 	repo, version := ParseRepositorySpec(opts.Repository)
@@ -54,19 +54,19 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 
 	projectRoot, err := findProjectRoot()
 	if err != nil {
-		return "", errors.FileError("find project root", "", err)
+		return "", false, errors.FileError("find project root", "", err)
 	}
 
 	ccmdDir := filepath.Join(projectRoot, ".claude")
 	commandsDir := filepath.Join(ccmdDir, "commands")
 
 	if err := os.MkdirAll(commandsDir, 0755); err != nil {
-		return "", errors.FileError("create commands directory", commandsDir, err)
+		return "", false, errors.FileError("create commands directory", commandsDir, err)
 	}
 
 	tempDir, err := os.MkdirTemp("", "ccmd-install-*")
 	if err != nil {
-		return "", errors.FileError("create temp directory", "", err)
+		return "", false, errors.FileError("create temp directory", "", err)
 	}
 	defer os.RemoveAll(tempDir)
 
@@ -76,17 +76,18 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 		cloneVersion = opts.Commit
 	}
 	if err := gitClone(repoURL, tempDir, cloneVersion); err != nil {
-		return "", errors.GitError("clone", err)
+		return "", false, errors.GitError("clone", err)
 	}
 
 	metadataPath := filepath.Join(tempDir, "ccmd.yaml")
 	metadata, err := readCommandMetadata(metadataPath)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	if repoType(metadata) == "plugin" {
-		return installPlugin(projectRoot, tempDir, metadata, opts)
+		name, err := installPlugin(projectRoot, tempDir, metadata, opts)
+		return name, true, err
 	}
 
 	commandName := opts.Name
@@ -98,17 +99,17 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 	}
 
 	if err := validateCommandName(commandName); err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	targetRepoPath := ExtractRepoPath(repoURL)
 	existingCommand, err := findExistingCommandByRepo(projectRoot, targetRepoPath)
 	if err != nil {
-		return "", errors.FileError("check existing commands", "", err)
+		return "", false, errors.FileError("check existing commands", "", err)
 	}
 
 	if existingCommand != "" && !opts.Force {
-		return "", errors.AlreadyExists(fmt.Sprintf(
+		return "", false, errors.AlreadyExists(fmt.Sprintf(
 			"repository already installed as command %q, use --force to reinstall",
 			existingCommand))
 	}
@@ -118,7 +119,7 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 	if opts.Force {
 		output.PrintInfof("Removing previous installation %q...", existingCommand)
 		if err := removeCommandFiles(projectRoot, existingCommand); err != nil {
-			return "", err
+			return "", false, err
 		}
 	}
 
@@ -126,7 +127,7 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 
 	output.PrintInfof("Installing command %q...", commandName)
 	if err := copyDirectory(tempDir, destDir); err != nil {
-		return "", errors.FileError("copy command files", destDir, err)
+		return "", false, errors.FileError("copy command files", destDir, err)
 	}
 
 	originalVersion := metadata.Version
@@ -136,7 +137,7 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 
 	if err := writeCommandMetadata(filepath.Join(destDir, "ccmd.yaml"), metadata); err != nil {
 		os.RemoveAll(destDir)
-		return "", err
+		return "", false, err
 	}
 
 	standalonePath := filepath.Join(ccmdDir, "commands", commandName+".md")
@@ -166,7 +167,7 @@ func Install(_ context.Context, opts InstallOptions) (string, error) {
 		output.PrintSuccessf("Command %q installed successfully", commandName)
 	}
 
-	return commandName, nil
+	return commandName, false, nil
 }
 
 // InstallFromConfig installs all commands and plugins from project's ccmd.yaml
@@ -201,7 +202,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		}
 
 		output.PrintInfof("Installing %s...", cmdSpec)
-		if _, err := Install(ctx, opts); err != nil {
+		if _, _, err := Install(ctx, opts); err != nil {
 			if stderrors.Is(err, errors.ErrAlreadyExists) {
 				output.PrintWarningf("%s already installed, use --force to reinstall", repo)
 			} else {
@@ -223,7 +224,7 @@ func InstallFromConfig(ctx context.Context, projectPath string, force bool) erro
 		}
 
 		output.PrintInfof("Installing plugin %s...", pluginSpec)
-		if _, err := Install(ctx, opts); err != nil {
+		if _, _, err := Install(ctx, opts); err != nil {
 			if stderrors.Is(err, errors.ErrAlreadyExists) {
 				output.PrintWarningf("plugin %s already installed, use --force to reinstall", repo)
 			} else {

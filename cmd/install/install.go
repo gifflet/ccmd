@@ -71,13 +71,15 @@ Examples:
 				Force:      force,
 			}
 
-			commandName, err := core.Install(ctx, opts)
+			commandName, isPlugin, err := core.Install(ctx, opts)
 			if err != nil {
 				return err
 			}
 
-			output.PrintInfof("\nTo use the command, run:")
-			output.PrintInfof("/%s", commandName)
+			if !isPlugin {
+				output.PrintInfof("\nTo use the command, run:")
+				output.PrintInfof("/%s", commandName)
+			}
 
 			return nil
 		},
